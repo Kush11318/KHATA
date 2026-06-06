@@ -1578,10 +1578,11 @@ def handle_internal_error(error):
     flash('An unexpected error occurred. Please try again later.', 'error')
     return redirect(url_for('seller_dashboard'))
 
+
+# Create database tables on startup (runs with both gunicorn and python app.py)
+with app.app_context():
+    migrate_database()
+    db.create_all()
+
 if __name__ == '__main__':
-    with app.app_context():
-        # Run migrations first
-        migrate_database()
-        # Then create any missing tables
-        db.create_all()
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)
