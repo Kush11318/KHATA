@@ -494,6 +494,13 @@
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
 }
 
+.ai-mic-btn.speaking {
+    background-color: rgba(168, 85, 247, 0.1) !important;
+    color: #a855f7 !important;
+    animation: mic-pulse 1.2s infinite !important;
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15) !important;
+}
+
 @keyframes mic-pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.08); }

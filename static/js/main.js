@@ -1,4 +1,4 @@
-// Main JavaScript functionality for Invoice Management System
+// Main JavaScript functionality for Khata
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize any page-specific functionality

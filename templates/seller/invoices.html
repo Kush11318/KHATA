@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
-{% block title %}Invoices - Invoice Management System{% endblock %}
+{% block title %}Invoices - Khata{% endblock %}
 
 {% block back_button %}
 <a href="{{ url_for('seller_dashboard') }}" class="btn btn-outline btn-sm back-btn">
@@ -12,7 +12,7 @@
 {% block content %}
 <div class="dashboard">
     <div class="section-header">
-        <h2 class="section-title"> Invoice Management</h2>
+        <h2 class="section-title">Invoices</h2>
         <div class="section-actions">
             <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i>

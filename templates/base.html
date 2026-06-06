@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Invoice Management System{% endblock %}</title>
+    <title>{% block title %}Khata{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5.0">
     {% if session.user_role == 'seller' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}?v=5.0">
@@ -19,53 +19,101 @@
         <div class="container">
             <div class="header-content">
                 <div class="header-left">
-                    {% block back_button %}{% endblock %}
                     {% if session.user_role == 'admin' %}
-                    <a href="{{ url_for('admin_dashboard') }}" class="logo"> Invoice Management System - Admin</a>
+                    <a href="{{ url_for('admin_dashboard') }}" class="logo-container" title="Admin Dashboard">
+                        <div class="logo-badge">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
+                                <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
+                                <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
+                                <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+                            </svg>
+                        </div>
+                        <span class="brand-name">KHATA</span>
+                    </a>
                     {% elif session.user_role == 'customer' %}
-                    <a href="{{ url_for('customer_dashboard') }}" class="logo"> Invoice Management System</a>
+                    <a href="{{ url_for('customer_dashboard') }}" class="logo-container" title="Customer Dashboard">
+                        <div class="logo-badge">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
+                                <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
+                                <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
+                                <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+                            </svg>
+                        </div>
+                        <span class="brand-name">KHATA</span>
+                    </a>
                     {% else %}
-                    <a href="{{ url_for('seller_dashboard') }}" class="logo"> Invoice Management System</a>
+                    <a href="{{ url_for('seller_dashboard') }}" class="logo-container" title="Seller Dashboard">
+                        <div class="logo-badge">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
+                                <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
+                                <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
+                                <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+                            </svg>
+                        </div>
+                        <span class="brand-name">KHATA</span>
+                    </a>
                     {% endif %}
                 </div>
                 <nav class="header-nav">
                     {% if session.user_role == 'admin' %}
                     <a href="{{ url_for('admin_dashboard') }}"
-                        class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}"><i
-                            class="fas fa-chart-line"></i> Dashboard</a>
+                        class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                        <span>Dashboard</span>
+                        <span>Dashboard</span>
+                    </a>
                     <a href="{{ url_for('admin_sellers') }}"
-                        class="{% if request.endpoint == 'admin_sellers' %}active{% endif %}"><i
-                            class="fas fa-users"></i> Manage Sellers</a>
+                        class="nav-link {% if request.endpoint == 'admin_sellers' %}active{% endif %}">
+                        <span>Manage Sellers</span>
+                        <span>Manage Sellers</span>
+                    </a>
                     {% elif session.user_role == 'customer' %}
                     <a href="{{ url_for('customer_dashboard') }}"
-                        class="{% if request.endpoint == 'customer_dashboard' %}active{% endif %}"><i
-                            class="fas fa-chart-line"></i> Dashboard</a>
+                        class="nav-link {% if request.endpoint == 'customer_dashboard' %}active{% endif %}">
+                        <span>Dashboard</span>
+                        <span>Dashboard</span>
+                    </a>
                     {% else %}
                     <a href="{{ url_for('seller_dashboard') }}"
-                        class="{% if request.endpoint == 'seller_dashboard' %}active{% endif %}"><i
-                            class="fas fa-chart-line"></i> Dashboard</a>
+                        class="nav-link {% if request.endpoint == 'seller_dashboard' %}active{% endif %}">
+                        <span>Dashboard</span>
+                        <span>Dashboard</span>
+                    </a>
                     <a href="{{ url_for('seller_products') }}"
-                        class="{% if request.endpoint in ['seller_products', 'add_product', 'edit_product'] %}active{% endif %}"><i
-                            class="fas fa-box"></i> Products</a>
+                        class="nav-link {% if request.endpoint in ['seller_products', 'add_product', 'edit_product'] %}active{% endif %}">
+                        <span>Products</span>
+                        <span>Products</span>
+                    </a>
                     <a href="{{ url_for('seller_invoices') }}"
-                        class="{% if request.endpoint in ['seller_invoices', 'create_invoice', 'edit_invoice'] %}active{% endif %}"><i
-                            class="fas fa-file-invoice"></i> Invoices</a>
+                        class="nav-link {% if request.endpoint in ['seller_invoices', 'create_invoice', 'edit_invoice'] %}active{% endif %}">
+                        <span>Invoices</span>
+                        <span>Invoices</span>
+                    </a>
                     <a href="{{ url_for('seller_customers') }}"
-                        class="{% if request.endpoint in ['seller_customers', 'view_customer_invoices'] %}active{% endif %}"><i
-                            class="fas fa-users"></i> Customers</a>
+                        class="nav-link {% if request.endpoint in ['seller_customers', 'view_customer_invoices'] %}active{% endif %}">
+                        <span>Customers</span>
+                        <span>Customers</span>
+                    </a>
                     <a href="{{ url_for('customer_analytics') }}"
-                        class="{% if request.endpoint == 'customer_analytics' %}active{% endif %}"><i
-                            class="fas fa-chart-bar"></i> Analytics</a>
+                        class="nav-link {% if request.endpoint == 'customer_analytics' %}active{% endif %}">
+                        <span>Analytics</span>
+                        <span>Analytics</span>
+                    </a>
+                    <a href="{{ url_for('seller_academy') }}"
+                        class="nav-link nav-btn-secondary {% if request.endpoint == 'seller_academy' %}active{% endif %}">
+                        <span>Academy</span>
+                        <span>Academy</span>
+                    </a>
                     <a href="{{ url_for('create_invoice') }}"
-                        class="{% if request.endpoint in ['create_invoice'] %}active{% endif %}"><i
-                            class="fas fa-plus"></i> Create Invoice</a>
+                        class="nav-link nav-btn-primary {% if request.endpoint in ['create_invoice'] %}active{% endif %}">
+                        <span>Create Invoice</span>
+                        <span>Create Invoice</span>
+                    </a>
                     {% endif %}
                 </nav>
                 <div class="user-menu" id="userMenu">
                     <button type="button" class="btn btn-outline btn-sm user-toggle" id="userToggle">
-                        <i class="fas fa-user"></i>
-                        {{ session.user_name }}
-                        <i class="fas fa-chevron-down" style="margin-left: 4px;"></i>
+                        <span>{{ session.user_email or session.user_name }}</span>
+                        <span>Account Menu</span>
                     </button>
                     <div class="user-dropdown" id="userDropdown">
                         <a href="{{ url_for('logout') }}" class="dropdown-item">

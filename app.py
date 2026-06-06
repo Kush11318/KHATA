@@ -342,6 +342,12 @@ def seller_dashboard():
     
     return render_template('seller/dashboard.html', stats=stats, activities=recent_activities)
 
+@app.route('/seller/academy')
+@login_required
+@role_required('seller')
+def seller_academy():
+    return render_template('seller/academy.html')
+
 @app.route('/seller/products')
 @login_required
 @role_required('seller')
@@ -1724,5 +1730,7 @@ with app.app_context():
     auto_seed()
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
 

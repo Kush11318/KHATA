@@ -9,7 +9,7 @@ load_dotenv()
 
 
 def get_system_prompt(lang_name):
-    return f"""You are a smart billing assistant for an Invoice Management System. 
+    return f"""You are a smart billing assistant for Khata — a shop management app for Indian merchants. 
 Your goal is to extract structured data from natural language to help navigate the application, query sales insights, create invoices, add customers, or add products.
 
 CRITICAL REQUIREMENT:
@@ -23,7 +23,7 @@ You will be provided with:
 
 Output JSON format:
 {{
-    "intent": "create_invoice" | "add_customer" | "add_product" | "navigation" | "business_insights" | "unknown",
+    "intent": "create_invoice" | "add_customer" | "add_product" | "navigation" | "business_insights" | "business_education" | "unknown",
     "data": {{ ... }},
     "missing_info": "Question to ask user if info is missing (written in {lang_name})",
     "response_text": "Natural language response to speak back to the user (MUST be written in {lang_name})"
@@ -39,6 +39,11 @@ For 'business_insights':
 - Triggered when the user asks for sales metrics, revenue, customers overview, best selling products, stock health, or a general business report.
 - "data" should be empty: {{}}
 - "response_text": A encouraging, modern business insight summary based on the provided "Business Stats" context, written entirely in {lang_name}. Speak about their revenue, top-selling products, and any low-stock warnings dynamically. Keep it engaging.
+
+For 'business_education':
+- Triggered when the user asks general business terms, definitions (like B2B, B2C, GST, profit, margins, credit), consumer rights, or business school questions.
+- "data": {{}}
+- "response_text": A simple, friendly, easy-to-understand explanation of the term or question, written entirely in {lang_name}. Keep it concise and tailor it for small shopkeepers/merchants.
 
 For 'create_invoice':
 - "data" should contain:
@@ -248,43 +253,43 @@ def parse_command(user_text, context, history=[], language='en-IN'):
     nav_targets = {
         'dashboard': [
             'go to dashboard', 'show dashboard', 'open dashboard', 'view dashboard', 'dashboard page',
-            'डैशबोर्ड', 'डैशबोर्ड पर जाओ', 'डैशबोर्ड दिखाओ',
+            'डैशबोर्ड पर जाओ', 'डैशबोर्ड दिखाओ',
             'tableau de bord', 'aller au tableau de bord',
             'tablero', 'ir al tablero',
-            'dashboard', 'gehe zu dashboard',
-            'ダッシュボード', 'ダッシュボードへ移動'
+            'gehe zu dashboard',
+            'ダッシュボードへ移動'
         ],
         'products': [
             'go to products', 'show products', 'open products', 'view products', 'products inventory', 'products page',
-            'उत्पाद', 'उत्पाद पर जाओ', 'उत्पाद सूची', 'उत्पाद दिखाओ', 'उत्पाद दिखाएं', 'प्रोडक्ट्स पर जाएं',
-            'produits', 'aller aux produits', 'inventaire des produits',
-            'productos', 'ir a productos', 'inventario de productos',
-            'produkte', 'gehe zu produkten', 'produktinventar',
-            '商品一覧', '商品一覧へ移動', '商品'
+            'उत्पाद पर जाओ', 'उत्पाद सूची', 'उत्पाद दिखाओ', 'उत्पाद दिखाएं', 'प्रोडक्ट्स पर जाएं',
+            'aller aux produits', 'inventaire des produits',
+            'ir a productos', 'inventario de productos',
+            'gehe zu produkten', 'produktinventar',
+            '商品一覧', '商品一覧へ移動'
         ],
         'invoices': [
             'go to invoices', 'show invoices', 'open invoices', 'view invoices', 'invoices list', 'invoices page',
-            'इनवॉइस', 'इनवॉइस पर जाओ', 'इनवॉइस सूची', 'इनवॉइस दिखाओ', 'इनवॉइस दिखाएं',
-            'factures', 'aller aux factures', 'liste des factures',
-            'facturas', 'ir a facturas', 'lista de facturas',
-            'rechnungen', 'gehe zu rechnungen', 'rechnungsliste',
-            '請求書一覧', '請求書一覧へ移動', '請求書'
+            'इनवॉइस पर जाओ', 'इनवॉइस सूची', 'इनवॉइस दिखाओ', 'इनवॉइस दिखाएं',
+            'aller aux factures', 'liste des factures',
+            'ir a facturas', 'lista de facturas',
+            'gehe zu rechnungen', 'rechnungsliste',
+            '請求書一覧', '請求書一覧へ移動'
         ],
         'customers': [
             'go to customers', 'show customers', 'open customers', 'view customers', 'customer list', 'customers page',
-            'ग्राहक', 'ग्राहक पर जाओ', 'ग्राहक सूची', 'ग्राहक दिखाओ', 'ग्राहक दिखाएं', 'ग्राहक प्रबंधन',
-            'clients', 'aller aux clients', 'gestion des clients',
-            'clientes', 'ir a clientes', 'gestión de clientes',
-            'kunden', 'gehe zu kunden', 'kundenverwaltung',
-            '顧客管理', '顧客管理へ移動', '顧客'
+            'ग्राहक पर जाओ', 'ग्राहक सूची', 'ग्राहक दिखाओ', 'ग्राहक दिखाएं', 'ग्राहक प्रबंधन',
+            'aller aux clients', 'gestion des clients',
+            'ir a clientes', 'gestión de clientes',
+            'gehe zu kunden', 'kundenverwaltung',
+            '顧客管理', '顧客管理へ移動'
         ],
         'analytics': [
             'go to analytics', 'show analytics', 'open analytics', 'view analytics', 'analytics page',
-            'एनालिटिक्स', 'एनालिटिक्स पर जाओ', 'एनालिटिक्स दिखाओ', 'एनालिटिक्स दिखाएं', 'एनालिटिक्स केंद्र',
-            'analyses', 'afficher les analyses', 'centre d\'analyse',
-            'análisis', 'mostrar análisis', 'centro de análisis',
-            'analysen', 'analysen anzeigen', 'analysenzentrum',
-            '分析', '分析を見せて', '分析センター'
+            'एनालिटिक्स पर जाओ', 'एनालिटिक्स दिखाओ', 'एनालिटिक्स दिखाएं', 'एनालिटिक्स केंद्र',
+            'afficher les analyses', 'centre d\'analyse',
+            'mostrar análisis', 'centro de análisis',
+            'analysen anzeigen', 'analysenzentrum',
+            '分析を見せて', '分析センター'
         ],
         'create_invoice': [
             'create invoice', 'create an invoice', 'new invoice',
@@ -315,12 +320,12 @@ def parse_command(user_text, context, history=[], language='en-IN'):
             
     # B. Business Insights keywords mapping (multi-lingual)
     insight_phrases = [
-        'business insights', 'show insights', 'view insights', 'sales metrics', 'business stats', 'view statistics', 'how is business', 'how is the business doing', 'insights',
-        'व्यापार रिपोर्ट', 'व्यापार रिपोर्ट दिखाएं', 'बिजनेस कैसा है', 'बिजनेस कैसा चल रहा है', 'इनसाइट्स',
-        'perspectives commerciales', 'comment vont les affaires', 'rapport d\'activité', 'statistiques',
-        'información comercial', 'cómo va el negocio', 'estado del negocio', 'estadísticas',
-        'geschäftszahlen', 'wie läuft das geschäft', 'geschäftseinblicke', 'statistiken',
-        'ビジネス分析', '業績はどう', 'ビジネスレポート', 'インサイト'
+        'business insights', 'show insights', 'view insights', 'sales metrics', 'business stats', 'view statistics', 'how is business', 'how is the business doing',
+        'व्यापार रिपोर्ट', 'व्यापार रिपोर्ट दिखाएं', 'बिजनेस कैसा है', 'बिजनेस कैसा चल रहा है',
+        'perspectives commerciales', 'comment vont les affaires', 'rapport d\'activité',
+        'información comercial', 'cómo va el negocio', 'estado del negocio',
+        'geschäftszahlen', 'wie läuft das geschäft', 'geschäftseinblicke',
+        'ビジネス分析', '業績はどう', 'ビジネスレポート'
     ]
     if any(phrase in text_lower for phrase in insight_phrases):
         s = context.get('stats', {})
@@ -332,18 +337,82 @@ def parse_command(user_text, context, history=[], language='en-IN'):
             "response_text": summary
         }
 
-    # 2. Call Generative AI fallback for natural language commands
+    # C. Basic Greetings mapping (multi-lingual)
+    greeting_words = [
+        'hi', 'hello', 'hey', 'namaste', 'hola', 'bonjour', 'hallo', 'konnichiwa', 
+        'good morning', 'good afternoon', 'good evening', 'hi there', 'hello there',
+        'नमस्ते', 'हेलो', 'हाय'
+    ]
+    if text_lower in greeting_words or any(text_lower == word for word in greeting_words):
+        greetings = {
+            'hi-IN': 'नमस्ते! मैं आपकी इनवॉइस बनाने या व्यावसायिक जानकारी प्राप्त करने में कैसे सहायता कर सकता हूँ?',
+            'fr-FR': "Bonjour ! Comment puis-je vous aider avec vos factures ou vos perspectives commerciales aujourd'hui ?",
+            'es-ES': "¡Hola! ¿Cómo puedo ayudarte con tus facturas o estadísticas comerciales hoy?",
+            'de-DE': "Hallo! Wie kann ich Ihnen heute bei Ihren Rechnungen oder Geschäftsdaten helfen?",
+            'ja-JP': "こんにちは！本日は請求書の作成やビジネス分析など、どのようなお手伝いをいたしましょうか？"
+        }
+        reply = greetings.get(language, "Hi! How can I help you with your invoices or business stats today?")
+        return {
+            "intent": "unknown",
+            "data": {},
+            "missing_info": None,
+            "response_text": reply
+        }
+
+    # 2. Call Generative AI fallback for natural language commands with bidirectional error failover
     groq_api_key = os.environ.get("GROQ_API_KEY")
     gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     
-    # 1. Prioritize Groq if config is present (generous free quotas)
+    # 1. Try Groq first if available
     if groq_api_key and groq_api_key.strip():
-        return parse_command_groq(user_text, context, history, groq_api_key.strip(), language)
-        
-    # 2. Fallback to Gemini
+        try:
+            print("Attempting command parsing via Groq...")
+            return parse_command_groq(user_text, context, history, groq_api_key.strip(), language)
+        except Exception as groq_err:
+            print(f"Groq parse failed: {groq_err}. Falling back to Gemini...")
+            if gemini_api_key and gemini_api_key.strip():
+                try:
+                    return parse_command_gemini(user_text, context, history, gemini_api_key.strip(), language)
+                except Exception as gemini_err:
+                    return {
+                        "intent": "unknown",
+                        "data": {},
+                        "missing_info": None,
+                        "response_text": f"⚠️ Both Groq and Gemini services failed. (Groq: {groq_err}, Gemini: {gemini_err})"
+                    }
+            else:
+                return {
+                    "intent": "unknown",
+                    "data": {},
+                    "missing_info": None,
+                    "response_text": f"🛑 Groq failed and no Gemini API key is configured. Error: {groq_err}"
+                }
+                
+    # 2. Try Gemini fallback if Groq not configured
     if gemini_api_key and gemini_api_key.strip():
-        return parse_command_gemini(user_text, context, history, gemini_api_key.strip(), language)
-        
+        try:
+            print("Attempting command parsing via Gemini...")
+            return parse_command_gemini(user_text, context, history, gemini_api_key.strip(), language)
+        except Exception as gemini_err:
+            print(f"Gemini parse failed: {gemini_err}. Trying Groq as fallback if configured...")
+            if groq_api_key and groq_api_key.strip():
+                try:
+                    return parse_command_groq(user_text, context, history, groq_api_key.strip(), language)
+                except Exception as groq_err:
+                    return {
+                        "intent": "unknown",
+                        "data": {},
+                        "missing_info": None,
+                        "response_text": f"⚠️ Both Gemini and Groq services failed. (Gemini: {gemini_err}, Groq: {groq_err})"
+                    }
+            else:
+                return {
+                    "intent": "unknown",
+                    "data": {},
+                    "missing_info": None,
+                    "response_text": f"🛑 Gemini failed and no Groq API key is configured. Error: {gemini_err}"
+                }
+
     return {
         "intent": "unknown",
         "data": {},
@@ -352,159 +421,105 @@ def parse_command(user_text, context, history=[], language='en-IN'):
     }
 
 def parse_command_groq(user_text, context, history, api_key, language):
-    try:
-        import requests
-        
-        context_str = get_context_str(context)
-        
-        lang_names = {
-            'en-IN': 'Indian English',
-            'en-US': 'US English',
-            'hi-IN': 'Hindi',
-            'fr-FR': 'French',
-            'es-ES': 'Spanish',
-            'de-DE': 'German',
-            'ja-JP': 'Japanese'
-        }
-        lang_name = lang_names.get(language, 'English')
-        system_prompt = get_system_prompt(lang_name)
-        
-        # Format conversation messages for Groq API
-        messages = [{"role": "system", "content": system_prompt}]
-        if history:
-            for msg in history:
-                role = "user" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "assistant"
-                messages.append({"role": role, "content": msg.get('content') or msg.get('text', '')})
-        
-        messages.append({"role": "user", "content": f"Context:\n{context_str}\n\nUser Input:\n{user_text}"})
-        
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": "llama-3.1-8b-instant",
-            "messages": messages,
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1
-        }
-        
-        # Call Groq serverless completions API
-        response = requests.post(
+    import requests
+    
+    context_str = get_context_str(context)
+    
+    lang_names = {
+        'en-IN': 'Indian English',
+        'en-US': 'US English',
+        'hi-IN': 'Hindi',
+        'fr-FR': 'French',
+        'es-ES': 'Spanish',
+        'de-DE': 'German',
+        'ja-JP': 'Japanese'
+    }
+    lang_name = lang_names.get(language, 'English')
+    system_prompt = get_system_prompt(lang_name)
+    
+    # Format conversation messages for Groq API
+    messages = [{"role": "system", "content": system_prompt}]
+    if history:
+        for msg in history:
+            role = "user" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "assistant"
+            messages.append({"role": role, "content": msg.get('content') or msg.get('text', '')})
+    
+    messages.append({"role": "user", "content": f"Context:\n{context_str}\n\nUser Input:\n{user_text}"})
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": messages,
+        "response_format": {"type": "json_object"},
+        "temperature": 0.1
+    }
+    
+    # Call Groq serverless completions API
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json=payload,
+        timeout=10
+    )
+    
+    if response.status_code == 429 or response.status_code == 401 or response.status_code != 200:
+        # Try a quick fallback model in Groq first
+        payload["model"] = "llama-3.3-70b-versatile"
+        fallback_resp = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers=headers,
             json=payload,
             timeout=10
         )
+        if fallback_resp.status_code == 200:
+            response = fallback_resp
+            
+    if response.status_code != 200:
+        raise Exception(f"Groq API Error {response.status_code}: {response.text}")
         
-        if response.status_code == 401:
-            return {
-                "intent": "unknown",
-                "data": {},
-                "missing_info": None,
-                "response_text": "🛑 **Groq Authorization Failed**: Please verify that your `GROQ_API_KEY` in the `.env` file is valid."
-            }
-            
-        if response.status_code == 429:
-            return {
-                "intent": "unknown",
-                "data": {},
-                "missing_info": None,
-                "response_text": "🛑 **Groq Rate Limit Exceeded (429)**: Free rate limits reached. Please try again in a moment."
-            }
-            
-        if response.status_code != 200:
-            # Fallback to llama-3.3-70b-versatile
-            payload["model"] = "llama-3.3-70b-versatile"
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=10
-            )
-            
-        if response.status_code != 200:
-            return {
-                "intent": "unknown",
-                "data": {},
-                "missing_info": None,
-                "response_text": f"🛑 **Groq API Error ({response.status_code})**: {response.text}"
-            }
-            
-        result = response.json()
-        content = result["choices"][0]["message"]["content"]
-        return json.loads(content)
-        
-    except Exception as e:
-        import traceback
-        with open('error.log', 'w') as f:
-            f.write(traceback.format_exc())
-        return {
-            "intent": "unknown",
-            "data": {},
-            "missing_info": None,
-            "response_text": f"Sorry, Groq encountered an error: {str(e)}"
-        }
+    result = response.json()
+    content = result["choices"][0]["message"]["content"]
+    return json.loads(content)
 
 def parse_command_gemini(user_text, context, history, api_key, language):
-    try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    context_str = get_context_str(context)
+    
+    history_str = ""
+    if history:
+        history_str = "Conversation History:\n"
+        for msg in history:
+            role = "User" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "Assistant"
+            history_str += f"{role}: {msg.get('content') or msg.get('text', '')}\n"
+    
+    lang_names = {
+        'en-IN': 'Indian English',
+        'en-US': 'US English',
+        'hi-IN': 'Hindi',
+        'fr-FR': 'French',
+        'es-ES': 'Spanish',
+        'de-DE': 'German',
+        'ja-JP': 'Japanese'
+    }
+    lang_name = lang_names.get(language, 'English')
+    system_prompt = get_system_prompt(lang_name)
+    prompt = f"{system_prompt}\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
+    
+    response = model.generate_content(
+        prompt,
+        generation_config={"response_mime_type": "application/json"}
+    )
+    
+    content = response.text
+    if content.startswith("```json"):
+        content = content[7:-3]
+    elif content.startswith("```"):
+        content = content[3:-3]
         
-        context_str = get_context_str(context)
-        
-        history_str = ""
-        if history:
-            history_str = "Conversation History:\n"
-            for msg in history:
-                role = "User" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "Assistant"
-                history_str += f"{role}: {msg.get('content') or msg.get('text', '')}\n"
-        
-        lang_names = {
-            'en-IN': 'Indian English',
-            'en-US': 'US English',
-            'hi-IN': 'Hindi',
-            'fr-FR': 'French',
-            'es-ES': 'Spanish',
-            'de-DE': 'German',
-            'ja-JP': 'Japanese'
-        }
-        lang_name = lang_names.get(language, 'English')
-        system_prompt = get_system_prompt(lang_name)
-        prompt = f"{system_prompt}\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
-        
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        
-        content = response.text
-        if content.startswith("```json"):
-            content = content[7:-3]
-        elif content.startswith("```"):
-            content = content[3:-3]
-            
-        return json.loads(content)
-        
-    except Exception as e:
-        import traceback
-        with open('error.log', 'w') as f:
-            f.write(traceback.format_exc())
-        print(f"AI Service Error: {e}")
-        
-        error_name = type(e).__name__
-        if "ResourceExhausted" in error_name or "429" in str(e):
-            return {
-                "intent": "unknown",
-                "data": {},
-                "missing_info": None,
-                "response_text": "🛑 **Gemini API Quota Exceeded (429)**: You have exceeded your Gemini free quota. Please wait 1–2 minutes, or configure a `GROQ_API_KEY` in your `.env` file for higher free limits."
-            }
-            
-        return {
-            "intent": "unknown",
-            "data": {},
-            "missing_info": None,
-            "response_text": f"Sorry, Gemini encountered an error: {str(e)}"
-        }
+    return json.loads(content)

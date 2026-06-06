@@ -390,9 +390,19 @@ class AIAssistant {
         if (modal) {
             modal.classList.remove('active');
         }
+        if (this.synth) {
+            this.synth.cancel();
+        }
+        this.updateUIState('idle');
     }
 
     toggleListening() {
+        if (this.synth && this.synth.speaking) {
+            this.synth.cancel();
+            this.updateUIState('idle');
+            return;
+        }
+
         if (!this.recognition) {
             alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
             return;
@@ -424,6 +434,8 @@ class AIAssistant {
             if (micBtn) {
                 micBtn.innerHTML = '<i class="fas fa-stop" style="color: #ff3b30;"></i>';
                 micBtn.classList.add('listening');
+                micBtn.classList.remove('speaking');
+                micBtn.title = "Stop listening";
             }
             if (mainBtn) {
                 mainBtn.classList.add('listening');
@@ -432,10 +444,22 @@ class AIAssistant {
                 textInput.placeholder = this.getUIPlaceholder('listening', currentLang);
                 textInput.value = '';
             }
+        } else if (state === 'speaking') {
+            if (micBtn) {
+                micBtn.innerHTML = '<i class="fas fa-stop" style="color: #ff3b30;"></i>';
+                micBtn.classList.add('speaking');
+                micBtn.classList.remove('listening');
+                micBtn.title = "Stop Speaking";
+            }
+            if (mainBtn) {
+                mainBtn.classList.remove('listening');
+            }
         } else {
             if (micBtn) {
                 micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
                 micBtn.classList.remove('listening');
+                micBtn.classList.remove('speaking');
+                micBtn.title = "Speak command";
             }
             if (mainBtn) {
                 mainBtn.classList.remove('listening');
@@ -562,10 +586,19 @@ class AIAssistant {
             if (cleanText) {
                 const utterance = new SpeechSynthesisUtterance(cleanText);
                 
+                this.updateUIState('speaking');
+
+                utterance.onend = () => {
+                    if (this.synth && !this.synth.speaking) {
+                        this.updateUIState('idle');
+                    }
+                };
+                
                 // Add error handling to resume/cancel if it gets stuck
                 utterance.onerror = (event) => {
                     console.error('SpeechSynthesisUtterance error:', event.error);
                     this.synth.cancel();
+                    this.updateUIState('idle');
                 };
 
                 // Find voice corresponding to the selected language

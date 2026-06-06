@@ -1,0 +1,287 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Khata AI Academy - Learn Shop Terms{% endblock %}
+
+{% block content %}
+<div class="academy-container">
+    <!-- Hero Block -->
+    <div class="academy-hero">
+        <h1 class="academy-hero-title"><i class="fas fa-brain"></i> Khata AI Academy</h1>
+        <p class="academy-hero-desc">
+            A school for shopkeepers and small merchants. Learn the basic concepts of business, billing, and taxes, and let the AI assistant explain them to you live!
+        </p>
+    </div>
+
+    <!-- AI Search / Ask Box -->
+    <div class="ai-search-container" style="background: #ffffff; border-radius: 16px; padding: 24px; border: 1px solid rgba(0, 0, 0, 0.06); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02); margin-bottom: 35px;">
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; color: #0f172a;"><i class="fas fa-lightbulb" style="color: #a855f7;"></i> Ask Khata AI a Business Question</h3>
+        <p style="color: #64748b; font-size: 13.5px; margin-bottom: 15px;">Ask whatever you want (e.g. "What is credit sales?", "How do I check profit?") and watch the AI explain it in simple terms.</p>
+        <div class="flex gap-2" style="display: flex; gap: 10px;">
+            <input type="text" id="academy-search-input" placeholder="Type a business question or click 'Ask AI'..." style="flex: 1; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 10px; font-size: 14.2px; outline: none; transition: border-color 0.2s;" onkeypress="handleSearchPress(event)">
+            <button onclick="askCustomQuestion()" class="btn-academy-try" style="padding: 12px 24px; font-size: 14px; white-space: nowrap;"><i class="fas fa-paper-plane"></i> Ask AI</button>
+        </div>
+    </div>
+
+    <!-- Business 101: Learn Shop Terms -->
+    <div class="academy-section-header">
+        <i class="fas fa-store"></i> Business 101: Learn Shop Terms
+    </div>
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">
+        Click the <strong>Ask AI about this</strong> button on any term card to let the AI explain that concept to you live:
+    </p>
+
+    <div class="academy-grid" style="margin-bottom: 40px;">
+        <!-- AI Card -->
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <div class="academy-card-meta">
+                    <div class="academy-card-icon-wrapper wrapper-purple" style="background: linear-gradient(135deg, #eff6ff 0%, #faf5ff 100%);">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <span class="academy-card-difficulty diff-easy" style="background-color: #faf5ff; color: #7c3aed;">Technology</span>
+                </div>
+                <h3 class="academy-card-title">AI / Artificial Intelligence (कृत्रिम बुद्धिमत्ता)</h3>
+                <p class="academy-card-desc">A smart digital helper that acts like a real person. It listens to your voice commands, understands what you need, and runs your shop tasks automatically.</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-info-circle"></i> Saves time, reduces spelling mistakes, and helps you work hands-free.</li>
+                </ul>
+            </div>
+            <div class="academy-card-action" style="margin-top: 15px;">
+                <button class="btn-academy-try" onclick="runSimulatorCommand('Explain Artificial Intelligence in simple terms for shopkeepers')">
+                    Ask AI about this <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- B2B Card -->
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <div class="academy-card-meta">
+                    <div class="academy-card-icon-wrapper wrapper-blue">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <span class="academy-card-difficulty diff-easy">B2B</span>
+                </div>
+                <h3 class="academy-card-title">B2B (व्यापार से व्यापार)</h3>
+                <p class="academy-card-desc">When you sell products in large amounts (bulk) to <strong>another shopkeeper or business</strong> instead of individual customers.</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-info-circle"></i> Example: Selling 100 milk packets to a local grocery store.</li>
+                </ul>
+            </div>
+            <div class="academy-card-action" style="margin-top: 15px;">
+                <button class="btn-academy-try" onclick="runSimulatorCommand('Explain B2B in simple terms for shopkeepers')">
+                    Ask AI about this <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- B2C Card -->
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <div class="academy-card-meta">
+                    <div class="academy-card-icon-wrapper wrapper-green">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <span class="academy-card-difficulty diff-easy">B2C</span>
+                </div>
+                <h3 class="academy-card-title">B2C (व्यापार से ग्राहक)</h3>
+                <p class="academy-card-desc">When you sell products directly to <strong>individual customers</strong> who walk into your shop to buy items for their own use.</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-info-circle"></i> Example: Selling 1 milk packet to a daily customer.</li>
+                </ul>
+            </div>
+            <div class="academy-card-action" style="margin-top: 15px;">
+                <button class="btn-academy-try" onclick="runSimulatorCommand('Explain B2C in simple terms for shopkeepers')">
+                    Ask AI about this <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Invoice / Bill Card -->
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <div class="academy-card-meta">
+                    <div class="academy-card-icon-wrapper wrapper-purple">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <span class="academy-card-difficulty diff-easy">Invoicing</span>
+                </div>
+                <h3 class="academy-card-title">Invoice / Bill (बिल)</h3>
+                <p class="academy-card-desc">A formal paper or digital record showing the items sold, their prices, and the final payment amount due.</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-info-circle"></i> Serves as proof of sales and is used to track transaction histories.</li>
+                </ul>
+            </div>
+            <div class="academy-card-action" style="margin-top: 15px;">
+                <button class="btn-academy-try" onclick="runSimulatorCommand('Explain Invoices and Bills in simple terms')">
+                    Ask AI about this <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stock / Inventory Card -->
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <div class="academy-card-meta">
+                    <div class="academy-card-icon-wrapper wrapper-orange">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <span class="academy-card-difficulty diff-medium">Inventory</span>
+                </div>
+                <h3 class="academy-card-title">Inventory / Stock (सामान का भंडार)</h3>
+                <p class="academy-card-desc">The total physical items/goods you currently have on hand in your store available for customers to purchase.</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-info-circle"></i> Tracking stock ensures you never run out of popular items.</li>
+                </ul>
+            </div>
+            <div class="academy-card-action" style="margin-top: 15px;">
+                <button class="btn-academy-try" onclick="runSimulatorCommand('Explain Stock and Inventory management in simple terms')">
+                    Ask AI about this <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Revenue vs Profit Card -->
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <div class="academy-card-meta">
+                    <div class="academy-card-icon-wrapper wrapper-pink">
+                        <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <span class="academy-card-difficulty diff-hard">Margins</span>
+                </div>
+                <h3 class="academy-card-title">Revenue & Profit (कमाई और मुनाफा)</h3>
+                <p class="academy-card-desc"><strong>Revenue</strong> is the total cash collected from sales. <strong>Profit</strong> is what you keep after paying for product costs and rent.</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-info-circle"></i> Profit is the actual money you take home as salary/income.</li>
+                </ul>
+            </div>
+            <div class="academy-card-action" style="margin-top: 15px;">
+                <button class="btn-academy-try" onclick="runSimulatorCommand('Explain the difference between Revenue and Profit in simple terms')">
+                    Ask AI about this <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- GST / Taxes Card -->
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <div class="academy-card-meta">
+                    <div class="academy-card-icon-wrapper wrapper-blue" style="background-color: #fffbeb; color: #d97706;">
+                        <i class="fas fa-percent"></i>
+                    </div>
+                    <span class="academy-card-difficulty diff-medium">Taxation</span>
+                </div>
+                <h3 class="academy-card-title">GST / Taxes (टैक्स)</h3>
+                <p class="academy-card-desc">Goods and Services Tax is a small percentage added to the bill by the government to fund public works.</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-info-circle"></i> Shopkeepers collect GST from customers and pay it to the government.</li>
+                </ul>
+            </div>
+            <div class="academy-card-action" style="margin-top: 15px;">
+                <button class="btn-academy-try" onclick="runSimulatorCommand('Explain GST tax in simple terms for shopkeepers')">
+                    Ask AI about this <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Voice Assistant Guidelines -->
+    <div class="academy-section-header">
+        <i class="fas fa-keyboard"></i> Voice Assistant Guidelines
+    </div>
+
+    <div class="academy-grid" style="margin-bottom: 40px;">
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <h3 class="academy-card-title"><i class="fas fa-microphone" style="color: #6366f1;"></i> Voice Billing Instructions</h3>
+                <p class="academy-card-desc">Speak clearly to the assistant for fast hands-free billing:</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-check-circle"></i> Begin invoice statements with **"Bill for [Customer]"**.</li>
+                    <li><i class="fas fa-check-circle"></i> List items using quantities and names (e.g., **"2 milks and 1 bread"**).</li>
+                    <li><i class="fas fa-check-circle"></i> Speak clearly and pause slightly after finishing commands to let the auto-submit fire.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="academy-card">
+            <div class="academy-card-top">
+                <h3 class="academy-card-title"><i class="fas fa-language" style="color: #a855f7;"></i> Multilingual Tips</h3>
+                <p class="academy-card-desc">Get the best speech recognition results in regional languages:</p>
+                <ul class="academy-guide-list">
+                    <li><i class="fas fa-check-circle"></i> Choose your language from the flag dropdown in the Assistant header.</li>
+                    <li><i class="fas fa-check-circle"></i> Speak naturally. If you have selected Hindi, you can speak in Hindi or Hinglish!</li>
+                    <li><i class="fas fa-check-circle"></i> The assistant automatically replies back using matching natural synthesizer voices.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function runSimulatorCommand(cmd) {
+        if (!window.aiAssistant) {
+            alert("The AI Assistant is still loading. Please wait 1-2 seconds and try again!");
+            return;
+        }
+
+        // Interrupt any ongoing speech synthesis immediately
+        if (window.aiAssistant.synth && window.aiAssistant.synth.speaking) {
+            window.aiAssistant.synth.cancel();
+        }
+
+        // Open chat window modal
+        window.aiAssistant.openChatModal();
+
+        const input = document.getElementById('ai-text-input');
+        if (!input) return;
+
+        // Visual typewriter feedback in input field
+        input.value = '';
+        input.disabled = true; 
+        
+        let index = 0;
+        const speed = 40; // millisecond delay per character typed
+        
+        function typeWriter() {
+            if (index < cmd.length) {
+                input.value += cmd.charAt(index);
+                index++;
+                setTimeout(typeWriter, speed);
+            } else {
+                input.disabled = false;
+                
+                // Submit action simulation
+                setTimeout(() => {
+                    const sendBtn = document.getElementById('ai-send-btn');
+                    if (sendBtn) {
+                        sendBtn.click();
+                    } else {
+                        window.aiAssistant.handleUserInput(cmd);
+                        input.value = '';
+                    }
+                }, 400);
+            }
+        }
+
+        // Short timeout for smoother modal slide-up opening sequence
+        setTimeout(typeWriter, 450);
+    }
+
+    function askCustomQuestion() {
+        const inputEl = document.getElementById('academy-search-input');
+        if (!inputEl) return;
+        const query = inputEl.value.trim();
+        if (query) {
+            runSimulatorCommand(query);
+            inputEl.value = '';
+        }
+    }
+
+    function handleSearchPress(e) {
+        if (e.key === 'Enter') {
+            askCustomQuestion();
+        }
+    }
+</script>
+{% endblock %}
