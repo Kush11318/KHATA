@@ -136,8 +136,13 @@ def role_required(role):
         def decorated_function(*args, **kwargs):
             if 'user_role' not in session or session['user_role'] != role:
                 flash('Access denied. Insufficient permissions.', 'error')
-                if session.get('user_role') == 'admin':
+                user_role = session.get('user_role')
+                if user_role == 'admin':
                     return redirect(url_for('admin_dashboard'))
+                elif user_role == 'seller':
+                    return redirect(url_for('seller_dashboard'))
+                elif user_role == 'customer':
+                    return redirect(url_for('customer_dashboard'))
                 return redirect(url_for('login'))
             return f(*args, **kwargs)
         return decorated_function
@@ -181,8 +186,11 @@ def restore_stock_on_cancellation(invoice):
 @app.route('/')
 def index():
     if 'user_id' in session:
-        if session.get('user_role') == 'admin':
+        user_role = session.get('user_role')
+        if user_role == 'admin':
             return redirect(url_for('admin_dashboard'))
+        elif user_role == 'customer':
+            return redirect(url_for('customer_dashboard'))
         return redirect(url_for('seller_dashboard'))
     return redirect(url_for('login'))
 
@@ -208,6 +216,15 @@ def login():
             session['user_email'] = seller.s_email
             session['user_role'] = 'seller'
             return redirect(url_for('seller_dashboard'))
+        
+        # Check if user is a customer
+        customer = Customer.query.filter_by(c_email=email).first()
+        if customer and customer.check_password(password):
+            session['user_id'] = customer.c_id
+            session['user_name'] = customer.c_name
+            session['user_email'] = customer.c_email
+            session['user_role'] = 'customer'
+            return redirect(url_for('customer_dashboard'))
         
         flash('Invalid email or password', 'error')
     
@@ -268,6 +285,28 @@ def logout():
     session.clear()
     flash('You have been logged out', 'info')
     return redirect(url_for('login'))
+
+@app.route('/customer')
+@login_required
+@role_required('customer')
+def customer_dashboard():
+    # Fetch customer invoices
+    invoices = Invoice.query.filter_by(c_id=session['user_id']).order_by(Invoice.invoice_datetime.desc()).all()
+    
+    # Calculate customer statistics
+    total_invoices = len(invoices)
+    total_amount = sum(float(inv.amount) for inv in invoices)
+    pending_invoices = sum(1 for inv in invoices if inv.status in ['pending', 'overdue'])
+    paid_invoices = sum(1 for inv in invoices if inv.status == 'paid')
+    
+    stats = {
+        'total_invoices': total_invoices,
+        'total_amount': total_amount,
+        'pending_invoices': pending_invoices,
+        'paid_invoices': paid_invoices
+    }
+    
+    return render_template('customer/dashboard.html', stats=stats, invoices=invoices)
 
 @app.route('/seller')
 @login_required
@@ -1227,18 +1266,28 @@ def edit_invoice(invoice_id):
 
 @app.route('/invoice/<invoice_id>')
 @login_required
-@role_required('seller')
 def view_invoice(invoice_id):
     invoice = db.session.get(Invoice, invoice_id)
     
     if not invoice:
         flash('Invoice not found', 'error')
+        if session.get('user_role') == 'customer':
+            return redirect(url_for('customer_dashboard'))
+        elif session.get('user_role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
         return redirect(url_for('seller_dashboard'))
     
-    # Check if seller has access to this invoice
-    if invoice.s_id != session['user_id']:
+    # Check permission based on role
+    role = session.get('user_role')
+    if role == 'seller' and invoice.s_id != session['user_id']:
         flash('Access denied', 'error')
         return redirect(url_for('seller_dashboard'))
+    elif role == 'customer' and invoice.c_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard'))
+    elif role not in ['seller', 'customer', 'admin']:
+        flash('Access denied', 'error')
+        return redirect(url_for('login'))
     
     return render_template('invoice/view.html', invoice=invoice)
 
@@ -1299,12 +1348,63 @@ def process_ai_command():
         products = Product.query.filter_by(s_id=session['user_id']).all()
         customers = Customer.query.filter_by(s_id=session['user_id']).all()
         
+        # Aggregate Business Stats
+        stats = {
+            'revenue': 0.0,
+            'invoices_count': 0,
+            'customers_count': 0,
+            'products_count': len(products),
+            'low_stock': [],
+            'top_selling': [],
+            'recent_invoices': []
+        }
+        try:
+            revenue_val = db.session.query(db.func.sum(Invoice.amount)).filter(Invoice.s_id == session['user_id']).scalar() or 0.0
+            stats['revenue'] = float(revenue_val)
+            stats['invoices_count'] = Invoice.query.filter_by(s_id=session['user_id']).count()
+            stats['customers_count'] = Customer.query.filter_by(s_id=session['user_id']).count()
+            
+            low_stock_products = Product.query.filter(Product.s_id == session['user_id'], Product.p_stock < 10).all()
+            stats['low_stock'] = [{'name': p.p_name, 'stock': p.p_stock} for p in low_stock_products]
+            
+            top_selling = db.session.query(
+                Product.p_name,
+                db.func.sum(InvoiceItem.item_quantity).label('qty')
+            ).join(
+                InvoiceItem, Product.p_id == InvoiceItem.p_id
+            ).join(
+                Invoice, InvoiceItem.invoice_no == Invoice.invoice_no
+            ).filter(
+                Invoice.s_id == session['user_id']
+            ).group_by(
+                Product.p_name
+            ).order_by(
+                db.text('qty DESC')
+            ).limit(3).all()
+            stats['top_selling'] = [{'name': name, 'quantity': int(qty)} for name, qty in top_selling]
+            
+            recent_invoices = Invoice.query.filter_by(s_id=session['user_id']).order_by(Invoice.invoice_datetime.desc()).limit(3).all()
+            stats['recent_invoices'] = [{
+                'invoice_no': inv.invoice_no,
+                'customer_name': inv.customer.c_name if inv.customer else 'Unknown',
+                'amount': float(inv.amount),
+                'status': inv.status
+            } for inv in recent_invoices]
+        except Exception as e:
+            print(f"Error compiling business stats context: {e}")
+            
         context = {
             'products': [p.to_dict() for p in products],
-            'customers': [c.to_dict() for c in customers]
+            'customers': [c.to_dict() for c in customers],
+            'stats': stats
         }
         
         result = ai_service.parse_command(user_text, context, history)
+        
+        # Inject live statistics context if the user requested business insights
+        if result.get('intent') == 'business_insights':
+            result['data'] = stats
+            result['success'] = True
         
         # Handle add_product intent - actually add to database
         if result.get('intent') == 'add_product':

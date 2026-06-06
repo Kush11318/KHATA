@@ -6,14 +6,28 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or '8b6f77032919654a2afbe29f4633be31'
     
-    # MySQL Database Configuration
-    MYSQL_HOST = os.environ.get('MYSQL_HOST') or 'localhost'
-    MYSQL_PORT = int(os.environ.get('MYSQL_PORT') or 3306)
-    MYSQL_USERNAME = os.environ.get('MYSQL_USERNAME') or 'root'
-    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD') or 'kush'
-    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE') or 'inventory_db'
-    
-    SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{MYSQL_USERNAME}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+    # Database Configuration
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    if DATABASE_URL:
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    else:
+        # Default to SQLite if MySQL is not explicitly configured
+        MYSQL_HOST = os.environ.get('MYSQL_HOST')
+        MYSQL_PORT = os.environ.get('MYSQL_PORT')
+        MYSQL_USERNAME = os.environ.get('MYSQL_USERNAME')
+        MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD')
+        MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE')
+        
+        if MYSQL_HOST or MYSQL_DATABASE:
+            MYSQL_HOST = MYSQL_HOST or 'localhost'
+            MYSQL_PORT = int(MYSQL_PORT or 3306)
+            MYSQL_USERNAME = MYSQL_USERNAME or 'root'
+            MYSQL_PASSWORD = MYSQL_PASSWORD or 'kush'
+            MYSQL_DATABASE = MYSQL_DATABASE or 'inventory_db'
+            SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{MYSQL_USERNAME}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+        else:
+            SQLALCHEMY_DATABASE_URI = 'sqlite:///inventory.db'
+            
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Other configurations

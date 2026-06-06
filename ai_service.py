@@ -5,26 +5,35 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# Generative AI client is configured dynamically in parse_command using environment variables.
 
-# Use a model that supports JSON mode if possible, or instruct it clearly
-model = genai.GenerativeModel('gemini-2.0-flash')
 
 SYSTEM_PROMPT = """
 You are a smart billing assistant for an Invoice Management System. 
-Your goal is to extract structured data from natural language to help create invoices, add customers, or add products.
+Your goal is to extract structured data from natural language to help navigate the application, query sales insights, create invoices, add customers, or add products.
 
 You will be provided with:
 1. User Input (Natural Language)
-2. Current Database Context (List of existing products and customers)
+2. Current Database Context (List of existing products, customers, and business statistics)
 
 Output JSON format:
 {
-    "intent": "create_invoice" | "add_customer" | "add_product" | "unknown",
+    "intent": "create_invoice" | "add_customer" | "add_product" | "navigation" | "business_insights" | "unknown",
     "data": { ... },
     "missing_info": "Question to ask user if info is missing",
     "response_text": "Natural language response to speak back to the user"
 }
+
+For 'navigation':
+- Triggered when the user asks to go to a specific page or dashboard.
+- "data" should contain:
+    - "target": one of "dashboard" | "products" | "invoices" | "customers" | "analytics" | "create_invoice" | "logout"
+- "response_text": a brief confirmation message (e.g. "Sure, taking you to the Invoices tab now.")
+
+For 'business_insights':
+- Triggered when the user asks for sales metrics, revenue, customers overview, best selling products, stock health, or a general business report.
+- "data" should be empty: {}
+- "response_text": A encouraging, modern business insight summary based on the provided "Business Stats" context. Speak about their revenue, top-selling products, and any low-stock warnings dynamically. Keep it engaging.
 
 For 'create_invoice':
 - "data" should contain:
@@ -50,25 +59,204 @@ Rules:
 - ALWAYS return valid JSON.
 """
 
+def get_context_str(context):
+    product_names = [p['name'] for p in context.get('products', [])]
+    customer_names = [c['name'] for c in context.get('customers', [])]
+    context_str = f"Existing Products: {', '.join(product_names)}\nExisting Customers: {', '.join(customer_names)}"
+    
+    if 'stats' in context:
+        s = context['stats']
+        low_stock_str = ', '.join([f"{p['name']} (stock: {p['stock']})" for p in s.get('low_stock', [])]) or "None"
+        top_selling_str = ', '.join([f"{p['name']} (sold: {p['quantity']})" for p in s.get('top_selling', [])]) or "None"
+        stats_str = (
+            f"\n\nBusiness Stats:\n"
+            f"- Total Revenue: INR {s.get('revenue', 0.0):.2f}\n"
+            f"- Total Invoices: {s.get('invoices_count', 0)}\n"
+            f"- Total Customers: {s.get('customers_count', 0)}\n"
+            f"- Total Products: {s.get('products_count', 0)}\n"
+            f"- Low Stock Alerts: {low_stock_str}\n"
+            f"- Top Selling Products: {top_selling_str}"
+        )
+        context_str += stats_str
+    return context_str
+
 def parse_command(user_text, context, history=[]):
     """
-    Parses user text using Gemini to extract structured data.
-    context: { 'products': [...], 'customers': [...] }
-    history: list of { 'sender': 'user'|'ai', 'text': '...' }
+    Parses user text using a configured AI model (Groq or Gemini).
     """
-    try:
-        # Prepare context summary for the prompt
-        product_names = [p['name'] for p in context.get('products', [])]
-        customer_names = [c['name'] for c in context.get('customers', [])]
+    # Reload environment variables to pick up keys dynamically
+    load_dotenv(override=True)
+    
+    # 1. Deterministic Heuristic Routing for Navigation and Insights
+    text_lower = user_text.lower().strip()
+    
+    # A. Navigation keywords mapping
+    nav_targets = {
+        'dashboard': ['go to dashboard', 'show dashboard', 'open dashboard', 'view dashboard', 'dashboard page'],
+        'products': ['go to products', 'show products', 'open products', 'view products', 'products inventory', 'products page'],
+        'invoices': ['go to invoices', 'show invoices', 'open invoices', 'view invoices', 'invoices list', 'invoices page'],
+        'customers': ['go to customers', 'show customers', 'open customers', 'view customers', 'customer list', 'customers page'],
+        'analytics': ['go to analytics', 'show analytics', 'open analytics', 'view analytics', 'analytics page'],
+        'create_invoice': ['create invoice', 'create an invoice', 'new invoice'],
+        'logout': ['log out', 'logout', 'sign out']
+    }
+    
+    for target, phrases in nav_targets.items():
+        if any(phrase in text_lower for phrase in phrases):
+            return {
+                "intent": "navigation",
+                "data": {"target": target},
+                "missing_info": None,
+                "response_text": f"Sure, taking you to the {target.replace('_', ' ').title()} page."
+            }
+            
+    # B. Business Insights keywords mapping
+    insight_phrases = ['business insights', 'show insights', 'view insights', 'sales metrics', 'business stats', 'view statistics', 'how is business', 'how is the business doing', 'insights']
+    if any(phrase in text_lower for phrase in insight_phrases):
+        s = context.get('stats', {})
+        revenue = s.get('revenue', 0.0)
+        invoices_count = s.get('invoices_count', 0)
+        customers_count = s.get('customers_count', 0)
+        products_count = s.get('products_count', 0)
+        low_stock = s.get('low_stock', [])
+        top_selling = s.get('top_selling', [])
         
-        context_str = f"Existing Products: {', '.join(product_names)}\nExisting Customers: {', '.join(customer_names)}"
+        summary = f"Here is your real-time business health report. You have earned a total revenue of INR {revenue:.2f} across {invoices_count} invoices. "
+        summary += f"Your inventory has {products_count} active products serving {customers_count} registered customers. "
+        
+        if top_selling:
+            best_seller = top_selling[0]['name']
+            summary += f"Your top-performing product is {best_seller}. "
+            
+        if low_stock:
+            low_names = [p['name'] for p in low_stock[:2]]
+            summary += f"You have {len(low_stock)} items running low in stock, including {', '.join(low_names)}. You should restock soon!"
+        else:
+            summary += "Your product stock levels are fully healthy!"
+            
+        return {
+            "intent": "business_insights",
+            "data": {},
+            "missing_info": None,
+            "response_text": summary
+        }
+
+    # 2. Call Generative AI fallback for natural language commands
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    
+    # 1. Prioritize Groq if config is present (generous free quotas)
+    if groq_api_key and groq_api_key.strip():
+        return parse_command_groq(user_text, context, history, groq_api_key.strip())
+        
+    # 2. Fallback to Gemini
+    if gemini_api_key and gemini_api_key.strip():
+        return parse_command_gemini(user_text, context, history, gemini_api_key.strip())
+        
+    return {
+        "intent": "unknown",
+        "data": {},
+        "missing_info": None,
+        "response_text": "⚠️ No AI API key found. Please configure `GROQ_API_KEY` or `GEMINI_API_KEY` in your `.env` file."
+    }
+
+def parse_command_groq(user_text, context, history, api_key):
+    try:
+        import requests
+        
+        context_str = get_context_str(context)
+        
+        # Format conversation messages for Groq API
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        if history:
+            for msg in history:
+                role = "user" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "assistant"
+                messages.append({"role": role, "content": msg.get('content') or msg.get('text', '')})
+        
+        messages.append({"role": "user", "content": f"Context:\n{context_str}\n\nUser Input:\n{user_text}"})
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": "llama-3.1-8b-instant",
+            "messages": messages,
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1
+        }
+        
+        # Call Groq serverless completions API
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
+        
+        if response.status_code == 401:
+            return {
+                "intent": "unknown",
+                "data": {},
+                "missing_info": None,
+                "response_text": "🛑 **Groq Authorization Failed**: Please verify that your `GROQ_API_KEY` in the `.env` file is valid."
+            }
+            
+        if response.status_code == 429:
+            return {
+                "intent": "unknown",
+                "data": {},
+                "missing_info": None,
+                "response_text": "🛑 **Groq Rate Limit Exceeded (429)**: Free rate limits reached. Please try again in a moment."
+            }
+            
+        if response.status_code != 200:
+            # Fallback to llama-3.3-70b-versatile
+            payload["model"] = "llama-3.3-70b-versatile"
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=10
+            )
+            
+        if response.status_code != 200:
+            return {
+                "intent": "unknown",
+                "data": {},
+                "missing_info": None,
+                "response_text": f"🛑 **Groq API Error ({response.status_code})**: {response.text}"
+            }
+            
+        result = response.json()
+        content = result["choices"][0]["message"]["content"]
+        return json.loads(content)
+        
+    except Exception as e:
+        import traceback
+        with open('error.log', 'w') as f:
+            f.write(traceback.format_exc())
+        return {
+            "intent": "unknown",
+            "data": {},
+            "missing_info": None,
+            "response_text": f"Sorry, Groq encountered an error: {str(e)}"
+        }
+
+def parse_command_gemini(user_text, context, history, api_key):
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        
+        context_str = get_context_str(context)
         
         history_str = ""
         if history:
             history_str = "Conversation History:\n"
             for msg in history:
-                role = "User" if msg.get('sender') == 'user' else "Assistant"
-                history_str += f"{role}: {msg.get('text', '')}\n"
+                role = "User" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "Assistant"
+                history_str += f"{role}: {msg.get('content') or msg.get('text', '')}\n"
         
         prompt = f"{SYSTEM_PROMPT}\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
         
@@ -78,7 +266,6 @@ def parse_command(user_text, context, history=[]):
         )
         
         content = response.text
-        # Clean up potential markdown code blocks if Gemini adds them despite JSON mode
         if content.startswith("```json"):
             content = content[7:-3]
         elif content.startswith("```"):
@@ -91,9 +278,19 @@ def parse_command(user_text, context, history=[]):
         with open('error.log', 'w') as f:
             f.write(traceback.format_exc())
         print(f"AI Service Error: {e}")
+        
+        error_name = type(e).__name__
+        if "ResourceExhausted" in error_name or "429" in str(e):
+            return {
+                "intent": "unknown",
+                "data": {},
+                "missing_info": None,
+                "response_text": "🛑 **Gemini API Quota Exceeded (429)**: You have exceeded your Gemini free quota. Please wait 1–2 minutes, or configure a `GROQ_API_KEY` in your `.env` file for higher free limits."
+            }
+            
         return {
             "intent": "unknown",
             "data": {},
             "missing_info": None,
-            "response_text": "Sorry, I encountered an error processing your request."
+            "response_text": f"Sorry, Gemini encountered an error: {str(e)}"
         }

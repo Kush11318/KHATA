@@ -12,6 +12,15 @@ class Activity(db.Model):
     description = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+    def __init__(self, user_id=None, user_role=None, action_type=None, description=None, timestamp=None, **kwargs):
+        super().__init__(**kwargs)
+        self.user_id = user_id
+        self.user_role = user_role
+        self.action_type = action_type
+        self.description = description
+        if timestamp is not None:
+            self.timestamp = timestamp
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -51,6 +60,16 @@ class Seller(db.Model):
     s_phone = db.Column(db.String(20))
     password = db.Column(db.String(255))
     
+    def __init__(self, s_id=None, s_name=None, s_email=None, s_address=None, s_phone=None, password=None, **kwargs):
+        super().__init__(**kwargs)
+        self.s_id = s_id
+        self.s_name = s_name
+        self.s_email = s_email
+        self.s_address = s_address
+        self.s_phone = s_phone
+        if password is not None:
+            self.password = password
+    
     def set_password(self, password):
         """Set password as plain text"""
         self.password = password
@@ -79,6 +98,23 @@ class Customer(db.Model):
     c_address = db.Column(db.Text)
     password = db.Column(db.String(255))
     s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
+
+    def __init__(self, c_id=None, c_name=None, c_email=None, c_phone_no=None, c_address=None, password=None, s_id=None, **kwargs):
+        super().__init__(**kwargs)
+        self.c_id = c_id
+        self.c_name = c_name
+        self.c_email = c_email
+        self.c_phone_no = c_phone_no
+        self.password = password
+        self.s_id = s_id
+    
+    def set_password(self, password):
+        """Set password as plain text"""
+        self.password = password
+    
+    def check_password(self, password):
+        """Check password (plain text comparison)"""
+        return self.password == password
     
     # Properties for template compatibility
     @property
@@ -111,6 +147,15 @@ class Product(db.Model):
     p_description = db.Column(db.Text)
     p_stock = db.Column(db.Integer, default=0)
     s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
+
+    def __init__(self, p_id=None, p_name=None, p_price=None, p_description=None, p_stock=0, s_id=None, **kwargs):
+        super().__init__(**kwargs)
+        self.p_id = p_id
+        self.p_name = p_name
+        self.p_price = p_price
+        self.p_description = p_description
+        self.p_stock = p_stock
+        self.s_id = s_id
     
     # Properties for template compatibility
     @property
@@ -144,6 +189,18 @@ class Invoice(db.Model):
     amount = db.Column(db.Numeric(10, 2), default=0)
     s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
     c_id = db.Column(db.String(50), db.ForeignKey('customer.c_id'))
+
+    def __init__(self, invoice_no=None, invoice_datetime=None, due_date=None, status='pending', tax=0, amount=0, s_id=None, c_id=None, **kwargs):
+        super().__init__(**kwargs)
+        self.invoice_no = invoice_no
+        if invoice_datetime is not None:
+            self.invoice_datetime = invoice_datetime
+        self.due_date = due_date
+        self.status = status
+        self.tax = tax
+        self.amount = amount
+        self.s_id = s_id
+        self.c_id = c_id
     
     # Relationships
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True)
@@ -188,6 +245,14 @@ class InvoiceItem(db.Model):
     p_id = db.Column(db.String(50), db.ForeignKey('product.p_id'))
     item_quantity = db.Column(db.Integer, default=0)
     discount = db.Column(db.Numeric(10, 2), default=0)
+
+    def __init__(self, item_id=None, invoice_no=None, p_id=None, item_quantity=0, discount=0, **kwargs):
+        super().__init__(**kwargs)
+        self.item_id = item_id
+        self.invoice_no = invoice_no
+        self.p_id = p_id
+        self.item_quantity = item_quantity
+        self.discount = discount
     
     # Relationships
     product = db.relationship('Product', backref='invoice_items', lazy=True)

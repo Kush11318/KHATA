@@ -1,0 +1,24 @@
+# Python Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Flask/Flask-SQLAlchemy local instance folder
+instance/
+
+# Local configuration and environment variables
+.env
+.flaskenv
+*.env
+
+# Application Logs & Temporary Test Outputs
+*.log
+error.log
+test_output.txt
+test_result.txt

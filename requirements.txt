@@ -13,3 +13,4 @@ python-dotenv==1.0.0
 reportlab==4.0.4
 Flask-SQLAlchemy
 google-generativeai
+gunicorn==21.2.0

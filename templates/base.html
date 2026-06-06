@@ -5,8 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Invoice Management System{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5.0">
+    {% if session.user_role == 'seller' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}?v=5.0">
+    {% endif %}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -20,6 +22,8 @@
                     {% block back_button %}{% endblock %}
                     {% if session.user_role == 'admin' %}
                     <a href="{{ url_for('admin_dashboard') }}" class="logo"> Invoice Management System - Admin</a>
+                    {% elif session.user_role == 'customer' %}
+                    <a href="{{ url_for('customer_dashboard') }}" class="logo"> Invoice Management System</a>
                     {% else %}
                     <a href="{{ url_for('seller_dashboard') }}" class="logo"> Invoice Management System</a>
                     {% endif %}
@@ -32,6 +36,10 @@
                     <a href="{{ url_for('admin_sellers') }}"
                         class="{% if request.endpoint == 'admin_sellers' %}active{% endif %}"><i
                             class="fas fa-users"></i> Manage Sellers</a>
+                    {% elif session.user_role == 'customer' %}
+                    <a href="{{ url_for('customer_dashboard') }}"
+                        class="{% if request.endpoint == 'customer_dashboard' %}active{% endif %}"><i
+                            class="fas fa-chart-line"></i> Dashboard</a>
                     {% else %}
                     <a href="{{ url_for('seller_dashboard') }}"
                         class="{% if request.endpoint == 'seller_dashboard' %}active{% endif %}"><i
@@ -93,7 +101,9 @@
     </main>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/ai_assistant.js') }}"></script>
+    {% if session.user_role == 'seller' %}
+    <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=5.0"></script>
+    {% endif %}
 </body>
 
 </html>
