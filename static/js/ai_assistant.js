@@ -4,9 +4,20 @@ class AIAssistant {
         this.isListening = false;
         this.synth = window.speechSynthesis;
         this.chatHistory = []; // Memory
-        this.currentLang = localStorage.getItem('aiLang') || 'en-US';
-        this.voices = [];
-        this.loadVoices();
+        this.selectedLang = localStorage.getItem('ai_assistant_lang') || 'en-IN';
+        
+        // Listen to voice loading
+        if (this.synth) {
+            const onVoicesChanged = () => {
+                console.log("SpeechSynthesis voices loaded/updated:", this.synth.getVoices().length);
+            };
+            if (typeof this.synth.addEventListener === 'function') {
+                this.synth.addEventListener('voiceschanged', onVoicesChanged);
+            } else {
+                this.synth.onvoiceschanged = onVoicesChanged;
+            }
+        }
+
         this.initSpeechRecognition();
         this.createUI();
         this.checkAndPopulateInvoice(); // Check if we need to fill the form
@@ -17,7 +28,7 @@ class AIAssistant {
             this.recognition = new webkitSpeechRecognition();
             this.recognition.continuous = true; // Keep listening through pauses
             this.recognition.interimResults = true; // Transcribe live word-by-word
-            this.recognition.lang = this.currentLang;
+            this.recognition.lang = this.selectedLang;
             this.silenceTimer = null;
 
             this.recognition.onstart = () => {
@@ -86,6 +97,166 @@ class AIAssistant {
         }
     }
 
+    handleLanguageChange(newLang) {
+        this.selectedLang = newLang;
+        localStorage.setItem('ai_assistant_lang', newLang);
+        
+        // Update local elements immediately
+        const welcomeEl = document.getElementById('ai-welcome-text');
+        if (welcomeEl) {
+            welcomeEl.innerHTML = this.getWelcomeMessage(newLang);
+        }
+        
+        const pillsEl = document.getElementById('ai-quick-pills');
+        if (pillsEl) {
+            pillsEl.innerHTML = this.getPillButtonsHtml(newLang);
+        }
+        
+        const textInput = document.getElementById('ai-text-input');
+        if (textInput) {
+            textInput.placeholder = this.getUIPlaceholder(this.isListening ? 'listening' : 'idle', newLang);
+        }
+
+        if (this.recognition) {
+            this.recognition.lang = newLang;
+            if (this.isListening) {
+                // Restart to apply changes
+                this.recognition.stop();
+                setTimeout(() => {
+                    if (!this.isListening) {
+                        try {
+                            this.recognition.start();
+                        } catch (e) {
+                            console.error("Error restarting recognition after language change:", e);
+                        }
+                    }
+                }, 400);
+            }
+        }
+    }
+
+    getWelcomeMessage(lang) {
+        const welcomeTexts = {
+            'en-IN': `Hi! I can help you:<br>
+                      • <strong>Database Insights:</strong> "Show business insights" or "How is business?"<br>
+                      • <strong>Voice Navigation:</strong> "Go to products", "Show analytics", "Create invoice"<br>
+                      • <strong>Add products:</strong> "Add product Milk price 50 stock 100"<br>
+                      • <strong>Add customers:</strong> "Add customer John email john@example.com"<br>
+                      • <strong>Create invoices:</strong> "Bill for Riya: 2 milks and 1 bread"<br><br>
+                      Try saying a command or click one of the quick commands below!`,
+            'en-US': `Hi! I can help you:<br>
+                      • <strong>Database Insights:</strong> "Show business insights" or "How is business?"<br>
+                      • <strong>Voice Navigation:</strong> "Go to products", "Show analytics", "Create invoice"<br>
+                      • <strong>Add products:</strong> "Add product Milk price 50 stock 100"<br>
+                      • <strong>Add customers:</strong> "Add customer John email john@example.com"<br>
+                      • <strong>Create invoices:</strong> "Bill for Riya: 2 milks and 1 bread"<br><br>
+                      Try saying a command or click one of the quick commands below!`,
+            'hi-IN': `नमस्ते! मैं आपकी मदद कर सकता हूँ:<br>
+                      • <strong>बिज़नेस इनसाइट्स:</strong> "बिजनेस कैसा चल रहा है" या "व्यापार रिपोर्ट दिखाएं"<br>
+                      • <strong>नेविगेशन:</strong> "प्रोडक्ट्स पर जाएं", "एनालिटिक्स दिखाएं", "इनवॉइस बनाएं"<br>
+                      • <strong>उत्पाद जोड़ें:</strong> "add product Milk price 50 stock 100"<br>
+                      • <strong>ग्राहक जोड़ें:</strong> "add customer John email john@example.com"<br>
+                      • <strong>इनवॉइस बनाएं:</strong> "Bill for Riya: 2 milks and 1 bread"<br><br>
+                      नीचे दिए गए कमांड्स पर क्लिक करें या माइक बटन दबाकर बोलें!`,
+            'fr-FR': `Bonjour! Je peux vous aider à:<br>
+                      • <strong>Statistiques:</strong> "Afficher les perspectives commerciales" ou "Comment vont les affaires?"<br>
+                      • <strong>Navigation:</strong> "Aller aux produits", "Afficher les analyses", "Créer une facture"<br>
+                      • <strong>Ajouter un produit:</strong> "add product Lait price 50 stock 100"<br>
+                      • <strong>Ajouter un client:</strong> "add customer Jean email jean@example.com"<br>
+                      • <strong>Facturer:</strong> "Bill for Riya: 2 milks and 1 bread"<br><br>
+                      Essayez de dire une commande ou cliquez sur l'un des boutons ci-dessous!`,
+            'es-ES': `¡Hola! Puedo ayudarte a:<br>
+                      • <strong>Estadísticas:</strong> "Mostrar información comercial" o "¿Cómo va el negocio?"<br>
+                      • <strong>Navegación:</strong> "Ir a productos", "Mostrar análisis", "Crear factura"<br>
+                      • <strong>Añadir producto:</strong> "add product Leche price 50 stock 100"<br>
+                      • <strong>Añadir cliente:</strong> "add customer Juan email juan@example.com"<br>
+                      • <strong>Facturar:</strong> "Bill for Riya: 2 milks and 1 bread"<br><br>
+                      ¡Intenta decir un comando o haz clic en uno de los accesos directos!`,
+            'de-DE': `Hallo! Ich kann Ihnen helfen:<br>
+                      • <strong>Geschäftseinblicke:</strong> "Geschäftszahlen anzeigen" oder "Wie läuft das Geschäft?"<br>
+                      • <strong>Navigation:</strong> "Gehe zu Produkten", "Analysen anzeigen", "Rechnung erstellen"<br>
+                      • <strong>Produkt hinzufügen:</strong> "add product Milch price 50 stock 100"<br>
+                      • <strong>Kunde hinzufügen:</strong> "add customer Johann email johann@example.com"<br>
+                      • <strong>Abrechnen:</strong> "Bill for Riya: 2 milks and 1 bread"<br><br>
+                      Sprechen Sie einen Befehl oder klicken Sie auf eine der Kurzwahltasten!`,
+            'ja-JP': `こんにちは！どのようなご用件でしょうか：<br>
+                      • <strong>ビジネス分析:</strong> 「ビジネスレポートを見せて」または「業績はどう？」<br>
+                      • <strong>音声ナビゲーション:</strong> 「商品一覧へ移動」、「分析を見せて」、「請求書作成」<br>
+                      • <strong>商品追加:</strong> 「add product 牛乳 price 50 stock 100」<br>
+                      • <strong>顧客追加:</strong> 「add customer 鈴木 email suzuki@example.com」<br>
+                      • <strong>請求書作成:</strong> 「Bill for Riya: 2 milks and 1 bread」<br><br>
+                      コマンドを話しかけるか、下のクイックボタンをクリックしてください！`
+        };
+        return welcomeTexts[lang] || welcomeTexts['en-IN'];
+    }
+
+    getPillButtonsHtml(lang) {
+        const pills = {
+            'en-IN': [
+                { text: 'Insights', cmd: 'Show business insights', icon: 'fa-chart-line' },
+                { text: 'Products', cmd: 'Go to products', icon: 'fa-box' },
+                { text: 'Analytics', cmd: 'Show analytics', icon: 'fa-chart-bar' },
+                { text: 'Create Invoice', cmd: 'Create invoice', icon: 'fa-plus' }
+            ],
+            'en-US': [
+                { text: 'Insights', cmd: 'Show business insights', icon: 'fa-chart-line' },
+                { text: 'Products', cmd: 'Go to products', icon: 'fa-box' },
+                { text: 'Analytics', cmd: 'Show analytics', icon: 'fa-chart-bar' },
+                { text: 'Create Invoice', cmd: 'Create invoice', icon: 'fa-plus' }
+            ],
+            'hi-IN': [
+                { text: 'इनसाइट्स', cmd: 'व्यापार रिपोर्ट दिखाएं', icon: 'fa-chart-line' },
+                { text: 'उत्पाद', cmd: 'प्रोडक्ट्स पर जाएं', icon: 'fa-box' },
+                { text: 'एनालिटिक्स', cmd: 'एनालिटिक्स दिखाएं', icon: 'fa-chart-bar' },
+                { text: 'इनवॉइस बनाएं', cmd: 'इनवॉइस बनाएं', icon: 'fa-plus' }
+            ],
+            'fr-FR': [
+                { text: 'Statistiques', cmd: 'Afficher les perspectives commerciales', icon: 'fa-chart-line' },
+                { text: 'Produits', cmd: 'Aller aux produits', icon: 'fa-box' },
+                { text: 'Analyses', cmd: 'Afficher les analyses', icon: 'fa-chart-bar' },
+                { text: 'Créer Facture', cmd: 'Créer une facture', icon: 'fa-plus' }
+            ],
+            'es-ES': [
+                { text: 'Estadísticas', cmd: 'Mostrar información comercial', icon: 'fa-chart-line' },
+                { text: 'Productos', cmd: 'Ir a productos', icon: 'fa-box' },
+                { text: 'Análisis', cmd: 'Mostrar análisis', icon: 'fa-chart-bar' },
+                { text: 'Crear Factura', cmd: 'Crear factura', icon: 'fa-plus' }
+            ],
+            'de-DE': [
+                { text: 'Geschäftszahlen', cmd: 'Geschäftszahlen anzeigen', icon: 'fa-chart-line' },
+                { text: 'Produkte', cmd: 'Gehe zu Produkten', icon: 'fa-box' },
+                { text: 'Analysen', cmd: 'Analysen anzeigen', icon: 'fa-chart-bar' },
+                { text: 'Rechnung Erstellen', cmd: 'Rechnung erstellen', icon: 'fa-plus' }
+            ],
+            'ja-JP': [
+                { text: 'ビジネス分析', cmd: 'ビジネスレポートを見せて', icon: 'fa-chart-line' },
+                { text: '商品一覧', cmd: '商品一覧へ移動', icon: 'fa-box' },
+                { text: '分析センター', cmd: '分析を見せて', icon: 'fa-chart-bar' },
+                { text: '請求書作成', cmd: '請求書作成', icon: 'fa-plus' }
+            ]
+        };
+        const langPills = pills[lang] || pills['en-IN'];
+        return langPills.map(p => `
+            <button class="ai-pill-btn" onclick="window.aiAssistant.sendQuickCommand('${p.cmd}')">
+                <i class="fas ${p.icon}"></i> ${p.text}
+            </button>
+        `).join('');
+    }
+
+    getUIPlaceholder(state, lang) {
+        const placeholders = {
+            'en-IN': { idle: 'Type or click mic to speak...', listening: 'Listening... Speak now...' },
+            'en-US': { idle: 'Type or click mic to speak...', listening: 'Listening... Speak now...' },
+            'hi-IN': { idle: 'टाइप करें या बोलने के लिए माइक दबाएं...', listening: 'सुन रहा हूँ... बोलिए...' },
+            'fr-FR': { idle: 'Écrivez ou cliquez sur le micro pour parler...', listening: 'Écoute en cours... Parlez maintenant...' },
+            'es-ES': { idle: 'Escribe o presiona el micro para hablar...', listening: 'Escuchando... Hable ahora...' },
+            'de-DE': { idle: 'Tippen oder Mikrofon drücken...', listening: 'Hören... Sprechen Sie jetzt...' },
+            'ja-JP': { idle: '入力するか、マイクをクリックして話す...', listening: '聞き取り中... お話しください...' }
+        };
+        const langPack = placeholders[lang] || placeholders['en-IN'];
+        return langPack[state] || langPack['idle'];
+    }
+
     createUI() {
         // Create container wrapper
         const container = document.createElement('div');
@@ -118,44 +289,38 @@ class AIAssistant {
         const modal = document.createElement('div');
         modal.id = 'ai-chat-modal';
         modal.className = 'ai-chat-modal';
+        
+        const welcomeHtml = this.getWelcomeMessage(this.selectedLang);
+        const pillsHtml = this.getPillButtonsHtml(this.selectedLang);
+        
         modal.innerHTML = `
             <div class="ai-modal-header">
                 <h3 class="ai-modal-title"><i class="fas fa-robot"></i> Billing Assistant</h3>
-                <div class="ai-header-controls">
-                    <select id="ai-lang-select" class="ai-lang-select" title="Select language for voice">
-                        <option value="en-US">🇬🇧 English</option>
-                        <option value="hi-IN">🇮🇳 Hindi</option>
-                        <option value="fr-FR">🇫🇷 French</option>
-                        <option value="gu-IN">🇮🇳 Gujarati</option>
-                        <option value="bn-IN">🇧🇩 Bengali</option>
-                        <option value="es-ES">🇪🇸 Spanish</option>
-                        <option value="de-DE">🇩🇪 German</option>
+                <div class="ai-lang-container">
+                    <select id="ai-lang-select" class="ai-lang-select" title="Change Assistant Language">
+                        <option value="en-IN" ${this.selectedLang === 'en-IN' ? 'selected' : ''}>🇬🇧 Eng (IN)</option>
+                        <option value="en-US" ${this.selectedLang === 'en-US' ? 'selected' : ''}>🇺🇸 Eng (US)</option>
+                        <option value="hi-IN" ${this.selectedLang === 'hi-IN' ? 'selected' : ''}>🇮🇳 हिन्दी</option>
+                        <option value="fr-FR" ${this.selectedLang === 'fr-FR' ? 'selected' : ''}>🇫🇷 Français</option>
+                        <option value="es-ES" ${this.selectedLang === 'es-ES' ? 'selected' : ''}>🇪🇸 Español</option>
+                        <option value="de-DE" ${this.selectedLang === 'de-DE' ? 'selected' : ''}>🇩🇪 Deutsch</option>
+                        <option value="ja-JP" ${this.selectedLang === 'ja-JP' ? 'selected' : ''}>🇯🇵 日本語</option>
                     </select>
-                    <button id="ai-close-btn" class="ai-close-btn" title="Close">×</button>
                 </div>
+                <button id="ai-close-btn" class="ai-close-btn" title="Close">×</button>
             </div>
             <div id="ai-chat-messages" class="ai-messages">
                 <div class="ai-message ai">
                     <div class="ai-avatar"><i class="fas fa-robot"></i></div>
-                    <div class="ai-text">Hi! I can help you:<br>
-                        • <strong>Database Insights:</strong> "Show business insights" or "How is business?"<br>
-                        • <strong>Voice Navigation:</strong> "Go to products", "Show analytics", "Create invoice"<br>
-                        • <strong>Add products:</strong> "Add product Milk price 50 stock 100"<br>
-                        • <strong>Add customers:</strong> "Add customer John email john@example.com"<br>
-                        • <strong>Create invoices:</strong> "Bill for Riya: 2 milks and 1 bread"<br><br>
-                        🌐 Select your language above for multilingual voice support!
-                    </div>
+                    <div class="ai-text" id="ai-welcome-text">${welcomeHtml}</div>
                 </div>
             </div>
-            <div class="ai-quick-pills">
-                <button class="ai-pill-btn" onclick="window.aiAssistant.sendQuickCommand('Show business insights')"><i class="fas fa-chart-line"></i> Insights</button>
-                <button class="ai-pill-btn" onclick="window.aiAssistant.sendQuickCommand('Go to products')"><i class="fas fa-box"></i> Products</button>
-                <button class="ai-pill-btn" onclick="window.aiAssistant.sendQuickCommand('Show analytics')"><i class="fas fa-chart-bar"></i> Analytics</button>
-                <button class="ai-pill-btn" onclick="window.aiAssistant.sendQuickCommand('Create invoice')"><i class="fas fa-plus"></i> Create Invoice</button>
+            <div class="ai-quick-pills" id="ai-quick-pills">
+                ${pillsHtml}
             </div>
             <div class="ai-input-area">
                 <button id="ai-mic-btn" class="ai-mic-btn" title="Speak command"><i class="fas fa-microphone"></i></button>
-                <input type="text" id="ai-text-input" class="ai-input" placeholder="Type or speak...">
+                <input type="text" id="ai-text-input" class="ai-input" placeholder="${this.getUIPlaceholder('idle', this.selectedLang)}">
                 <button id="ai-send-btn" class="ai-send-btn" title="Send message"><i class="fas fa-paper-plane"></i></button>
             </div>
         `;
@@ -174,12 +339,13 @@ class AIAssistant {
         document.getElementById('ai-close-btn').onclick = () => {
             this.closeChatModal();
         };
-
-        // Language selector
+        
+        // Language selector change
         const langSelect = document.getElementById('ai-lang-select');
         if (langSelect) {
-            langSelect.value = this.currentLang;
-            langSelect.onchange = () => this.setLanguage(langSelect.value);
+            langSelect.onchange = (e) => {
+                this.handleLanguageChange(e.target.value);
+            };
         }
         
         // Close modal when clicking outside (on the modal backdrop)
@@ -252,6 +418,7 @@ class AIAssistant {
         const micBtn = document.getElementById('ai-mic-btn');
         const textInput = document.getElementById('ai-text-input');
         const mainBtn = document.getElementById('ai-assistant-btn');
+        const currentLang = this.selectedLang || 'en-IN';
         
         if (state === 'listening') {
             if (micBtn) {
@@ -262,7 +429,7 @@ class AIAssistant {
                 mainBtn.classList.add('listening');
             }
             if (textInput) {
-                textInput.placeholder = 'Listening... Speak now...';
+                textInput.placeholder = this.getUIPlaceholder('listening', currentLang);
                 textInput.value = '';
             }
         } else {
@@ -274,7 +441,7 @@ class AIAssistant {
                 mainBtn.classList.remove('listening');
             }
             if (textInput) {
-                textInput.placeholder = 'Type or click mic to speak...';
+                textInput.placeholder = this.getUIPlaceholder('idle', currentLang);
             }
         }
     }
@@ -324,7 +491,8 @@ class AIAssistant {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     text: text,
-                    history: this.chatHistory
+                    history: this.chatHistory,
+                    language: this.selectedLang
                 })
             });
 
@@ -379,86 +547,70 @@ class AIAssistant {
         }
     }
 
-    loadVoices() {
-        const populate = () => { this.voices = window.speechSynthesis.getVoices(); };
-        populate();
-        window.speechSynthesis.onvoiceschanged = populate;
-    }
-
-    getBestVoice(lang) {
-        const voices = window.speechSynthesis.getVoices();
-        const langBase = lang.split('-')[0];
-        // Try exact lang match first, then base language
-        let pool = voices.filter(v => v.lang === lang);
-        if (!pool.length) pool = voices.filter(v => v.lang.startsWith(langBase));
-        // Prefer natural/neural/premium voices
-        const premium = pool.find(v => /natural|neural|premium|enhanced/i.test(v.name));
-        return premium || pool[0] || null;
-    }
-
-    setLanguage(lang) {
-        this.currentLang = lang;
-        localStorage.setItem('aiLang', lang);
-        // Update recognition language
-        if (this.recognition) {
-            const wasListening = this.isListening;
-            try { if (wasListening) this.recognition.stop(); } catch(e) {}
-            this.recognition.lang = lang;
-        }
-        // Update placeholder hint
-        const input = document.getElementById('ai-text-input');
-        const hints = {
-            'en-US': 'Type or speak in English...',
-            'hi-IN': 'हिंदी में बोलें या टाइप करें...',
-            'fr-FR': 'Parlez ou écrivez en français...',
-            'gu-IN': 'ગુજરાતીમાં બોલો અથવા ટાઈપ કરો...',
-            'bn-IN': 'বাংলায় বলুন বা টাইপ করুন...',
-            'es-ES': 'Habla o escribe en español...',
-            'de-DE': 'Sprechen oder tippen Sie auf Deutsch...'
-        };
-        if (input) input.placeholder = hints[lang] || 'Type or speak...';
-        console.log(`Language set to: ${lang}`);
-    }
-
     speak(text) {
-        if (!this.synth) return;
-        this.synth.cancel();
-
-        let cleanText = text || '';
-
-        // For Indic & European scripts: only strip emojis, keep native chars
-        const keepUnicode = ['hi-IN', 'gu-IN', 'bn-IN', 'fr-FR', 'es-ES', 'de-DE'];
-        if (keepUnicode.includes(this.currentLang)) {
-            // Remove emoji blocks only
-            cleanText = cleanText.replace(/[\u{1F300}-\u{1FFFF}]/gu, '')
-                                 .replace(/[\u2600-\u27BF]/g, '')
-                                 .replace(/\s+/g, ' ').trim();
-        } else {
-            // English: keep ASCII only
-            cleanText = cleanText.replace(/[^a-zA-Z0-9.,!?'"()%\s\-]/g, ' ')
-                                 .replace(/\s+/g, ' ').trim();
-        }
-
-        if (!cleanText) return;
-
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = this.currentLang;
-
-        // Pick the best available voice for the selected language
-        const bestVoice = this.getBestVoice(this.currentLang);
-        if (bestVoice) utterance.voice = bestVoice;
-
-        // Natural-sounding settings
-        utterance.rate  = 0.92;   // slightly slower = more natural
-        utterance.pitch = 1.05;   // very slight pitch lift
-        utterance.volume = 1.0;
-
-        utterance.onerror = (e) => {
-            console.error('SpeechSynthesis error:', e.error);
+        if (this.synth) {
+            // Cancel any current speech in the queue to prevent freezes
             this.synth.cancel();
-        };
 
-        this.synth.speak(utterance);
+            // Prepare text for speech synthesis by removing emojis and formatting
+            let cleanText = text || '';
+            
+            // Strip emojis and markdown formatting but preserve accents, Devanagari, and CJK characters
+            cleanText = cleanText.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
+            cleanText = cleanText.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+
+            if (cleanText) {
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                
+                // Add error handling to resume/cancel if it gets stuck
+                utterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance error:', event.error);
+                    this.synth.cancel();
+                };
+
+                // Find voice corresponding to the selected language
+                const voices = this.synth.getVoices();
+                let selectedVoice = null;
+
+                // Priority filters for high-quality natural voices per language
+                const voicePreferences = {
+                    'en-IN': ['google in english', 'google us english', 'microsoft ravina', 'microsoft heera', 'en-in'],
+                    'en-US': ['google us english', 'google uk english', 'samantha', 'microsoft david', 'microsoft zira', 'en-us'],
+                    'hi-IN': ['google हिन्दी', 'google hindi', 'microsoft kalpana', 'microsoft ananya', 'microsoft hemant', 'hi-in'],
+                    'fr-FR': ['google français', 'google french', 'microsoft hortense', 'microsoft julie', 'fr-fr'],
+                    'es-ES': ['google español', 'google spanish', 'microsoft helena', 'microsoft laura', 'es-es'],
+                    'de-DE': ['google deutsch', 'google german', 'microsoft hedda', 'microsoft stefan', 'de-de'],
+                    'ja-JP': ['google 日本語', 'google japanese', 'microsoft haruka', 'microsoft ichiro', 'ja-jp']
+                };
+
+                const currentLang = this.selectedLang || 'en-IN';
+                const prefs = voicePreferences[currentLang] || [];
+
+                // 1. Try to match preferred natural voice substrings
+                for (const pref of prefs) {
+                    selectedVoice = voices.find(v => {
+                        const nameLower = v.name.toLowerCase();
+                        const langLower = v.lang.toLowerCase().replace('_', '-');
+                        return nameLower.includes(pref) || langLower === pref;
+                    });
+                    if (selectedVoice) break;
+                }
+
+                // 2. Fallback: match lang code prefix
+                if (!selectedVoice) {
+                    const langPrefix = currentLang.split('-')[0].toLowerCase();
+                    selectedVoice = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+                }
+
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+                
+                utterance.lang = currentLang;
+
+                this.synth.speak(utterance);
+            }
+        }
     }
 
     showInvoicePreview(data) {

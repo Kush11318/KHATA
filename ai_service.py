@@ -80,7 +80,80 @@ def get_context_str(context):
         context_str += stats_str
     return context_str
 
-def parse_command(user_text, context, history=[]):
+def get_translated_nav(target, lang_code):
+    names_en = {
+        'dashboard': 'Dashboard',
+        'products': 'Products Inventory',
+        'invoices': 'Invoices List',
+        'customers': 'Customer Management',
+        'analytics': 'Analytics Center',
+        'create_invoice': 'Invoice Creator',
+        'logout': 'Secure Logout'
+    }
+    
+    translations = {
+        'hi-IN': {
+            'prefix': 'ज़रूर, आपको {target} पेज पर ले जा रहा हूँ।',
+            'dashboard': 'डैशबोर्ड',
+            'products': 'उत्पाद सूची',
+            'invoices': 'इनवॉइस सूची',
+            'customers': 'ग्राहक प्रबंधन',
+            'analytics': 'एनालिटिक्स केंद्र',
+            'create_invoice': 'इनवॉइस निर्माता',
+            'logout': 'लॉगआउट'
+        },
+        'fr-FR': {
+            'prefix': 'Bien sûr, je vous emmène à la page {target}.',
+            'dashboard': 'Tableau de bord',
+            'products': 'Inventaire des produits',
+            'invoices': 'Liste des factures',
+            'customers': 'Gestion des clients',
+            'analytics': 'Centre d\'analyse',
+            'create_invoice': 'Créateur de facture',
+            'logout': 'Déconnexion'
+        },
+        'es-ES': {
+            'prefix': 'Por supuesto, te llevo a la página de {target}.',
+            'dashboard': 'Tablero',
+            'products': 'Inventario de productos',
+            'invoices': 'Lista de facturas',
+            'customers': 'Gestión de clientes',
+            'analytics': 'Centro de análisis',
+            'create_invoice': 'Creador de facturas',
+            'logout': 'Cerrar sesión'
+        },
+        'de-DE': {
+            'prefix': 'Sicher, ich bringe Sie zur Seite {target}.',
+            'dashboard': 'Dashboard',
+            'products': 'Produktinventar',
+            'invoices': 'Rechnungsliste',
+            'customers': 'Kundenverwaltung',
+            'analytics': 'Analysenzentrum',
+            'create_invoice': 'Rechnungsersteller',
+            'logout': 'Abmelden'
+        },
+        'ja-JP': {
+            'prefix': 'かしこまりました。{target}ページへ移動します。',
+            'dashboard': 'ダッシュボード',
+            'products': '商品一覧',
+            'invoices': '請求書一覧',
+            'customers': '顧客管理',
+            'analytics': '分析センター',
+            'create_invoice': '請求書作成',
+            'logout': 'ログアウト'
+        }
+    }
+    
+    target_name = names_en.get(target, target.replace('_', ' ').title())
+    if lang_code in translations:
+        lang_trans = translations[lang_code]
+        t_target = lang_trans.get(target, target_name)
+        prefix_template = lang_trans.get('prefix', 'Sure, taking you to the {target} page.')
+        return prefix_template.format(target=t_target)
+        
+    return f"Sure, taking you to the {target_name} page."
+
+def parse_command(user_text, context, history=[], language='en-IN'):
     """
     Parses user text using a configured AI model (Groq or Gemini).
     """
@@ -107,7 +180,7 @@ def parse_command(user_text, context, history=[]):
                 "intent": "navigation",
                 "data": {"target": target},
                 "missing_info": None,
-                "response_text": f"Sure, taking you to the {target.replace('_', ' ').title()} page."
+                "response_text": get_translated_nav(target, language)
             }
             
     # B. Business Insights keywords mapping
@@ -147,11 +220,11 @@ def parse_command(user_text, context, history=[]):
     
     # 1. Prioritize Groq if config is present (generous free quotas)
     if groq_api_key and groq_api_key.strip():
-        return parse_command_groq(user_text, context, history, groq_api_key.strip())
+        return parse_command_groq(user_text, context, history, groq_api_key.strip(), language)
         
     # 2. Fallback to Gemini
     if gemini_api_key and gemini_api_key.strip():
-        return parse_command_gemini(user_text, context, history, gemini_api_key.strip())
+        return parse_command_gemini(user_text, context, history, gemini_api_key.strip(), language)
         
     return {
         "intent": "unknown",
@@ -160,14 +233,26 @@ def parse_command(user_text, context, history=[]):
         "response_text": "⚠️ No AI API key found. Please configure `GROQ_API_KEY` or `GEMINI_API_KEY` in your `.env` file."
     }
 
-def parse_command_groq(user_text, context, history, api_key):
+def parse_command_groq(user_text, context, history, api_key, language):
     try:
         import requests
         
         context_str = get_context_str(context)
         
+        lang_names = {
+            'en-IN': 'Indian English',
+            'en-US': 'US English',
+            'hi-IN': 'Hindi',
+            'fr-FR': 'French',
+            'es-ES': 'Spanish',
+            'de-DE': 'German',
+            'ja-JP': 'Japanese'
+        }
+        lang_name = lang_names.get(language, 'English')
+        language_instruction = f"\n\nIMPORTANT: The 'response_text' MUST be written in {lang_name}. Translate any insights, confirmations, or questions into natural-sounding {lang_name}."
+        
         # Format conversation messages for Groq API
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": SYSTEM_PROMPT + language_instruction}]
         if history:
             for msg in history:
                 role = "user" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "assistant"
@@ -244,7 +329,7 @@ def parse_command_groq(user_text, context, history, api_key):
             "response_text": f"Sorry, Groq encountered an error: {str(e)}"
         }
 
-def parse_command_gemini(user_text, context, history, api_key):
+def parse_command_gemini(user_text, context, history, api_key, language):
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.0-flash')
@@ -258,7 +343,17 @@ def parse_command_gemini(user_text, context, history, api_key):
                 role = "User" if msg.get('role') == 'user' or msg.get('sender') == 'user' else "Assistant"
                 history_str += f"{role}: {msg.get('content') or msg.get('text', '')}\n"
         
-        prompt = f"{SYSTEM_PROMPT}\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
+        lang_names = {
+            'en-IN': 'Indian English',
+            'en-US': 'US English',
+            'hi-IN': 'Hindi',
+            'fr-FR': 'French',
+            'es-ES': 'Spanish',
+            'de-DE': 'German',
+            'ja-JP': 'Japanese'
+        }
+        lang_name = lang_names.get(language, 'English')
+        prompt = f"{SYSTEM_PROMPT}\n\nIMPORTANT: The 'response_text' MUST be written in {lang_name}. Translate any insights, confirmations, or questions into natural-sounding {lang_name}.\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
         
         response = model.generate_content(
             prompt,

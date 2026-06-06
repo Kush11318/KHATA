@@ -256,6 +256,60 @@
     transform: rotate(90deg) !important;
 }
 
+/* AI Assistant Language Selector */
+.ai-lang-container {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 12px !important;
+    padding: 4px 10px !important;
+    margin-left: auto !important;
+    margin-right: 12px !important;
+    transition: all 0.3s ease !important;
+}
+
+.ai-lang-container:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
+    border-color: rgba(168, 85, 247, 0.4) !important;
+}
+
+.ai-lang-select {
+    background: transparent !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    padding-right: 14px !important;
+    outline: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    font-family: inherit !important;
+}
+
+/* Custom styling inside the dropdown to make options readable on standard OS pickers */
+.ai-lang-select option {
+    background: #1e1b4b !important;
+    color: #ffffff !important;
+    padding: 10px !important;
+    font-weight: 500 !important;
+}
+
+/* Down arrow icon styling */
+.ai-lang-container::after {
+    content: '\f0d7' !important;
+    font-family: 'Font Awesome 5 Free' !important;
+    font-weight: 900 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 10px !important;
+    position: absolute !important;
+    right: 10px !important;
+    pointer-events: none !important;
+}
+
 .ai-messages {
     flex: 1 !important;
     overflow-y: auto !important;
@@ -883,32 +937,4 @@
     color: #0f172a;
     border-color: #cbd5e1;
     transform: translateY(-1px);
-}
-
-.ai-header-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.ai-lang-select {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 8px;
-    color: white;
-    padding: 4px 8px;
-    font-size: 12px;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s ease;
-}
-
-.ai-lang-select:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
-}
-
-.ai-lang-select option {
-    background: #1e1b4b;
-    color: white;
 }

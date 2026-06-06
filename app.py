@@ -1340,6 +1340,7 @@ def process_ai_command():
         
         user_text = data.get('text', '').strip()
         history = data.get('history', [])
+        language = data.get('language', 'en-IN')
         
         if not user_text:
             return jsonify({'error': 'No text provided', 'success': False}), 400
@@ -1399,7 +1400,7 @@ def process_ai_command():
             'stats': stats
         }
         
-        result = ai_service.parse_command(user_text, context, history)
+        result = ai_service.parse_command(user_text, context, history, language=language)
         
         # Inject live statistics context if the user requested business insights
         if result.get('intent') == 'business_insights':
