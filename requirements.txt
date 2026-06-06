@@ -14,3 +14,4 @@ reportlab==4.0.4
 Flask-SQLAlchemy
 google-generativeai
 gunicorn==21.2.0
+psycopg2-binary==2.9.9
