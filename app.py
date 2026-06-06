@@ -1579,10 +1579,76 @@ def handle_internal_error(error):
     return redirect(url_for('seller_dashboard'))
 
 
+def auto_seed():
+    """Auto-seed demo data on first startup if database is empty."""
+    try:
+        if Seller.query.count() > 0:
+            print("Database already seeded, skipping.")
+            return
+        
+        from decimal import Decimal
+        from datetime import datetime, date
+
+        print("Empty database detected — auto-seeding demo data...")
+
+        # Create default seller
+        seller = Seller(
+            s_id="S001",
+            s_name="Global Trade Corp",
+            s_email="seller@example.com",
+            s_address="123 Innovation Boulevard, Tech Park, New Delhi",
+            s_phone="9876543210"
+        )
+        seller.set_password("seller")
+        db.session.add(seller)
+        db.session.commit()
+
+        # Create demo products
+        products = [
+            ("P001", "Wireless Mouse", 850.00, "Ergonomic 2.4GHz wireless mouse.", 45),
+            ("P002", "Mechanical Keyboard", 2499.00, "RGB back-lit mechanical keyboard.", 4),
+            ("P003", "FullHD Monitor 24\"", 8999.00, "24-inch 1080p IPS display.", 15),
+            ("P004", "USB-C Docking Station", 3499.00, "Multi-port type-c docking hub.", 8),
+            ("P005", "Noise Cancelling Headphones", 5999.00, "Over-ear active noise cancelling headphones.", 25),
+        ]
+        for p_id, name, price, desc, stock in products:
+            db.session.add(Product(p_id=p_id, p_name=name, p_price=Decimal(str(price)),
+                                   p_description=desc, p_stock=stock, s_id="S001"))
+        db.session.commit()
+
+        # Create demo customers
+        customers = [
+            ("C001", "Alice Smith", "alice@gmail.com", "9988776655", "New Delhi"),
+            ("C002", "Bob Jones", "bob@yahoo.com", "8877665544", "Mumbai"),
+            ("C003", "Charlie Brown", "charlie@outlook.com", "7766554433", "Kolkata"),
+            ("C004", "Demo Customer", "customer@example.com", "9999999999", "Bangalore"),
+        ]
+        for c_id, name, email, phone, addr in customers:
+            c = Customer(c_id=c_id, c_name=name, c_email=email, c_phone_no=phone,
+                         c_address=addr, s_id="S001")
+            c.set_password("password")
+            db.session.add(c)
+        db.session.commit()
+
+        # Seed activity log
+        db.session.add(Activity(user_id="S001", user_role="seller",
+                                action_type="product_added", description='Added product "Wireless Mouse"'))
+        db.session.add(Activity(user_id="S001", user_role="seller",
+                                action_type="customer_created", description='Added customer "Alice Smith"'))
+        db.session.commit()
+
+        print("Auto-seed completed! Login: seller@example.com / seller")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Auto-seed skipped or failed: {e}")
+
+
 # Create database tables on startup (runs with both gunicorn and python app.py)
 with app.app_context():
     migrate_database()
     db.create_all()
+    auto_seed()
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)
+
