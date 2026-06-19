@@ -1,88 +1,462 @@
-﻿{% extends "base.html" %} {% block title %}Seller Dashboard - Invoice Management
-System{% endblock %} {% block content %}
-<div class="dashboard">
-  <div class="dashboard-header">
-    <p class="dashboard-subtitle">Welcome back, {{ session.user_name }}</p>
-  </div>
+{% extends "base.html" %}
 
-  <div class="dashboard-stats">
-    <div class="stat-card">
-      <div class="stat-value">{{ stats.total_products }}</div>
-      <div class="stat-label">Total Products</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ stats.total_customers }}</div>
-      <div class="stat-label">Total Customers</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ stats.total_invoices }}</div>
-      <div class="stat-label">Total Invoices</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ stats.paid_invoices }}</div>
-      <div class="stat-label">Paid Invoices</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ stats.unpaid_invoices }}</div>
-      <div class="stat-label">Unpaid Invoices</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ stats.overdue_invoices }}</div>
-      <div class="stat-label">Overdue Invoices</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">
-        ₹{{ "%.2f"|format(stats.revenue_collected) }}
-      </div>
-      <div class="stat-label">Revenue Collected</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">₹{{ "%.2f"|format(stats.revenue_due) }}</div>
-      <div class="stat-label">Revenue Due</div>
-    </div>
-  </div>
+{% block title %}KHATA | Fintech Dashboard{% endblock %}
 
-  <div class="dashboard-content">
-    <div class="main-content">
-      <div class="card">
-        <h3 class="section-title">Recent Activity</h3>
-        <div class="activity-list">
-          {% if activities %} {% for activity in activities %}
-          <div class="activity-item">
-            <div class="activity-icon">
-              {% if activity.action_type == 'product_added' %}
-              <i class="fas fa-box"></i>
-              {% elif activity.action_type == 'invoice_created' %}
-              <i class="fas fa-file-invoice"></i>
-              {% elif activity.action_type == 'product_updated' %}
-              <i class="fas fa-edit"></i>
-              {% elif activity.action_type == 'product_deleted' %}
-              <i class="fas fa-trash"></i>
-              {% else %}
-              <i class="fas fa-info-circle"></i>
-              {% endif %}
-            </div>
-            <div class="activity-content">
-              <p>{{ activity.description }}</p>
-              <span class="activity-time">{{ activity.time_ago }}</span>
-            </div>
-          </div>
-          {% endfor %} {% else %}
-          <div class="activity-item">
-            <div class="activity-icon">
-              <i class="fas fa-info-circle"></i>
-            </div>
-            <div class="activity-content">
-              <p>No recent activity</p>
-              <span class="activity-time"
-                >Start by adding products or creating invoices</span
-              >
-            </div>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
+{% block content %}
+<!-- Tailwind CDN & Config (Isolated to dashboard content block) -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-tertiary-fixed-variant": "#6900b3",
+                "surface-bright": "#f7f9fb",
+                "on-tertiary-container": "#ac59fb",
+                "outline": "#747878",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#474646",
+                "secondary": "#4648d4",
+                "on-error-container": "#93000a",
+                "surface-dim": "#d8dadc",
+                "surface-container": "#eceef0",
+                "on-tertiary-fixed": "#2c0051",
+                "primary-fixed": "#e5e2e1",
+                "outline-variant": "#c4c7c7",
+                "inverse-primary": "#c8c6c5",
+                "on-surface": "#191c1e",
+                "surface-container-high": "#e6e8ea",
+                "surface-tint": "#5f5e5e",
+                "surface-container-lowest": "#ffffff",
+                "error-container": "#ffdad6",
+                "surface-variant": "#e0e3e5",
+                "surface-container-highest": "#e0e3e5",
+                "tertiary": "#000000",
+                "surface-container-low": "#f2f4f6",
+                "tertiary-container": "#2c0051",
+                "primary-container": "#1c1b1b",
+                "background": "#f7f9fb",
+                "on-secondary": "#ffffff",
+                "surface": "#f7f9fb",
+                "on-secondary-fixed": "#07006c",
+                "on-primary": "#ffffff",
+                "on-error": "#ffffff",
+                "on-secondary-container": "#fffbff",
+                "on-primary-container": "#858383",
+                "inverse-surface": "#2d3133",
+                "tertiary-fixed": "#f0dbff",
+                "secondary-fixed-dim": "#c0c1ff",
+                "on-background": "#191c1e",
+                "secondary-fixed": "#e1e0ff",
+                "primary-fixed-dim": "#c8c6c5",
+                "tertiary-fixed-dim": "#ddb7ff",
+                "secondary-container": "#6063ee",
+                "primary": "#000000",
+                "on-surface-variant": "#444748",
+                "on-secondary-fixed-variant": "#2f2ebe",
+                "on-primary-fixed": "#1c1b1b",
+                "inverse-on-surface": "#eff1f3",
+                "error": "#ba1a1a"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "2xl": "1.5rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "margin-page": "2rem",
+                "gutter": "1.5rem",
+                "stack-sm": "0.5rem",
+                "container-max": "1280px",
+                "stack-md": "1rem",
+                "stack-lg": "2rem"
+        },
+        "fontFamily": {
+                "headline-sm": ["Manrope"],
+                "body-md": ["Manrope"],
+                "label-sm": ["Manrope"],
+                "headline-md": ["Manrope"],
+                "body-lg": ["Manrope"],
+                "label-bold": ["Manrope"],
+                "display-lg": ["Manrope"]
+        },
+        "fontSize": {
+                "headline-sm": ["18px", {"lineHeight": "1.4", "fontWeight": "700"}],
+                "body-md": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                "label-bold": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                "display-lg": ["36px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+        }
+      },
+    },
+  }
+</script>
+
+<style>
+    #bg-canvas {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: -1 !important;
+        pointer-events: none !important;
+    }
+
+    .metric-card, .activity-card {
+        background-color: #ffffff !important;
+        border: 2.5px solid #000000 !important;
+        box-shadow: 4px 4px 0px 0px #000000 !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        border-radius: 16px !important;
+    }
+    
+    .metric-card:hover, .activity-card:hover {
+        transform: translate(-4px, -4px) !important;
+        box-shadow: 8px 8px 0px 0px #000000 !important;
+    }
+
+    .comic-btn-primary {
+        background-color: #4648d4 !important;
+        color: #ffffff !important;
+        border: 2.5px solid #000000 !important;
+        box-shadow: 3px 3px 0px 0px #000000 !important;
+        transition: all 0.2s ease !important;
+        border-radius: 9999px !important;
+    }
+
+    .comic-btn-primary:hover {
+        transform: translate(-2px, -2px) !important;
+        box-shadow: 5px 5px 0px 0px #000000 !important;
+    }
+
+    .comic-btn-primary:active {
+        transform: translate(1px, 1px) !important;
+        box-shadow: 1px 1px 0px 0px #000000 !important;
+    }
+
+    .comic-sticker-badge {
+        background-color: #ffffff !important;
+        border: 2px solid #000000 !important;
+        box-shadow: 2px 2px 0px 0px #000000 !important;
+        border-radius: 12px !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .comic-sticker-badge:hover {
+        transform: scale(1.05) translate(-1px, -1px) !important;
+        box-shadow: 3.5px 3.5px 0px 0px #000000 !important;
+    }
+
+    .comic-section-title {
+        font-family: 'Manrope', sans-serif !important;
+        font-size: 26px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: -0.5px !important;
+        color: #000000 !important;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .animate-fade-in-up {
+        opacity: 0;
+        animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes ambientFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+    .animate-float {
+        animation: ambientFloat 3s ease-in-out infinite;
+    }
+</style>
+
+<!-- Background Shader Canvas -->
+<canvas height="1221" id="bg-canvas" width="1280"></canvas>
+
+<!-- Header Section -->
+<section class="mb-12 comic-card p-8 bg-surface-bright flex flex-col gap-2">
+  <div class="flex items-center gap-3">
+    <span class="comic-sticker-badge px-3 py-1 text-xs font-bold uppercase tracking-wider bg-yellow-300 text-black">Seller Dashboard</span>
   </div>
+  <h1 class="font-display-lg text-4xl md:text-5xl text-on-surface font-black tracking-tight mt-2" style="font-family: 'Manrope', sans-serif; font-weight: 850;">
+    Welcome back, <span class="text-secondary">{{ session.user_name }}</span>
+  </h1>
+  <p class="text-on-surface-variant font-body-lg text-body-lg max-w-2xl mt-1" style="font-family: 'Inter', sans-serif;">
+    Overview of your financial performance for the last 30 days. Your accounts are looking healthy.
+  </p>
+</section>
+
+<!-- Redesigned Metric Grid -->
+<section class="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6 mb-12">
+<!-- Total Products -->
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-8 rounded-2xl md:col-span-2 lg:col-span-3 flex flex-col items-start shadow-md animate-fade-in-up hover:border-primary border-outline border-primary" style="animation-delay: 0.1s;">
+<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-6 opacity-60">Total Products</span>
+<span class="font-display-lg text-display-lg text-on-surface">{{ stats.total_products }}</span>
 </div>
+
+<!-- Total Customers -->
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-8 rounded-2xl md:col-span-2 lg:col-span-3 flex flex-col items-start shadow-md animate-fade-in-up hover:border-primary border-outline border-primary" style="animation-delay: 0.2s;">
+<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-6 opacity-60">Total Customers</span>
+<span class="font-display-lg text-display-lg text-on-surface">{{ stats.total_customers }}</span>
+</div>
+
+<!-- Total Invoices -->
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-8 rounded-2xl md:col-span-2 lg:col-span-3 flex flex-col items-start shadow-md animate-fade-in-up hover:border-primary border-outline border-primary" style="animation-delay: 0.3s;">
+<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-6 opacity-60">Total Invoices</span>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-on-surface">{{ stats.total_invoices }}</span>
+</div>
+</div>
+
+<!-- Invoices Status Mini Grid -->
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-6 rounded-2xl md:col-span-3 lg:col-span-3 flex flex-col justify-between gap-4 shadow-md animate-fade-in-up border-outline border-primary" style="animation-delay: 0.4s;">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary"></div>
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">Paid</span>
+</div>
+<span class="font-headline-sm text-on-surface">{{ stats.paid_invoices }}</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">Unpaid</span>
+</div>
+<span class="font-headline-sm text-on-surface">{{ stats.unpaid_invoices }}</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-error"></div>
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider text-error/80">Overdue</span>
+</div>
+<span class="font-headline-sm text-error">{{ stats.overdue_invoices }}</span>
+</div>
+</div>
+
+<!-- Revenue Collected - Featured Card -->
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-10 rounded-2xl md:col-span-3 lg:col-span-6 flex flex-col items-start relative overflow-hidden group shadow-md animate-fade-in-up hover:border-primary border-outline border-primary" style="animation-delay: 0.5s;">
+<div class="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+<span class="material-symbols-outlined notranslate text-[120px] text-secondary" translate="no">payments</span>
+</div>
+<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-4 opacity-60">Revenue Collected</span>
+<span class="font-display-lg text-[48px] text-on-surface mb-2">₹{{ "%.2f"|format(stats.revenue_collected or 0) }}</span>
+<div class="flex items-center gap-2 px-3 py-1 {% if stats.revenue_growth_pct >= 0 %}bg-emerald-50 text-emerald-600{% else %}bg-rose-50 text-rose-600{% endif %} rounded-full text-label-sm font-label-bold">
+<span class="material-symbols-outlined notranslate text-[16px]" translate="no">{% if stats.revenue_growth_pct >= 0 %}trending_up{% else %}trending_down{% endif %}</span>
+                    {% if stats.revenue_growth_pct >= 0 %}+{% endif %}{{ "%.1f"|format(stats.revenue_growth_pct) }}% vs last month
+                </div>
+</div>
+
+<!-- Revenue Due - Muted Card -->
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-10 rounded-2xl md:col-span-3 lg:col-span-6 flex flex-col items-start shadow-md animate-fade-in-up border-outline border-primary" style="animation-delay: 0.6s;">
+<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-4 opacity-60">Revenue Due</span>
+<span class="font-display-lg text-[48px] text-on-surface mb-2">₹{{ "%.2f"|format(stats.revenue_due or 0) }}</span>
+<div class="flex items-center gap-2 text-on-surface-variant text-label-sm font-label-sm bg-slate-100 px-3 py-1 rounded-full">
+<span class="material-symbols-outlined notranslate text-[16px]" translate="no">schedule</span>
+                    {{ stats.revenue_due_note }}
+                </div>
+</div>
+</section>
+
+<!-- Recent Activity & Academy Section -->
+<section class="max-w-container-max mx-auto animate-fade-in-up grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch" style="animation-delay: 0.7s;">
+<div class="lg:col-span-8 lg:border-r-[2.5px] lg:border-black lg:pr-8 pb-8 lg:pb-0 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h2 class="comic-section-title">Recent Activity</h2>
+<a href="{{ url_for('seller_invoices') }}" class="comic-sticker-badge px-4 py-2 text-xs font-bold text-black uppercase tracking-wider transition-all" style="text-decoration: none !important;">View All Activity</a>
+</div>
+<div class="activity-card bg-surface-bright bg-opacity-90 border rounded-2xl overflow-hidden shadow-sm border-outline border-primary flex-grow">
+<div class="divide-y divide-outline-variant">
+  {% if activities %}
+      {% for activity in activities %}
+      <div class="flex items-center gap-6 px-12 py-8 hover:bg-slate-50/50 transition-colors cursor-pointer group">
+          {% if activity.action_type == 'product_added' %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">add_box</span>
+              </div>
+          {% elif activity.action_type == 'invoice_created' %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">receipt_long</span>
+              </div>
+          {% elif activity.action_type == 'product_updated' %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">edit_note</span>
+              </div>
+          {% elif activity.action_type == 'product_deleted' %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-red-100 group-hover:text-red-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">delete_sweep</span>
+              </div>
+          {% elif activity.action_type == 'customer_created' %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">person_add</span>
+              </div>
+          {% elif activity.action_type == 'customer_updated' %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">manage_accounts</span>
+              </div>
+          {% elif activity.action_type == 'customer_deleted' %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-rose-100 group-hover:text-rose-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">person_remove</span>
+              </div>
+          {% else %}
+              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700 transition-colors">
+                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">info</span>
+              </div>
+          {% endif %}
+          <div class="flex-grow">
+              <p class="font-body-lg text-on-surface">{{ activity.description }}</p>
+              <p class="text-label-sm font-label-sm text-on-surface-variant/70 mt-0.5">{{ activity.action_type|replace('_', ' ')|title }} • {{ activity.get_time_ago() }}</p>
+          </div>
+          <button class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+              <span class="material-symbols-outlined notranslate text-outline" translate="no">more_horiz</span>
+          </button>
+      </div>
+      {% endfor %}
+  {% else %}
+      <div class="flex items-center gap-6 px-12 py-8 transition-colors">
+          <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-400">
+              <span class="material-symbols-outlined notranslate text-[22px]" translate="no">info</span>
+          </div>
+          <div class="flex-grow">
+              <p class="font-body-lg text-on-surface-variant">No recent activity</p>
+              <p class="text-label-sm font-label-sm text-on-surface-variant/50 mt-0.5">Start by adding products or creating invoices</p>
+          </div>
+      </div>
+  {% endif %}
+</div>
+</div>
+</div>
+
+<div class="lg:col-span-4 flex flex-col lg:pl-4 gap-6">
+<div class="flex justify-between items-center">
+<h2 class="comic-section-title">Academy & Help</h2>
+</div>
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-6 rounded-2xl flex flex-col items-start shadow-md hover:border-primary border-outline border-primary">
+<div class="comic-sticker-badge w-12 h-12 flex items-center justify-center mb-4 text-on-tertiary-container bg-tertiary-container">
+<span class="material-symbols-outlined notranslate text-[24px]" translate="no">school</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Khata Academy</h3>
+<p class="text-on-surface-variant font-body-md text-body-md mb-4">Learn basic business terms (B2B, Credit, Ledger/Khata Book, Cash Flow) and get interactive AI explanations to grow your shop business.</p>
+<ul class="text-xs font-bold text-on-surface-variant mb-6 space-y-1">
+  <li class="flex items-center gap-1.5"><span class="text-green-600">✔</span> Interactive live AI definitions</li>
+  <li class="flex items-center gap-1.5"><span class="text-green-600">✔</span> Essential terms for shopkeepers</li>
+</ul>
+<div class="w-full mt-auto">
+<a href="{{ url_for('seller_academy') }}" class="comic-btn-primary w-full py-2.5 font-label-bold text-label-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined notranslate text-[18px]" translate="no">quiz</span>
+Ask a Question
+</a>
+</div>
+</div>
+
+<div class="metric-card bg-surface-bright bg-opacity-90 border p-6 rounded-2xl flex flex-col items-start shadow-md hover:border-primary border-outline border-primary flex-grow">
+<div class="comic-sticker-badge w-12 h-12 flex items-center justify-center mb-4 text-purple-700 bg-purple-100">
+<span class="material-symbols-outlined notranslate text-[24px]" translate="no">mic</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Voice Billing Guide</h3>
+<p class="text-on-surface-variant font-body-md text-body-md mb-4">Discover how to create bills, add products, and manage invoices using natural voice commands in Hindi, English, or Hinglish.</p>
+<ul class="text-xs font-bold text-on-surface-variant mb-6 space-y-1">
+  <li class="flex items-center gap-1.5"><span class="text-purple-600">★</span> "Bill for [Customer]" command</li>
+  <li class="flex items-center gap-1.5"><span class="text-purple-600">★</span> Support for regional accents</li>
+</ul>
+<div class="w-full mt-auto">
+<a href="{{ url_for('seller_academy') }}#voice-guidelines" class="comic-btn-primary w-full py-2.5 font-label-bold text-label-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined notranslate text-[18px]" translate="no">keyboard</span>
+Voice Guidelines
+</a>
+</div>
+</div>
+</div>
+</section>
+
+<script>
+    // Shader implementation for background
+    const canvas = document.getElementById('bg-canvas');
+    const gl = canvas.getContext('webgl');
+
+    if (gl) {
+        const vsSource = `
+            attribute vec2 position;
+            varying vec2 v_texCoord;
+            void main() {
+                v_texCoord = position * 0.5 + 0.5;
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
+
+        const fsSource = `
+            precision highp float;
+            varying vec2 v_texCoord;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+
+            void main() {
+                vec2 uv = v_texCoord;
+                
+                vec3 color1 = vec3(0.97, 0.98, 0.98); 
+                vec3 color2 = vec3(0.95, 0.96, 0.97); 
+                vec3 color3 = vec3(0.93, 0.95, 0.98); 
+                
+                float n = sin(uv.x * 2.0 + u_time * 0.2) * cos(uv.y * 2.0 + u_time * 0.1);
+                n += sin(uv.y * 1.5 - u_time * 0.15) * cos(uv.x * 1.2 + u_time * 0.1);
+                
+                vec3 finalColor = mix(color1, color2, n * 0.5 + 0.5);
+                finalColor = mix(finalColor, color3, sin(u_time * 0.1) * 0.2 + 0.2);
+                
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        `;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            return shader;
+        }
+
+        const program = gl.createProgram();
+        gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+        gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+        const positionLocation = gl.getAttribLocation(program, 'position');
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        const timeLocation = gl.getUniformLocation(program, 'u_time');
+        const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
+
+        function render(time) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.uniform1f(timeLocation, time * 0.001);
+            gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    }
+</script>
 {% endblock %}

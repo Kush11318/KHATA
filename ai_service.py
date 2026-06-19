@@ -16,6 +16,7 @@ CRITICAL REQUIREMENT:
 - You must speak, write, and respond ONLY in {lang_name}. 
 - The value for 'response_text' in your JSON output MUST be written entirely in {lang_name}. This is true regardless of the language of the user input. Even if the user inputs text in English, you MUST formulate the 'response_text' in {lang_name}.
 - Translate all insights, navigation confirmations, product/customer details, and follow-up questions into fluent, natural-sounding {lang_name}.
+- STRICTION ON HINGLISH: If the requested language is 'US English' or 'Indian English', you MUST respond in clean, grammatically correct English. DO NOT mix Hindi or Hinglish words (such as 'aapka', 'khata', 'bhai', 'udhaar', etc.) in your English responses. Use standard English terms (e.g., 'your ledger', 'your account', 'your revenue', 'customer balance').
 
 You will be provided with:
 1. User Input (Natural Language)
@@ -320,7 +321,7 @@ def parse_command(user_text, context, history=[], language='en-IN'):
             
     # B. Business Insights keywords mapping (multi-lingual)
     insight_phrases = [
-        'business insights', 'show insights', 'view insights', 'sales metrics', 'business stats', 'view statistics', 'how is business', 'how is the business doing',
+        'insights', 'insight', 'business insights', 'show insights', 'view insights', 'sales metrics', 'business stats', 'view statistics', 'how is business', 'how is the business doing',
         'व्यापार रिपोर्ट', 'व्यापार रिपोर्ट दिखाएं', 'बिजनेस कैसा है', 'बिजनेस कैसा चल रहा है',
         'perspectives commerciales', 'comment vont les affaires', 'rapport d\'activité',
         'información comercial', 'cómo va el negocio', 'estado del negocio',

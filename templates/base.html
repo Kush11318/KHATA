@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -8,6 +8,401 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5.0">
     {% if session.user_role == 'seller' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}?v=5.0">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <style>
+        /* Premium Header Vanilla Styles */
+        .premium-header {
+            background-color: rgba(236, 238, 250, 0.85) !important;
+            backdrop-filter: blur(24px) !important;
+            -webkit-backdrop-filter: blur(24px) !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 16px !important;
+            margin: 24px auto 16px auto !important;
+            width: 95% !important;
+            max-width: 1280px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 12px 40px !important;
+            position: sticky !important;
+            top: 24px !important;
+            z-index: 1000 !important;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15) !important;
+            transition: all 0.3s ease !important;
+            box-sizing: border-box !important;
+        }
+
+        .premium-header-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 32px !important;
+        }
+
+        .premium-brand {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            text-decoration: none !important;
+            color: #191c1e !important;
+        }
+
+        .premium-brand-logo {
+            width: 32px !important;
+            height: 32px !important;
+            background-color: #000000 !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #ffffff !important;
+        }
+
+        .premium-brand-text {
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 26px !important;
+            font-weight: 950 !important;
+            text-transform: uppercase !important;
+            letter-spacing: -0.5px !important;
+        }
+
+        .premium-nav {
+            display: flex !important;
+            align-items: center !important;
+            gap: 24px !important;
+        }
+
+        .premium-nav-link {
+            position: relative !important;
+            overflow: hidden !important;
+            display: grid !important;
+            place-items: center !important;
+            height: 32px !important;
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 14px !important;
+            font-weight: 750 !important; /* Bold lettered */
+            color: #444748 !important;
+            text-decoration: none !important;
+            transition: color 0.25s ease !important;
+        }
+
+        .premium-nav-link span {
+            transition: transform .4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: block !important;
+            white-space: nowrap !important;
+        }
+
+        .premium-nav-link span:nth-child(2) {
+            position: absolute !important;
+            transform: translateY(150%) !important;
+        }
+
+        .premium-nav-link:hover span:nth-child(1) {
+            transform: translateY(-150%) !important;
+        }
+
+        .premium-nav-link:hover span:nth-child(2) {
+            transform: translateY(0) !important;
+        }
+
+        .premium-nav-link:hover {
+            color: #000000 !important;
+        }
+
+        .premium-nav-link.active-link {
+            color: #000000 !important;
+            font-weight: 850 !important; /* Extra bold for active link */
+            border-bottom: 2.5px solid #000000 !important;
+        }
+
+        .premium-header-right {
+            display: flex !important;
+            align-items: center !important;
+            gap: 16px !important;
+        }
+
+        .premium-btn-primary {
+            border: 2.5px solid #000000 !important;
+            background-color: transparent !important;
+            color: #000000 !important;
+            border-radius: 9999px !important;
+            padding: 8px 24px !important;
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            text-decoration: none !important;
+            text-align: center !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            height: 40px !important;
+            transition: all 0.25s ease !important;
+        }
+
+        .premium-btn-primary:hover {
+            background-color: #000000 !important;
+            color: #ffffff !important;
+            transform: scale(0.98) !important;
+        }
+
+        .premium-btn-secondary {
+            background-color: #4648d4 !important;
+            border: none !important;
+            color: #ffffff !important;
+            border-radius: 9999px !important;
+            padding: 6px 16px !important;
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            text-decoration: none !important;
+            height: 32px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.25s ease !important;
+        }
+
+        .premium-btn-secondary:hover {
+            opacity: 0.9 !important;
+            transform: scale(0.98) !important;
+        }
+
+        .premium-profile-dropdown {
+            position: relative !important;
+        }
+
+        .premium-profile-trigger {
+            display: flex !important;
+            align-items: center !important;
+            background-color: rgba(247, 249, 251, 0.5) !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 9999px !important;
+            padding: 2px 16px !important;
+            gap: 12px !important;
+            cursor: pointer !important;
+            transition: background-color 0.25s ease !important;
+            height: 38px !important;
+        }
+
+        .premium-profile-trigger:hover {
+            background-color: #eceef0 !important;
+        }
+
+        .premium-profile-img {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 50% !important;
+            object-fit: cover !important;
+        }
+
+        .premium-profile-email {
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            color: #191c1e !important;
+            max-width: 150px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .premium-dropdown-menu {
+            position: absolute !important;
+            right: 0 !important;
+            top: 48px !important;
+            background-color: #ffffff !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+            padding: 8px 0 !important;
+            width: 180px !important;
+            display: none !important;
+            flex-direction: column !important;
+            z-index: 1000 !important;
+        }
+
+        .premium-profile-dropdown:hover .premium-dropdown-menu,
+        .premium-dropdown-menu:hover {
+            display: flex !important;
+        }
+
+        .premium-dropdown-item {
+            padding: 10px 16px !important;
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            color: #ba1a1a !important; /* error color */
+            text-decoration: none !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            transition: background-color 0.2s ease !important;
+        }
+
+        .premium-dropdown-item:hover {
+            background-color: rgba(186, 26, 26, 0.08) !important;
+        }
+
+        /* Custom Language Dropdown */
+        .custom-lang-dropdown {
+            position: relative !important;
+            display: inline-block !important;
+        }
+
+        .custom-lang-trigger {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            background-color: rgba(247, 249, 251, 0.5) !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 9999px !important;
+            padding: 2px 16px !important;
+            gap: 8px !important;
+            cursor: pointer !important;
+            transition: all 0.25s ease !important;
+            height: 38px !important;
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            color: #191c1e !important;
+            box-shadow: 2px 2px 0px #000000 !important;
+        }
+
+        .custom-lang-trigger:hover {
+            background-color: #eceef0 !important;
+            transform: translate(-1px, -1px) !important;
+            box-shadow: 3px 3px 0px #000000 !important;
+        }
+
+        .custom-lang-trigger:active {
+            transform: translate(1px, 1px) !important;
+            box-shadow: 1px 1px 0px #000000 !important;
+        }
+
+        .custom-lang-menu {
+            position: absolute !important;
+            right: 0 !important;
+            top: 48px !important;
+            background-color: #ffffff !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 12px !important;
+            box-shadow: 4px 4px 0px #000000 !important;
+            padding: 8px 0 !important;
+            width: 170px !important;
+            display: none !important;
+            flex-direction: column !important;
+            z-index: 1001 !important;
+            overflow: hidden !important;
+        }
+
+        .custom-lang-menu.show {
+            display: flex !important;
+        }
+
+        .custom-lang-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            padding: 10px 18px !important;
+            font-family: 'Manrope', sans-serif !important;
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            color: #191c1e !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+            text-decoration: none !important;
+        }
+
+        .custom-lang-item:hover {
+            background-color: #eceef0 !important;
+        }
+
+        .custom-lang-item.active {
+            background-color: #4648d4 !important;
+            color: #ffffff !important;
+        }
+
+        .btn-slide {
+            position: relative !important;
+            overflow: hidden !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .btn-slide span {
+            transition: transform .4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: block !important;
+        }
+
+        .btn-slide span:nth-child(2) {
+            position: absolute !important;
+            transform: translateY(180%) !important;
+            white-space: nowrap !important;
+        }
+
+        .btn-slide:hover span:nth-child(1) {
+            transform: translateY(-180%) !important;
+        }
+
+        .btn-slide:hover span:nth-child(2) {
+            transform: translateY(0) !important;
+        }
+
+        /* Unified Premium Layout classes for Seller role */
+        .max-w-container-max {
+            max-width: 1280px !important;
+        }
+        .mx-auto {
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
+        .px-margin-page {
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+        }
+        .pb-24 {
+            padding-bottom: 6rem !important;
+        }
+        .mt-2 {
+            margin-top: 0.5rem !important;
+        }
+
+        /* Google Translate UI Overrides */
+        html {
+            margin-top: 0px !important;
+        }
+        body {
+            top: 0 !important;
+            position: static !important;
+        }
+        .goog-te-banner-frame, 
+        .goog-te-banner-frame.skiptranslate,
+        .goog-te-banner,
+        .goog-te-menu-frame,
+        .skiptranslate,
+        #google_translate_element {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        #goog-gt-tt, 
+        .goog-te-balloon-frame,
+        .goog-te-spinner-pos {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        .goog-tooltip, 
+        .goog-tooltip:hover {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+        font {
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+    </style>
     {% endif %}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -15,118 +410,162 @@
 
 <body>
     {% if session.user_id %}
-    <header class="header">
-        <div class="container">
-            <div class="header-content">
-                <div class="header-left">
-                    {% if session.user_role == 'admin' %}
-                    <a href="{{ url_for('admin_dashboard') }}" class="logo-container" title="Admin Dashboard">
-                        <div class="logo-badge">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
-                                <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
-                                <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
-                                <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
-                            </svg>
-                        </div>
-                        <span class="brand-name">KHATA</span>
+        {% if session.user_role == 'seller' %}
+            <!-- Premium Seller Header -->
+            <header class="premium-header">
+                <div class="premium-header-left">
+                    <a href="{{ url_for('seller_dashboard') }}" class="premium-brand">
+                        <span class="premium-brand-text">KHATA</span>
                     </a>
-                    {% elif session.user_role == 'customer' %}
-                    <a href="{{ url_for('customer_dashboard') }}" class="logo-container" title="Customer Dashboard">
-                        <div class="logo-badge">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
-                                <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
-                                <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
-                                <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
-                            </svg>
-                        </div>
-                        <span class="brand-name">KHATA</span>
-                    </a>
-                    {% else %}
-                    <a href="{{ url_for('seller_dashboard') }}" class="logo-container" title="Seller Dashboard">
-                        <div class="logo-badge">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
-                                <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
-                                <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
-                                <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
-                            </svg>
-                        </div>
-                        <span class="brand-name">KHATA</span>
-                    </a>
-                    {% endif %}
-                </div>
-                <nav class="header-nav">
-                    {% if session.user_role == 'admin' %}
-                    <a href="{{ url_for('admin_dashboard') }}"
-                        class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
-                        <span>Dashboard</span>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="{{ url_for('admin_sellers') }}"
-                        class="nav-link {% if request.endpoint == 'admin_sellers' %}active{% endif %}">
-                        <span>Manage Sellers</span>
-                        <span>Manage Sellers</span>
-                    </a>
-                    {% elif session.user_role == 'customer' %}
-                    <a href="{{ url_for('customer_dashboard') }}"
-                        class="nav-link {% if request.endpoint == 'customer_dashboard' %}active{% endif %}">
-                        <span>Dashboard</span>
-                        <span>Dashboard</span>
-                    </a>
-                    {% else %}
-                    <a href="{{ url_for('seller_dashboard') }}"
-                        class="nav-link {% if request.endpoint == 'seller_dashboard' %}active{% endif %}">
-                        <span>Dashboard</span>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="{{ url_for('seller_products') }}"
-                        class="nav-link {% if request.endpoint in ['seller_products', 'add_product', 'edit_product'] %}active{% endif %}">
-                        <span>Products</span>
-                        <span>Products</span>
-                    </a>
-                    <a href="{{ url_for('seller_invoices') }}"
-                        class="nav-link {% if request.endpoint in ['seller_invoices', 'create_invoice', 'edit_invoice'] %}active{% endif %}">
-                        <span>Invoices</span>
-                        <span>Invoices</span>
-                    </a>
-                    <a href="{{ url_for('seller_customers') }}"
-                        class="nav-link {% if request.endpoint in ['seller_customers', 'view_customer_invoices'] %}active{% endif %}">
-                        <span>Customers</span>
-                        <span>Customers</span>
-                    </a>
-                    <a href="{{ url_for('customer_analytics') }}"
-                        class="nav-link {% if request.endpoint == 'customer_analytics' %}active{% endif %}">
-                        <span>Analytics</span>
-                        <span>Analytics</span>
-                    </a>
-                    <a href="{{ url_for('seller_academy') }}"
-                        class="nav-link nav-btn-secondary {% if request.endpoint == 'seller_academy' %}active{% endif %}">
-                        <span>Academy</span>
-                        <span>Academy</span>
-                    </a>
-                    <a href="{{ url_for('create_invoice') }}"
-                        class="nav-link nav-btn-primary {% if request.endpoint in ['create_invoice'] %}active{% endif %}">
-                        <span>Create Invoice</span>
-                        <span>Create Invoice</span>
-                    </a>
-                    {% endif %}
-                </nav>
-                <div class="user-menu" id="userMenu">
-                    <button type="button" class="btn btn-outline btn-sm user-toggle" id="userToggle">
-                        <span>{{ session.user_email or session.user_name }}</span>
-                        <span>Account Menu</span>
-                    </button>
-                    <div class="user-dropdown" id="userDropdown">
-                        <a href="{{ url_for('logout') }}" class="dropdown-item">
-                            <i class="fas fa-sign-out-alt"></i>
-                            Logout
+                    <nav class="premium-nav">
+                        <a class="premium-nav-link {% if request.endpoint == 'seller_dashboard' %}active-link{% endif %}" href="{{ url_for('seller_dashboard') }}">
+                            <span>Dashboard</span>
+                            <span>Dashboard</span>
                         </a>
+                        <a class="premium-nav-link {% if request.endpoint in ['seller_products', 'add_product', 'edit_product'] %}active-link{% endif %}" href="{{ url_for('seller_products') }}">
+                            <span>Products</span>
+                            <span>Products</span>
+                        </a>
+                        <a class="premium-nav-link {% if request.endpoint in ['seller_invoices', 'create_invoice', 'edit_invoice'] %}active-link{% endif %}" href="{{ url_for('seller_invoices') }}">
+                            <span>Invoices</span>
+                            <span>Invoices</span>
+                        </a>
+                        <a class="premium-nav-link {% if request.endpoint in ['seller_customers', 'view_customer_invoices'] %}active-link{% endif %}" href="{{ url_for('seller_customers') }}">
+                            <span>Customers</span>
+                            <span>Customers</span>
+                        </a>
+                        <a class="premium-nav-link {% if request.endpoint == 'customer_analytics' %}active-link{% endif %}" href="{{ url_for('customer_analytics') }}">
+                            <span>Analytics</span>
+                            <span>Analytics</span>
+                        </a>
+                        <a class="btn-slide premium-btn-secondary" href="{{ url_for('seller_academy') }}">
+                            <span>Academy</span>
+                            <span>Academy</span>
+                        </a>
+                    </nav>
+                </div>
+                <div class="premium-header-right">
+                    <a href="{{ url_for('create_invoice') }}" class="btn-slide premium-btn-primary">
+                        <span>Create Invoice</span>
+                        <span>Create Invoice</span>
+                    </a>
+                    <!-- Custom Language Dropdown (Neo-Brutalist Theme) -->
+                    <div class="custom-lang-dropdown">
+                        <button class="custom-lang-trigger" id="custom-lang-trigger">
+                            <span class="custom-lang-flag" id="current-lang-flag">🇬🇧</span>
+                            <span class="custom-lang-name" id="current-lang-name">English</span>
+                            <span class="material-symbols-outlined notranslate text-[16px] text-on-surface-variant" translate="no">expand_more</span>
+                        </button>
+                        <div class="custom-lang-menu" id="custom-lang-menu">
+                            <div class="custom-lang-item" data-value="en">
+                                <span class="lang-flag">🇬🇧</span>
+                                <span class="lang-name">English</span>
+                            </div>
+                            <div class="custom-lang-item" data-value="hi">
+                                <span class="lang-flag">🇮🇳</span>
+                                <span class="lang-name">हिन्दी</span>
+                            </div>
+                            <div class="custom-lang-item" data-value="fr">
+                                <span class="lang-flag">🇫🇷</span>
+                                <span class="lang-name">Français</span>
+                            </div>
+                            <div class="custom-lang-item" data-value="es">
+                                <span class="lang-flag">🇪🇸</span>
+                                <span class="lang-name">Español</span>
+                            </div>
+                            <div class="custom-lang-item" data-value="de">
+                                <span class="lang-flag">🇩🇪</span>
+                                <span class="lang-name">Deutsch</span>
+                            </div>
+                            <div class="custom-lang-item" data-value="ja">
+                                <span class="lang-flag">🇯🇵</span>
+                                <span class="lang-name">日本語</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="premium-profile-dropdown">
+                        <button class="premium-profile-trigger">
+                            <span class="premium-profile-email">{{ session.user_email or session.user_name }}</span>
+                            <span class="material-symbols-outlined notranslate text-[16px] text-on-surface-variant transition-transform" translate="no">expand_more</span>
+                        </button>
+                        <div class="premium-dropdown-menu">
+                            <a href="{{ url_for('logout') }}" class="premium-dropdown-item">
+                                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">logout</span>
+                                Logout
+                            </a>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </header>
-    <main class="main-content">
-        <div class="container">
+            </header>
+            <main class="max-w-container-max mx-auto px-margin-page pb-24 mt-2">
+        {% else %}
+            <!-- Legacy Header (Admin/Customer) -->
+            <header class="header">
+                <div class="container">
+                    <div class="header-content">
+                        <div class="header-left">
+                            {% if session.user_role == 'admin' %}
+                            <a href="{{ url_for('admin_dashboard') }}" class="logo-container" title="Admin Dashboard">
+                                <div class="logo-badge">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
+                                        <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
+                                        <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
+                                        <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+                                    </svg>
+                                </div>
+                                <span class="brand-name">KHATA</span>
+                            </a>
+                            {% elif session.user_role == 'customer' %}
+                            <a href="{{ url_for('customer_dashboard') }}" class="logo-container" title="Customer Dashboard">
+                                <div class="logo-badge">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display: block; color: #111111;">
+                                        <ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" fill="none" />
+                                        <circle cx="12" cy="12" r="5.5" fill="#ffffff" stroke="currentColor" stroke-width="1.8" />
+                                        <path d="M 3 12 A 9 3 0 0 0 21 12" transform="rotate(-20 12 12)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+                                    </svg>
+                                </div>
+                                <span class="brand-name">KHATA</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                        <nav class="header-nav">
+                            {% if session.user_role == 'admin' %}
+                            <a href="{{ url_for('admin_dashboard') }}"
+                                class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                                <span>Dashboard</span>
+                                <span>Dashboard</span>
+                            </a>
+                            <a href="{{ url_for('admin_sellers') }}"
+                                class="nav-link {% if request.endpoint == 'admin_sellers' %}active{% endif %}">
+                                <span>Manage Sellers</span>
+                                <span>Manage Sellers</span>
+                            </a>
+                            {% elif session.user_role == 'customer' %}
+                            <a href="{{ url_for('customer_dashboard') }}"
+                                class="nav-link {% if request.endpoint == 'customer_dashboard' %}active{% endif %}">
+                                <span>Dashboard</span>
+                                <span>Dashboard</span>
+                            </a>
+                            {% endif %}
+                        </nav>
+                        <div class="user-menu" id="userMenu">
+                            <button type="button" class="btn btn-outline btn-sm user-toggle" id="userToggle">
+                                <span>{{ session.user_email or session.user_name }}</span>
+                                <span>Account Menu</span>
+                            </button>
+                            <div class="user-dropdown" id="userDropdown">
+                                <a href="{{ url_for('logout') }}" class="dropdown-item">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    Logout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <main class="main-content">
+                <div class="container">
+        {% endif %}
             {% else %}
             <main class="auth-main">
                 {% endif %}
@@ -144,12 +583,128 @@
 
                 {% block content %}{% endblock %}
                 {% if session.user_id %}
+                    {% if session.user_role != 'seller' %}
         </div>
-        {% endif %}
+                    {% endif %}
+                {% endif %}
     </main>
+
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-left">
+                &copy; 2026 <span class="brand-footer">KHATA</span>. All rights reserved.
+            </div>
+            {% if git_commit and git_commit.hash != 'Unknown' %}
+            <div class="footer-right">
+                <a href="{{ git_commit.url }}" target="_blank" class="git-commit-badge" title="View latest commit on GitHub">
+                    <i class="fab fa-github"></i>
+                    <span class="commit-hash">#{{ git_commit.hash }}</span>
+                    <span class="commit-divider">|</span>
+                    <span class="commit-message" title="{{ git_commit.message }}">{{ git_commit.message }}</span>
+                    <span class="commit-date">({{ git_commit.date }})</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% if session.user_role == 'seller' %}
+    <!-- Google Translate Element & Sync Script -->
+    <div id="google_translate_element" style="display:none !important"></div>
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+
+        // Set global page language and reload
+        function setGlobalLanguage(langCode) {
+            let aiLang = 'en-IN';
+            if (langCode === 'hi') aiLang = 'hi-IN';
+            else if (langCode === 'fr') aiLang = 'fr-FR';
+            else if (langCode === 'es') aiLang = 'es-ES';
+            else if (langCode === 'de') aiLang = 'de-DE';
+            else if (langCode === 'ja') aiLang = 'ja-JP';
+            else if (langCode === 'en') aiLang = 'en-IN';
+            
+            localStorage.setItem('ai_assistant_lang', aiLang);
+
+            let translateLang = langCode;
+            if (langCode === 'en') translateLang = 'en';
+
+            // Set cookie for Google Translate
+            const cookieValue = translateLang === 'en' ? '' : '/en/' + translateLang;
+            const domain = window.location.hostname;
+            
+            document.cookie = "googtrans=" + cookieValue + "; path=/";
+            document.cookie = "googtrans=" + cookieValue + "; path=/; domain=" + domain;
+            if (domain.includes('.')) {
+                document.cookie = "googtrans=" + cookieValue + "; path=/; domain=." + domain;
+            }
+
+            window.location.reload();
+        }
+
+        // Setup custom language dropdown toggle and sync UI state on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Prevent Google Translate from translating Material Symbols/Icons ligatures
+            document.querySelectorAll('.material-symbols-outlined').forEach(el => {
+                el.classList.add('notranslate');
+                el.setAttribute('translate', 'no');
+            });
+
+            const aiLang = localStorage.getItem('ai_assistant_lang') || 'en-IN';
+            let globalVal = 'en';
+            if (aiLang.startsWith('hi')) globalVal = 'hi';
+            else if (aiLang.startsWith('fr')) globalVal = 'fr';
+            else if (aiLang.startsWith('es')) globalVal = 'es';
+            else if (aiLang.startsWith('de')) globalVal = 'de';
+            else if (aiLang.startsWith('ja')) globalVal = 'ja';
+
+            // Sync custom language dropdown trigger UI
+            const activeItem = document.querySelector(`.custom-lang-item[data-value="${globalVal}"]`);
+            if (activeItem) {
+                document.querySelectorAll('.custom-lang-item').forEach(el => el.classList.remove('active'));
+                activeItem.classList.add('active');
+                
+                const flag = activeItem.querySelector('.lang-flag').textContent.trim();
+                const name = activeItem.querySelector('.lang-name').textContent.trim();
+                
+                const currentFlagEl = document.getElementById('current-lang-flag');
+                const currentNameEl = document.getElementById('current-lang-name');
+                if (currentFlagEl) currentFlagEl.textContent = flag;
+                if (currentNameEl) currentNameEl.textContent = name;
+            }
+
+            // Bind click handlers to dropdown trigger and menu items
+            const customTrigger = document.getElementById('custom-lang-trigger');
+            const customMenu = document.getElementById('custom-lang-menu');
+            
+            if (customTrigger && customMenu) {
+                customTrigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    customMenu.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', () => {
+                    customMenu.classList.remove('show');
+                });
+                
+                const items = customMenu.querySelectorAll('.custom-lang-item');
+                items.forEach(item => {
+                    item.addEventListener('click', () => {
+                        const val = item.getAttribute('data-value');
+                        setGlobalLanguage(val);
+                    });
+                });
+            }
+        });
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=5.0"></script>
     {% endif %}
 </body>

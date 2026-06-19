@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from config import Config
 from extensions import db
 from models import Seller, Customer, Product, Invoice, InvoiceItem, Activity
@@ -183,6 +183,38 @@ def restore_stock_on_cancellation(invoice):
         if product:
             product.p_stock = product.p_stock + item.item_quantity
 
+_git_commit_cache = None
+
+def get_git_commit_info():
+    global _git_commit_cache
+    if _git_commit_cache is not None:
+        return _git_commit_cache
+        
+    import subprocess
+    try:
+        commit_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], text=True).strip()
+        commit_message = subprocess.check_output(['git', 'log', '-1', '--format=%s', 'HEAD'], text=True).strip()
+        commit_date = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--date=format:%Y-%m-%d %H:%M:%S', 'HEAD'], text=True).strip()
+        _git_commit_cache = {
+            'hash': commit_hash,
+            'message': commit_message,
+            'date': commit_date,
+            'url': f"https://github.com/Kush11318/Invoice-Management-System-with-AI-Assistant/commit/{commit_hash}"
+        }
+    except Exception as e:
+        print(f"Error getting git commit info: {e}")
+        _git_commit_cache = {
+            'hash': 'Unknown',
+            'message': 'No commit info available',
+            'date': 'N/A',
+            'url': '#'
+        }
+    return _git_commit_cache
+
+@app.context_processor
+def inject_git_commit():
+    return {'git_commit': get_git_commit_info()}
+
 @app.route('/')
 def index():
     if 'user_id' in session:
@@ -326,6 +358,53 @@ def seller_dashboard():
     revenue_collected = sum(float(inv.amount) for inv in paid_invoices_qs.all())
     revenue_due = sum(float(inv.amount) for inv in pending_invoices_qs.all()) + sum(float(inv.amount) for inv in overdue_invoices_qs.all())
     
+    # Calculate real dynamic revenue growth (last 30 days vs 30 to 60 days ago)
+    now = datetime.now()
+    thirty_days_ago = now - timedelta(days=30)
+    sixty_days_ago = now - timedelta(days=60)
+    
+    this_month_paid_val = db.session.query(db.func.sum(Invoice.amount)).filter(
+        Invoice.s_id == session['user_id'],
+        Invoice.status == 'paid',
+        Invoice.invoice_datetime >= thirty_days_ago
+    ).scalar() or 0.0
+    
+    last_month_paid_val = db.session.query(db.func.sum(Invoice.amount)).filter(
+        Invoice.s_id == session['user_id'],
+        Invoice.status == 'paid',
+        Invoice.invoice_datetime >= sixty_days_ago,
+        Invoice.invoice_datetime < thirty_days_ago
+    ).scalar() or 0.0
+    
+    this_month_paid_revenue = float(this_month_paid_val)
+    last_month_paid_revenue = float(last_month_paid_val)
+    
+    if last_month_paid_revenue > 0:
+        revenue_growth_pct = ((this_month_paid_revenue - last_month_paid_revenue) / last_month_paid_revenue) * 100
+    else:
+        revenue_growth_pct = 100.0 if this_month_paid_revenue > 0 else 0.0
+        
+    # Calculate real average due days for pending/overdue invoices
+    today = date.today()
+    due_invoices = pending_invoices_qs.all() + overdue_invoices_qs.all()
+    
+    if due_invoices:
+        days_diffs = []
+        for inv in due_invoices:
+            if inv.due_date:
+                diff = (inv.due_date - today).days
+                days_diffs.append(diff)
+        if days_diffs:
+            avg_days = sum(days_diffs) / len(days_diffs)
+            if avg_days >= 0:
+                revenue_due_note = f"Average due in {int(round(avg_days))} days"
+            else:
+                revenue_due_note = f"Average overdue by {int(round(abs(avg_days)))} days"
+        else:
+            revenue_due_note = "No due dates set"
+    else:
+        revenue_due_note = "No pending invoices"
+    
     # Get recent activities for this seller
     recent_activities = Activity.query.filter_by(user_id=session['user_id']).order_by(Activity.timestamp.desc()).limit(5).all()
     
@@ -337,7 +416,9 @@ def seller_dashboard():
         'unpaid_invoices': unpaid_invoices_count,
         'overdue_invoices': overdue_invoices_count,
         'revenue_collected': revenue_collected,
-        'revenue_due': revenue_due
+        'revenue_due': revenue_due,
+        'revenue_growth_pct': revenue_growth_pct,
+        'revenue_due_note': revenue_due_note
     }
     
     return render_template('seller/dashboard.html', stats=stats, activities=recent_activities)
@@ -1087,7 +1168,7 @@ def create_invoice():
             log_activity('invoice_created', f'Created invoice {invoice_id} for {customer.c_name}')
             
             flash(f'Invoice {invoice_id} created successfully!', 'success')
-            return redirect(url_for('seller_invoices'))
+            return redirect(url_for('view_invoice', invoice_id=invoice_id))
             
         except Exception:
             db.session.rollback()

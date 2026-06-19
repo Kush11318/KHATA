@@ -34,21 +34,30 @@ class AIAssistant {
             this.recognition.onstart = () => {
                 this.isListening = true;
                 this.updateUIState('listening');
-                this.finalTranscript = '';
                 if (this.silenceTimer) clearTimeout(this.silenceTimer);
             };
 
             this.recognition.onend = () => {
-                this.isListening = false;
-                this.updateUIState('idle');
+                if (this.isListening) {
+                    this.isListening = false;
+                    this.updateUIState('idle');
+                    
+                    // Auto-submit text when recognition times out or ends automatically
+                    const input = document.getElementById('ai-text-input');
+                    const finalVal = input ? input.value.trim() : '';
+                    if (finalVal) {
+                        this.handleUserInput(finalVal);
+                        if (input) input.value = '';
+                    }
+                }
                 if (this.silenceTimer) clearTimeout(this.silenceTimer);
             };
 
             this.recognition.onresult = (event) => {
-                let interimTranscript = '';
                 let finalTranscript = '';
+                let interimTranscript = '';
 
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                for (let i = 0; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript;
                     } else {
@@ -56,12 +65,8 @@ class AIAssistant {
                     }
                 }
 
-                if (finalTranscript) {
-                    this.finalTranscript += (this.finalTranscript ? ' ' : '') + finalTranscript;
-                }
-
                 // Show live transcribing text in the input box word-by-word
-                const liveText = this.finalTranscript + (interimTranscript ? (this.finalTranscript ? ' ' : '') + interimTranscript : '');
+                const liveText = finalTranscript + interimTranscript;
                 const input = document.getElementById('ai-text-input');
                 if (input) {
                     input.value = liveText;
@@ -72,9 +77,11 @@ class AIAssistant {
                     clearTimeout(this.silenceTimer);
                 }
 
-                // If user stops speaking for 3 seconds, auto-submit the sentence
+                // If user stops speaking for 1.2 seconds, auto-submit the sentence
                 this.silenceTimer = setTimeout(() => {
                     if (this.isListening) {
+                        this.isListening = false;
+                        this.updateUIState('idle');
                         this.recognition.stop(); // Stop recording
                         
                         const finalVal = input ? input.value.trim() : '';
@@ -83,12 +90,15 @@ class AIAssistant {
                             if (input) input.value = '';
                         }
                     }
-                }, 3000);
+                }, 1200);
             };
 
             this.recognition.onerror = (event) => {
                 console.error('Speech recognition error', event.error);
-                if (event.error !== 'no-speech') {
+                this.isListening = false;
+                this.updateUIState('idle');
+                if (this.silenceTimer) clearTimeout(this.silenceTimer);
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
                     this.speak("Sorry, there was a speech recognition error.");
                 }
             };
@@ -101,37 +111,17 @@ class AIAssistant {
         this.selectedLang = newLang;
         localStorage.setItem('ai_assistant_lang', newLang);
         
-        // Update local elements immediately
-        const welcomeEl = document.getElementById('ai-welcome-text');
-        if (welcomeEl) {
-            welcomeEl.innerHTML = this.getWelcomeMessage(newLang);
-        }
-        
-        const pillsEl = document.getElementById('ai-quick-pills');
-        if (pillsEl) {
-            pillsEl.innerHTML = this.getPillButtonsHtml(newLang);
-        }
-        
-        const textInput = document.getElementById('ai-text-input');
-        if (textInput) {
-            textInput.placeholder = this.getUIPlaceholder(this.isListening ? 'listening' : 'idle', newLang);
-        }
+        let globalCode = 'en';
+        if (newLang === 'hi-IN') globalCode = 'hi';
+        else if (newLang === 'fr-FR') globalCode = 'fr';
+        else if (newLang === 'es-ES') globalCode = 'es';
+        else if (newLang === 'de-DE') globalCode = 'de';
+        else if (newLang === 'ja-JP') globalCode = 'ja';
 
-        if (this.recognition) {
-            this.recognition.lang = newLang;
-            if (this.isListening) {
-                // Restart to apply changes
-                this.recognition.stop();
-                setTimeout(() => {
-                    if (!this.isListening) {
-                        try {
-                            this.recognition.start();
-                        } catch (e) {
-                            console.error("Error restarting recognition after language change:", e);
-                        }
-                    }
-                }, 400);
-            }
+        if (typeof window.setGlobalLanguage === 'function') {
+            window.setGlobalLanguage(globalCode);
+        } else {
+            window.location.reload();
         }
     }
 
@@ -298,8 +288,7 @@ class AIAssistant {
                 <h3 class="ai-modal-title"><i class="fas fa-robot"></i> Billing Assistant</h3>
                 <div class="ai-lang-container">
                     <select id="ai-lang-select" class="ai-lang-select" title="Change Assistant Language">
-                        <option value="en-IN" ${this.selectedLang === 'en-IN' ? 'selected' : ''}>🇬🇧 Eng (IN)</option>
-                        <option value="en-US" ${this.selectedLang === 'en-US' ? 'selected' : ''}>🇺🇸 Eng (US)</option>
+                        <option value="en-IN" ${this.selectedLang === 'en-IN' ? 'selected' : ''}>🇬🇧 English</option>
                         <option value="hi-IN" ${this.selectedLang === 'hi-IN' ? 'selected' : ''}>🇮🇳 हिन्दी</option>
                         <option value="fr-FR" ${this.selectedLang === 'fr-FR' ? 'selected' : ''}>🇫🇷 Français</option>
                         <option value="es-ES" ${this.selectedLang === 'es-ES' ? 'selected' : ''}>🇪🇸 Español</option>
@@ -410,7 +399,18 @@ class AIAssistant {
 
         try {
             if (this.isListening) {
+                this.isListening = false;
+                this.updateUIState('idle');
+                if (this.silenceTimer) clearTimeout(this.silenceTimer);
                 this.recognition.stop();
+
+                // Auto-submit text if present when stopped manually
+                const input = document.getElementById('ai-text-input');
+                const finalVal = input ? input.value.trim() : '';
+                if (finalVal) {
+                    this.handleUserInput(finalVal);
+                    if (input) input.value = '';
+                }
             } else {
                 this.recognition.start();
             }
@@ -539,7 +539,7 @@ class AIAssistant {
             } else if (data.intent === 'business_insights') {
                 this.showBusinessInsights(data.data);
             } else if (data.intent === 'create_invoice') {
-                this.showInvoicePreview(data.data);
+                this.createInvoice(data.data);
             } else if (data.intent === 'add_product') {
                 if (data.success && data.product_id) {
                     // Product was already added by backend, redirect to products page
@@ -1000,66 +1000,155 @@ class AIAssistant {
 
     populateInvoiceForm(data) {
         // 1. Set Customer
-        if (data.customer_id) {
-            const customerSelect = document.querySelector('select[name="customer_id"]');
-            if (customerSelect) {
-                customerSelect.value = data.customer_id;
+        const customerSelect = document.querySelector('select[name="customer_id"]');
+        let customerMatched = false;
+        
+        if (data.customer_id && customerSelect) {
+            customerSelect.value = data.customer_id;
+            if (customerSelect.value === data.customer_id) {
+                customerMatched = true;
             }
-        } else if (data.customer_name) {
-            // New customer or unmatched name - might need to create temp customer or alert user
-            // For now, let's try to find by text if ID wasn't passed but name matches
-            const customerSelect = document.querySelector('select[name="customer_id"]');
+        }
+        
+        if (!customerMatched && data.customer_name && customerSelect) {
+            // Try to find matching customer in the dropdown options
             for (let i = 0; i < customerSelect.options.length; i++) {
                 if (customerSelect.options[i].text.toLowerCase().includes(data.customer_name.toLowerCase())) {
                     customerSelect.selectedIndex = i;
+                    customerSelect.dispatchEvent(new Event('change'));
+                    customerMatched = true;
                     break;
                 }
             }
         }
+        
+        // If it's a new customer and not matched, create a temporary customer inline
+        if (!customerMatched && data.customer_name) {
+            const tempNameInput = document.querySelector('input[name="new_customer_name"]');
+            const tempEmailInput = document.querySelector('input[name="new_customer_email"]');
+            const tempPhoneInput = document.querySelector('input[name="new_customer_phone"]');
+            const tempAddrInput = document.querySelector('textarea[name="new_customer_address"]');
+            
+            if (tempNameInput && tempEmailInput && tempPhoneInput && tempAddrInput) {
+                tempNameInput.value = data.customer_name;
+                tempEmailInput.value = data.customer_email || `${data.customer_name.toLowerCase().replace(/\s+/g, '')}@example.com`;
+                tempPhoneInput.value = data.customer_phone || '9999999999';
+                tempAddrInput.value = data.customer_address || 'New Customer Address';
+                
+                if (typeof window.addNewCustomer === 'function') {
+                    window.addNewCustomer();
+                }
+            }
+        }
+
+        let allProductsMatched = true;
 
         // 2. Add Items
         if (data.items && data.items.length > 0) {
-            // Clear existing empty items if any (handled by addItem)
-
             data.items.forEach((item, index) => {
                 // Call the global addItem function from create_invoice.html
                 if (typeof window.addItem === 'function') {
                     window.addItem();
 
-                    // The new item will be at index + 1 (since 1-based usually, but let's check logic)
-                    // addItem increments itemCount. We can access the last added item.
-                    // Actually, create_invoice.html uses a global itemCount.
-                    // We need to find the inputs for the current itemCount.
+                    const productSelects = document.querySelectorAll('#items-container select.product-select');
+                    const productSelect = productSelects[productSelects.length - 1];
 
-                    // Since we are running this sequentially, the itemCount will be incremented.
-                    // We can assume the inputs are named product_{itemCount}_id
+                    const quantityInputs = document.querySelectorAll('#items-container input.quantity-input');
+                    const quantityInput = quantityInputs[quantityInputs.length - 1];
 
-                    const currentCount = window.itemCount; // Access global variable
+                    const discountInputs = document.querySelectorAll('#items-container input.discount-input');
+                    const discountInput = discountInputs[discountInputs.length - 1];
 
-                    const productSelect = document.querySelector(`select[name="product_${currentCount}_id"]`);
-                    const quantityInput = document.querySelector(`input[name="quantity_${currentCount}"]`);
-
+                    let matched = false;
                     if (item.product_id && productSelect) {
                         productSelect.value = item.product_id;
-                        // Trigger change to update price
-                        productSelect.dispatchEvent(new Event('change'));
-                    } else if (item.product_name && productSelect) {
-                        // Try to match by name
+                        if (productSelect.value === item.product_id) {
+                            productSelect.dispatchEvent(new Event('change'));
+                            matched = true;
+                        }
+                    } 
+                    
+                    if (!matched && item.product_name && productSelect) {
+                        // Try robust name matching
+                        const cleanQuery = item.product_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        let bestMatchIndex = -1;
+                        let bestMatchScore = 0;
+                        
                         for (let i = 0; i < productSelect.options.length; i++) {
-                            if (productSelect.options[i].text.toLowerCase().includes(item.product_name.toLowerCase())) {
-                                productSelect.selectedIndex = i;
-                                productSelect.dispatchEvent(new Event('change'));
+                            const optionText = productSelect.options[i].text;
+                            const cleanOption = optionText.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            
+                            // Check if option contains the clean query
+                            if (cleanOption.includes(cleanQuery)) {
+                                bestMatchIndex = i;
                                 break;
                             }
+                            
+                            // Fallback: word-overlap matching
+                            const queryWords = item.product_name.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+                            let matchCount = 0;
+                            queryWords.forEach(word => {
+                                if (optionText.toLowerCase().includes(word)) {
+                                    matchCount++;
+                                }
+                            });
+                            
+                            if (matchCount > bestMatchScore) {
+                                bestMatchScore = matchCount;
+                                bestMatchIndex = i;
+                            }
                         }
+                        
+                        if (bestMatchIndex !== -1) {
+                            productSelect.selectedIndex = bestMatchIndex;
+                            productSelect.dispatchEvent(new Event('change'));
+                            matched = true;
+                        }
+                    }
+
+                    if (!matched) {
+                        allProductsMatched = false;
                     }
 
                     if (quantityInput) {
                         quantityInput.value = item.quantity;
                         quantityInput.dispatchEvent(new Event('change'));
                     }
+
+                    if (item.discount !== undefined && discountInput) {
+                        discountInput.value = item.discount;
+                        discountInput.dispatchEvent(new Event('change'));
+                    }
                 }
             });
+        }
+
+        // 3. Set Tax and Due Date
+        if (data.tax !== undefined && data.tax !== null) {
+            const taxInput = document.getElementById('tax-input');
+            if (taxInput) {
+                taxInput.value = data.tax;
+                taxInput.dispatchEvent(new Event('input'));
+            }
+        }
+
+        if (data.due_date) {
+            const dueDateInput = document.querySelector('input[name="due_date"]');
+            if (dueDateInput) {
+                dueDateInput.value = data.due_date;
+            }
+        }
+
+        // 4. Automatically submit the form to create the invoice instantly if all products matched
+        if (allProductsMatched) {
+            setTimeout(() => {
+                const form = document.querySelector('form.invoice-form');
+                if (form) {
+                    form.submit();
+                }
+            }, 1000); // 1-second delay to show the user the filled form briefly before creation
+        } else {
+            this.addMessage("⚠️ Some products could not be matched automatically. Please select them manually below.", 'ai');
         }
     }
 }
