@@ -2,26 +2,13 @@
 <html lang="en">
 
 <head>
-    <script>
-        // Theme Initializer to prevent visual flash
-        (function() {
-            const userTheme = "{{ session.user_theme or 'system' }}";
-            const savedTheme = localStorage.getItem('theme') || userTheme || 'system';
-            let activeTheme = savedTheme;
-            if (savedTheme === 'system') {
-                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                activeTheme = systemPrefersDark ? 'dark' : 'light';
-            }
-            document.documentElement.setAttribute('data-theme', activeTheme);
-            document.documentElement.setAttribute('data-theme-preference', savedTheme);
-        })();
-    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Khata{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=12.0">
     {% if session.user_role == 'seller' %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}?v=11.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}?v=12.0">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <style>
@@ -1087,7 +1074,7 @@
             }
         });
     </script>
-    <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=11.0"></script>
+    <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=12.0"></script>
     {% endif %}
 </body>
 

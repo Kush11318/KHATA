@@ -321,12 +321,5 @@ alertStyle.textContent = `
 `;
 document.head.appendChild(alertStyle);
 
-// System color scheme change listener
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-    const savedTheme = localStorage.getItem('theme') || 'system';
-    if (savedTheme === 'system') {
-        const newTheme = e.matches ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', newTheme);
-    }
-});
+
 

@@ -106,29 +106,7 @@ html[data-theme="dark"] .theme-option-card:has(input:checked) {
                 >{{ seller.s_address or '' }}</textarea>
             </div>
 
-            <div class="form-group" style="margin-bottom: 24px;">
-                <label class="form-label" style="display: block; font-weight: 800; font-size: 13px; color: #191c1e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Interface Theme</label>
-                
-                <div class="theme-selector-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                    <label class="theme-option-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2.5px solid #000000; border-radius: 12px; background-color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 3px 3px 0px #000000; text-align: center;">
-                        <input type="radio" name="theme" value="light" style="display: none;" {% if seller.s_theme == 'light' %}checked{% endif %} onchange="updateThemePreview(this.value);" />
-                        <span class="material-symbols-outlined notranslate" style="font-size: 28px;" translate="no">light_mode</span>
-                        <span style="font-size: 13px; font-weight: 800;">Light</span>
-                    </label>
-                    
-                    <label class="theme-option-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2.5px solid #000000; border-radius: 12px; background-color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 3px 3px 0px #000000; text-align: center;">
-                        <input type="radio" name="theme" value="dark" style="display: none;" {% if seller.s_theme == 'dark' %}checked{% endif %} onchange="updateThemePreview(this.value);" />
-                        <span class="material-symbols-outlined notranslate" style="font-size: 28px;" translate="no">dark_mode</span>
-                        <span style="font-size: 13px; font-weight: 800;">Dark</span>
-                    </label>
-                    
-                    <label class="theme-option-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2.5px solid #000000; border-radius: 12px; background-color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 3px 3px 0px #000000; text-align: center;">
-                        <input type="radio" name="theme" value="system" style="display: none;" {% if not seller.s_theme or seller.s_theme == 'system' %}checked{% endif %} onchange="updateThemePreview(this.value);" />
-                        <span class="material-symbols-outlined notranslate" style="font-size: 28px;" translate="no">desktop_windows</span>
-                        <span style="font-size: 13px; font-weight: 800;">System</span>
-                    </label>
-                </div>
-            </div>
+
 
             <div class="form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
                 <a href="{{ url_for('seller_dashboard') }}" class="btn btn-outline">
@@ -144,19 +122,7 @@ html[data-theme="dark"] .theme-option-card:has(input:checked) {
 </div>
 
 <script>
-    function updateThemePreview(theme) {
-        localStorage.setItem('theme', theme);
-        let activeTheme = theme;
-        if (theme === 'system') {
-            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            activeTheme = systemPrefersDark ? 'dark' : 'light';
-        }
-        document.documentElement.setAttribute('data-theme', activeTheme);
-        document.documentElement.setAttribute('data-theme-preference', theme);
-    }
-    
-    // Sync local storage on load
-    localStorage.setItem('theme', "{{ seller.s_theme or 'system' }}");
+
 
     function previewImage(input) {
         const file = input.files[0];
