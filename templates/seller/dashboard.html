@@ -192,8 +192,18 @@
 
 <!-- Header Section -->
 <section class="mb-12 comic-card p-8 bg-surface-bright flex flex-col gap-2">
-  <div class="flex items-center gap-3">
-    <span class="comic-sticker-badge px-3 py-1 text-xs font-bold uppercase tracking-wider bg-yellow-300 text-black">Seller Dashboard</span>
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div class="flex items-center gap-3">
+      <span class="comic-sticker-badge px-3 py-1 text-xs font-bold uppercase tracking-wider bg-yellow-300 text-black">Seller Dashboard</span>
+    </div>
+    <!-- Live Date & Time Indicator -->
+    <div class="comic-sticker-badge notranslate inline-flex items-center gap-2.5 px-3 py-1 bg-white border-[2px] border-black text-xs font-bold text-black shadow-[2px_2px_0px_0px_#000000]" translate="no">
+      <span class="material-symbols-outlined notranslate text-[16px] text-primary" translate="no">calendar_month</span>
+      <span id="live-date">...</span>
+      <span class="border-l border-black h-3 opacity-30"></span>
+      <span class="material-symbols-outlined notranslate text-[16px] text-primary" translate="no">schedule</span>
+      <span id="live-time">...</span>
+    </div>
   </div>
   <h1 class="font-display-lg text-4xl md:text-5xl text-on-surface font-black tracking-tight mt-2" style="font-family: 'Manrope', sans-serif; font-weight: 850;">
     Welcome back, <span class="text-secondary">{{ session.user_name }}</span>
@@ -458,5 +468,26 @@ Voice Guidelines
         }
         requestAnimationFrame(render);
     }
+
+    // Live Date and Time Clock
+    function updateLiveTime() {
+        const liveDateEl = document.getElementById('live-date');
+        const liveTimeEl = document.getElementById('live-time');
+        if (!liveDateEl || !liveTimeEl) return;
+        
+        const now = new Date();
+        
+        // Format Date: e.g. "June 19, 2026"
+        const dateOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+        liveDateEl.textContent = now.toLocaleDateString(undefined, dateOptions);
+        
+        // Format Time: e.g. "11:01:23 AM"
+        const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+        liveTimeEl.textContent = now.toLocaleTimeString(undefined, timeOptions);
+    }
+    
+    // Initial call and start ticking interval
+    updateLiveTime();
+    setInterval(updateLiveTime, 1000);
 </script>
 {% endblock %}
