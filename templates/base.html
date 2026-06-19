@@ -21,16 +21,53 @@
             margin: 24px auto 16px auto !important;
             width: 95% !important;
             max-width: 1280px !important;
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
             padding: 12px 40px !important;
             position: sticky !important;
             top: 24px !important;
             z-index: 1000 !important;
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15) !important;
-            transition: all 0.3s ease !important;
+            
+            /* GPU Hardware Acceleration & Composite Layer Promotion */
+            will-change: transform, width, max-width, border-radius, box-shadow;
+            transform: translateZ(0) !important;
+            backface-visibility: hidden !important;
+            perspective: 1000px !important;
+            
+            transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                        width 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                        max-width 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                        border-radius 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                        box-shadow 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                        border-color 0.25s cubic-bezier(0.25, 1, 0.5, 1) !important;
             box-sizing: border-box !important;
+        }
+
+        .premium-header.scrolled {
+            transform: translateY(-24px) translateZ(0) !important;
+            border-top-color: transparent !important;
+            border-left-color: transparent !important;
+            border-right-color: transparent !important;
+            border-radius: 0px 0px 16px 16px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .premium-header-container {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            box-sizing: border-box !important;
+            
+            will-change: max-width;
+            transition: max-width 0.25s cubic-bezier(0.25, 1, 0.5, 1) !important;
+        }
+
+        .premium-header.scrolled .premium-header-container {
+            max-width: 100% !important;
         }
 
         .premium-header-left {
@@ -369,6 +406,188 @@
             margin-top: 0.5rem !important;
         }
 
+        /* Global Neo-Brutalist / Comic Styles for Seller Pages */
+        .premium-header {
+            margin-bottom: 32px !important;
+        }
+
+        /* Card Overrides */
+        .card, 
+        .invoice-summary, 
+        .stat-card,
+        .customer-card,
+        .analytics-card,
+        .product-card {
+            background-color: #ffffff !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 16px !important;
+            box-shadow: 4px 4px 0px 0px #000000 !important;
+            padding: 24px !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .card:hover, 
+        .invoice-summary:hover, 
+        .stat-card:hover,
+        .product-card:hover {
+            transform: translate(-2px, -2px) !important;
+            box-shadow: 6px 6px 0px 0px #000000 !important;
+        }
+
+        /* Table Overrides */
+        .table {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            width: 100% !important;
+            border: 2.5px solid #000000 !important;
+            border-radius: 12px !important;
+            overflow: hidden !important;
+            background-color: #ffffff !important;
+        }
+
+        .table th {
+            background-color: #f1f5f9 !important;
+            color: #000000 !important;
+            font-family: 'Manrope', sans-serif !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            font-size: 12px !important;
+            letter-spacing: 0.5px !important;
+            border-bottom: 2.5px solid #000000 !important;
+            padding: 14px 16px !important;
+        }
+
+        .table td {
+            padding: 14px 16px !important;
+            border-bottom: 1.5px solid #eceef0 !important;
+            color: #1e293b !important;
+            font-weight: 600 !important;
+            background-color: #ffffff !important;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none !important;
+        }
+
+        /* Buttons Overrides */
+        .btn {
+            border: 2.5px solid #000000 !important;
+            border-radius: 9999px !important; /* Rounded pill style */
+            font-family: 'Manrope', sans-serif !important;
+            font-weight: 800 !important;
+            box-shadow: 2px 2px 0px 0px #000000 !important;
+            transition: all 0.2s ease !important;
+            height: 38px !important;
+            padding: 2px 18px !important;
+            font-size: 12px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+
+        .btn:hover {
+            background-color: #eceef0 !important;
+            color: #000000 !important;
+            transform: translate(-1px, -1px) !important;
+            box-shadow: 3px 3px 0px 0px #000000 !important;
+        }
+
+        .btn:active {
+            transform: translate(1px, 1px) !important;
+            box-shadow: 1px 1px 0px 0px #000000 !important;
+        }
+
+        .btn-primary {
+            background-color: #4648d4 !important; /* Core premium indigo */
+            color: #ffffff !important;
+        }
+
+        .btn-primary:hover {
+            background-color: #3b3dbf !important;
+            color: #ffffff !important;
+        }
+
+        .btn-danger {
+            background-color: #ba1a1a !important; /* Premium error red */
+            color: #ffffff !important;
+        }
+
+        .btn-danger:hover {
+            background-color: #a61313 !important;
+            color: #ffffff !important;
+        }
+
+        /* Input / Form Control Overrides */
+        .form-input, 
+        .tax-input,
+        select.form-input,
+        textarea.form-input {
+            border: 2.5px solid #000000 !important;
+            border-radius: 12px !important;
+            padding: 10px 16px !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            box-shadow: 2px 2px 0px 0px #000000 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .form-input:focus {
+            outline: none !important;
+            border-color: #4648d4 !important;
+            box-shadow: 3px 3px 0px 0px #4648d4 !important;
+            transform: translate(-1px, -1px) !important;
+        }
+
+        /* Labels */
+        .form-label {
+            font-family: 'Manrope', sans-serif !important;
+            font-weight: 800 !important;
+            color: #000000 !important;
+            font-size: 11px !important;
+            letter-spacing: 0.5px !important;
+            text-transform: uppercase !important;
+        }
+
+        /* Stock Badges / Status Badges */
+        .stock-badge,
+        .status-badge {
+            border: 2px solid #000000 !important;
+            border-radius: 9999px !important;
+            padding: 2px 10px !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            font-size: 10px !important;
+            letter-spacing: 0.5px !important;
+            box-shadow: 1.5px 1.5px 0px 0px #000000 !important;
+            display: inline-block !important;
+            background-color: #e2e8f0 !important;
+            color: #000000 !important;
+        }
+
+        .stock-badge.low-stock {
+            background-color: #ffdad6 !important;
+            color: #ba1a1a !important;
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-family: 'Manrope', sans-serif !important;
+            font-weight: 950 !important;
+            text-transform: uppercase !important;
+            font-size: 26px !important;
+            letter-spacing: -0.5px !important;
+            color: #000000 !important;
+        }
+
+        /* Back Button Alignments */
+        .back-btn {
+            margin-bottom: 24px !important;
+        }
+
         /* Google Translate UI Overrides */
         html {
             margin-top: 0px !important;
@@ -413,7 +632,7 @@
         {% if session.user_role == 'seller' %}
             <!-- Premium Seller Header -->
             <header class="premium-header">
-                <div class="premium-header-left">
+                <div class="premium-header-container">
                     <a href="{{ url_for('seller_dashboard') }}" class="premium-brand">
                         <span class="premium-brand-text">KHATA</span>
                     </a>
@@ -443,56 +662,56 @@
                             <span>Academy</span>
                         </a>
                     </nav>
-                </div>
-                <div class="premium-header-right">
-                    <a href="{{ url_for('create_invoice') }}" class="btn-slide premium-btn-primary">
-                        <span>Create Invoice</span>
-                        <span>Create Invoice</span>
-                    </a>
-                    <!-- Custom Language Dropdown (Neo-Brutalist Theme) -->
-                    <div class="custom-lang-dropdown">
-                        <button class="custom-lang-trigger" id="custom-lang-trigger">
-                            <span class="custom-lang-flag" id="current-lang-flag">🇬🇧</span>
-                            <span class="custom-lang-name" id="current-lang-name">English</span>
-                            <span class="material-symbols-outlined notranslate text-[16px] text-on-surface-variant" translate="no">expand_more</span>
-                        </button>
-                        <div class="custom-lang-menu" id="custom-lang-menu">
-                            <div class="custom-lang-item" data-value="en">
-                                <span class="lang-flag">🇬🇧</span>
-                                <span class="lang-name">English</span>
-                            </div>
-                            <div class="custom-lang-item" data-value="hi">
-                                <span class="lang-flag">🇮🇳</span>
-                                <span class="lang-name">हिन्दी</span>
-                            </div>
-                            <div class="custom-lang-item" data-value="fr">
-                                <span class="lang-flag">🇫🇷</span>
-                                <span class="lang-name">Français</span>
-                            </div>
-                            <div class="custom-lang-item" data-value="es">
-                                <span class="lang-flag">🇪🇸</span>
-                                <span class="lang-name">Español</span>
-                            </div>
-                            <div class="custom-lang-item" data-value="de">
-                                <span class="lang-flag">🇩🇪</span>
-                                <span class="lang-name">Deutsch</span>
-                            </div>
-                            <div class="custom-lang-item" data-value="ja">
-                                <span class="lang-flag">🇯🇵</span>
-                                <span class="lang-name">日本語</span>
+                    <div class="premium-header-right">
+                        <a href="{{ url_for('create_invoice') }}" class="btn-slide premium-btn-primary">
+                            <span>Create Invoice</span>
+                            <span>Create Invoice</span>
+                        </a>
+                        <!-- Custom Language Dropdown (Neo-Brutalist Theme) -->
+                        <div class="custom-lang-dropdown">
+                            <button class="custom-lang-trigger" id="custom-lang-trigger">
+                                <span class="custom-lang-flag" id="current-lang-flag">🇬🇧</span>
+                                <span class="custom-lang-name" id="current-lang-name">English</span>
+                                <span class="material-symbols-outlined notranslate text-[16px] text-on-surface-variant" translate="no">expand_more</span>
+                            </button>
+                            <div class="custom-lang-menu" id="custom-lang-menu">
+                                <div class="custom-lang-item" data-value="en">
+                                    <span class="lang-flag">🇬🇧</span>
+                                    <span class="lang-name">English</span>
+                                </div>
+                                <div class="custom-lang-item" data-value="hi">
+                                    <span class="lang-flag">🇮🇳</span>
+                                    <span class="lang-name">हिन्दी</span>
+                                </div>
+                                <div class="custom-lang-item" data-value="fr">
+                                    <span class="lang-flag">🇫🇷</span>
+                                    <span class="lang-name">Français</span>
+                                </div>
+                                <div class="custom-lang-item" data-value="es">
+                                    <span class="lang-flag">🇪🇸</span>
+                                    <span class="lang-name">Español</span>
+                                </div>
+                                <div class="custom-lang-item" data-value="de">
+                                    <span class="lang-flag">🇩🇪</span>
+                                    <span class="lang-name">Deutsch</span>
+                                </div>
+                                <div class="custom-lang-item" data-value="ja">
+                                    <span class="lang-flag">🇯🇵</span>
+                                    <span class="lang-name">日本語</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="premium-profile-dropdown">
-                        <button class="premium-profile-trigger">
-                            <span class="premium-profile-email">{{ session.user_email or session.user_name }}</span>
-                            <span class="material-symbols-outlined notranslate text-[16px] text-on-surface-variant transition-transform" translate="no">expand_more</span>
-                        </button>
-                        <div class="premium-dropdown-menu">
-                            <a href="{{ url_for('logout') }}" class="premium-dropdown-item">
-                                <span class="material-symbols-outlined notranslate text-[18px]" translate="no">logout</span>
-                                Logout
-                            </a>
+                        <div class="premium-profile-dropdown">
+                            <button class="premium-profile-trigger">
+                                <span class="premium-profile-email">{{ session.user_email or session.user_name }}</span>
+                                <span class="material-symbols-outlined notranslate text-[16px] text-on-surface-variant transition-transform" translate="no">expand_more</span>
+                            </button>
+                            <div class="premium-dropdown-menu">
+                                <a href="{{ url_for('logout') }}" class="premium-dropdown-item">
+                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">logout</span>
+                                    Logout
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -634,16 +853,33 @@
             localStorage.setItem('ai_assistant_lang', aiLang);
 
             let translateLang = langCode;
-            if (langCode === 'en') translateLang = 'en';
-
-            // Set cookie for Google Translate
-            const cookieValue = translateLang === 'en' ? '' : '/en/' + translateLang;
-            const domain = window.location.hostname;
             
-            document.cookie = "googtrans=" + cookieValue + "; path=/";
-            document.cookie = "googtrans=" + cookieValue + "; path=/; domain=" + domain;
-            if (domain.includes('.')) {
-                document.cookie = "googtrans=" + cookieValue + "; path=/; domain=." + domain;
+            // Clear existing googtrans cookies on all possible domains/paths to avoid duplication loops
+            const domain = window.location.hostname;
+            const cookieNames = ['googtrans', 'googtrans_df'];
+            const paths = ['/', '/seller', ''];
+            const domains = [domain, '.' + domain, ''];
+            
+            const domainParts = domain.split('.');
+            if (domainParts.length > 2) {
+                domains.push('.' + domainParts.slice(1).join('.'));
+                domains.push(domainParts.slice(1).join('.'));
+            }
+            
+            cookieNames.forEach(name => {
+                paths.forEach(path => {
+                    domains.forEach(dom => {
+                        let baseStr = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=" + (path ? path : '/');
+                        if (dom) baseStr += "; domain=" + dom;
+                        document.cookie = baseStr;
+                    });
+                });
+            });
+
+            // Set single correct cookie on path=/
+            if (translateLang !== 'en') {
+                const cookieValue = '/en/' + translateLang;
+                document.cookie = "googtrans=" + cookieValue + "; path=/";
             }
 
             window.location.reload();
@@ -664,6 +900,42 @@
             else if (aiLang.startsWith('es')) globalVal = 'es';
             else if (aiLang.startsWith('de')) globalVal = 'de';
             else if (aiLang.startsWith('ja')) globalVal = 'ja';
+
+            // Clean up duplicate googtrans cookies to avoid infinite reload loop
+            const domain = window.location.hostname;
+            const cookies = document.cookie.split(';');
+            let googtransCount = 0;
+            cookies.forEach(c => {
+                if (c.trim().startsWith('googtrans=')) {
+                    googtransCount++;
+                }
+            });
+            
+            if (googtransCount > 1) {
+                console.warn('Multiple googtrans cookies detected. Cleaning up duplicates...');
+                const paths = ['/', '/seller', ''];
+                const domains = [domain, '.' + domain, ''];
+                const domainParts = domain.split('.');
+                if (domainParts.length > 2) {
+                    domains.push('.' + domainParts.slice(1).join('.'));
+                    domains.push(domainParts.slice(1).join('.'));
+                }
+                
+                paths.forEach(path => {
+                    domains.forEach(dom => {
+                        let baseStr = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=" + (path ? path : '/');
+                        if (dom) baseStr += "; domain=" + dom;
+                        document.cookie = baseStr;
+                    });
+                });
+                
+                if (globalVal !== 'en') {
+                    const cookieValue = '/en/' + globalVal;
+                    document.cookie = "googtrans=" + cookieValue + "; path=/";
+                }
+                window.location.reload();
+                return;
+            }
 
             // Sync custom language dropdown trigger UI
             const activeItem = document.querySelector(`.custom-lang-item[data-value="${globalVal}"]`);
@@ -702,9 +974,16 @@
                     });
                 });
             }
+
+            // Dynamically load Google Translate script ONLY if the active language is not English
+            if (globalVal !== 'en') {
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+                document.body.appendChild(script);
+            }
         });
     </script>
-    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=5.0"></script>
     {% endif %}
 </body>

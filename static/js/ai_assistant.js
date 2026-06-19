@@ -844,7 +844,18 @@ class AIAssistant {
         if (url) {
             this.showTransitionOverlay(data.target);
             setTimeout(() => {
-                window.location.href = url;
+                if (typeof window.navigateToPage === 'function' && data.target !== 'logout') {
+                    window.navigateToPage(url).then(() => {
+                        // Remove transition overlay smoothly after load completes
+                        const overlay = document.querySelector('.ai-transition-overlay');
+                        if (overlay) {
+                            overlay.classList.remove('active');
+                            setTimeout(() => overlay.remove(), 300);
+                        }
+                    });
+                } else {
+                    window.location.href = url;
+                }
             }, 1500);
         }
     }

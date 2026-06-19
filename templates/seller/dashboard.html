@@ -237,19 +237,19 @@
 <section class="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6 mb-12">
 <!-- Total Products -->
 <div class="metric-card bg-surface-bright bg-opacity-90 border p-8 rounded-2xl md:col-span-2 lg:col-span-3 flex flex-col items-start shadow-md animate-fade-in-up hover:border-primary border-outline border-primary" style="animation-delay: 0.1s;">
-<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-6 opacity-60">Total Products</span>
+<span class="text-black font-label-bold text-label-bold uppercase tracking-widest mb-6">Total Products</span>
 <span class="font-display-lg text-display-lg text-on-surface">{{ stats.total_products }}</span>
 </div>
 
 <!-- Total Customers -->
 <div class="metric-card bg-surface-bright bg-opacity-90 border p-8 rounded-2xl md:col-span-2 lg:col-span-3 flex flex-col items-start shadow-md animate-fade-in-up hover:border-primary border-outline border-primary" style="animation-delay: 0.2s;">
-<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-6 opacity-60">Total Customers</span>
+<span class="text-black font-label-bold text-label-bold uppercase tracking-widest mb-6">Total Customers</span>
 <span class="font-display-lg text-display-lg text-on-surface">{{ stats.total_customers }}</span>
 </div>
 
 <!-- Total Invoices -->
 <div class="metric-card bg-surface-bright bg-opacity-90 border p-8 rounded-2xl md:col-span-2 lg:col-span-3 flex flex-col items-start shadow-md animate-fade-in-up hover:border-primary border-outline border-primary" style="animation-delay: 0.3s;">
-<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-6 opacity-60">Total Invoices</span>
+<span class="text-black font-label-bold text-label-bold uppercase tracking-widest mb-6">Total Invoices</span>
 <div class="flex items-baseline gap-2">
 <span class="font-display-lg text-display-lg text-on-surface">{{ stats.total_invoices }}</span>
 </div>
@@ -285,7 +285,7 @@
 <div class="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
 <span class="material-symbols-outlined notranslate text-[120px] text-secondary" translate="no">payments</span>
 </div>
-<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-4 opacity-60">Revenue Collected</span>
+<span class="text-black font-label-bold text-label-bold uppercase tracking-widest mb-4">Revenue Collected</span>
 <span class="font-display-lg text-[48px] text-on-surface mb-2">₹{{ "%.2f"|format(stats.revenue_collected or 0) }}</span>
 <div class="flex items-center gap-2 px-3 py-1 {% if stats.revenue_growth_pct >= 0 %}bg-emerald-50 text-emerald-600{% else %}bg-rose-50 text-rose-600{% endif %} rounded-full text-label-sm font-label-bold">
 <span class="material-symbols-outlined notranslate text-[16px]" translate="no">{% if stats.revenue_growth_pct >= 0 %}trending_up{% else %}trending_down{% endif %}</span>
@@ -295,7 +295,7 @@
 
 <!-- Revenue Due - Muted Card -->
 <div class="metric-card bg-surface-bright bg-opacity-90 border p-10 rounded-2xl md:col-span-3 lg:col-span-6 flex flex-col items-start shadow-md animate-fade-in-up border-outline border-primary" style="animation-delay: 0.6s;">
-<span class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest mb-4 opacity-60">Revenue Due</span>
+<span class="text-black font-label-bold text-label-bold uppercase tracking-widest mb-4">Revenue Due</span>
 <span class="font-display-lg text-[48px] text-on-surface mb-2">₹{{ "%.2f"|format(stats.revenue_due or 0) }}</span>
 <div class="flex items-center gap-2 text-on-surface-variant text-label-sm font-label-sm bg-slate-100 px-3 py-1 rounded-full">
 <span class="material-symbols-outlined notranslate text-[16px]" translate="no">schedule</span>
@@ -502,9 +502,9 @@ Voice Guidelines
         const dateOptions = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
         liveDateEl.textContent = now.toLocaleDateString(undefined, dateOptions);
         
-        // Format Time: e.g. "11:01:23 AM"
+        // Format Time: e.g. "11:01:23 AM IST"
         const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-        liveTimeEl.textContent = now.toLocaleTimeString(undefined, timeOptions);
+        liveTimeEl.textContent = now.toLocaleTimeString(undefined, timeOptions) + ' IST';
         
         // Dynamic Greeting based on current hour
         if (liveGreetingEl) {
