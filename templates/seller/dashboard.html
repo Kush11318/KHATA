@@ -191,26 +191,46 @@
 <canvas height="1221" id="bg-canvas" width="1280"></canvas>
 
 <!-- Header Section -->
-<section class="mb-12 comic-card p-8 bg-surface-bright flex flex-col gap-2">
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <div class="flex items-center gap-3">
+<section class="mb-12 comic-card p-8 bg-surface-bright flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+  <div class="flex-grow">
+    <div class="flex items-center gap-3 mb-4">
       <span class="comic-sticker-badge px-3 py-1 text-xs font-bold uppercase tracking-wider bg-yellow-300 text-black">Seller Dashboard</span>
     </div>
-    <!-- Live Date & Time Indicator -->
-    <div class="comic-sticker-badge notranslate inline-flex items-center gap-2.5 px-3 py-1 bg-white border-[2px] border-black text-xs font-bold text-black shadow-[2px_2px_0px_0px_#000000]" translate="no">
-      <span class="material-symbols-outlined notranslate text-[16px] text-primary" translate="no">calendar_month</span>
-      <span id="live-date">...</span>
-      <span class="border-l border-black h-3 opacity-30"></span>
-      <span class="material-symbols-outlined notranslate text-[16px] text-primary" translate="no">schedule</span>
-      <span id="live-time">...</span>
+    <h1 class="font-display-lg text-4xl md:text-5xl text-on-surface font-black tracking-tight" style="font-family: 'Manrope', sans-serif; font-weight: 850;">
+      Welcome back, <span class="text-secondary">{{ session.user_name }}</span>
+    </h1>
+    <p class="text-on-surface-variant font-body-lg text-body-lg max-w-2xl mt-2" style="font-family: 'Inter', sans-serif;">
+      Overview of your financial performance for the last 30 days. Your accounts are looking healthy.
+    </p>
+  </div>
+  
+  <!-- Stacked Neo-Brutalist Clock & Info Card -->
+  <div class="comic-card bg-white p-4 rounded-xl border-[2.5px] border-black shadow-[4px_4px_0px_0px_#000000] flex flex-col gap-2 min-w-[220px] w-full md:w-auto notranslate" translate="no">
+    <!-- Dynamic Greeting & Live Dot -->
+    <div class="flex items-center justify-between gap-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+      <span id="live-greeting" class="flex items-center gap-1.5">Greetings</span>
+      <span class="flex items-center gap-1.5 text-emerald-600">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Syncing
+      </span>
+    </div>
+    
+    <div class="border-t border-black my-1"></div>
+    
+    <!-- Time & Date Staged -->
+    <div class="flex flex-col">
+      <span id="live-time" class="font-display-lg text-2xl font-black text-on-surface tracking-tight">...</span>
+      <span id="live-date" class="text-xs font-bold text-on-surface-variant/80 mt-0.5">...</span>
+    </div>
+    
+    <!-- Additional info metrics -->
+    <div class="border-t border-black my-1"></div>
+    
+    <div class="flex justify-between items-center text-[10px] font-bold text-on-surface-variant/60 uppercase">
+      <span>Session Status</span>
+      <span class="text-black">Active</span>
     </div>
   </div>
-  <h1 class="font-display-lg text-4xl md:text-5xl text-on-surface font-black tracking-tight mt-2" style="font-family: 'Manrope', sans-serif; font-weight: 850;">
-    Welcome back, <span class="text-secondary">{{ session.user_name }}</span>
-  </h1>
-  <p class="text-on-surface-variant font-body-lg text-body-lg max-w-2xl mt-1" style="font-family: 'Inter', sans-serif;">
-    Overview of your financial performance for the last 30 days. Your accounts are looking healthy.
-  </p>
 </section>
 
 <!-- Redesigned Metric Grid -->
@@ -469,21 +489,38 @@ Voice Guidelines
         requestAnimationFrame(render);
     }
 
-    // Live Date and Time Clock
+    // Live Date and Time Clock with Dynamic Greetings
     function updateLiveTime() {
         const liveDateEl = document.getElementById('live-date');
         const liveTimeEl = document.getElementById('live-time');
+        const liveGreetingEl = document.getElementById('live-greeting');
         if (!liveDateEl || !liveTimeEl) return;
         
         const now = new Date();
         
-        // Format Date: e.g. "June 19, 2026"
-        const dateOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+        // Format Date: e.g. "Friday, June 19, 2026"
+        const dateOptions = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
         liveDateEl.textContent = now.toLocaleDateString(undefined, dateOptions);
         
         // Format Time: e.g. "11:01:23 AM"
         const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
         liveTimeEl.textContent = now.toLocaleTimeString(undefined, timeOptions);
+        
+        // Dynamic Greeting based on current hour
+        if (liveGreetingEl) {
+            const hour = now.getHours();
+            let greeting = '👋 Hello';
+            if (hour >= 5 && hour < 12) {
+                greeting = '🌅 Good Morning';
+            } else if (hour >= 12 && hour < 17) {
+                greeting = '☀️ Good Afternoon';
+            } else if (hour >= 17 && hour < 21) {
+                greeting = '🌇 Good Evening';
+            } else {
+                greeting = '🌙 Good Night';
+            }
+            liveGreetingEl.innerHTML = greeting;
+        }
     }
     
     // Initial call and start ticking interval
