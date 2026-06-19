@@ -2,12 +2,26 @@
 <html lang="en">
 
 <head>
+    <script>
+        // Theme Initializer to prevent visual flash
+        (function() {
+            const userTheme = "{{ session.user_theme or 'system' }}";
+            const savedTheme = localStorage.getItem('theme') || userTheme || 'system';
+            let activeTheme = savedTheme;
+            if (savedTheme === 'system') {
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                activeTheme = systemPrefersDark ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', activeTheme);
+            document.documentElement.setAttribute('data-theme-preference', savedTheme);
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Khata{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11.0">
     {% if session.user_role == 'seller' %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}?v=5.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ai_assistant.css') }}?v=11.0">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <style>
@@ -220,10 +234,15 @@
             cursor: pointer !important;
             transition: background-color 0.25s ease !important;
             height: 38px !important;
+            overflow: hidden !important;
         }
 
         .premium-profile-trigger:hover {
             background-color: #eceef0 !important;
+        }
+
+        .premium-profile-trigger .material-symbols-outlined {
+            transition: transform 0.25s ease !important;
         }
 
         .premium-profile-img {
@@ -233,15 +252,46 @@
             object-fit: cover !important;
         }
 
-        .premium-profile-email {
+        .premium-profile-text-container {
+            display: inline-grid !important;
+            place-items: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+            height: 20px !important;
+            width: 140px !important;
+        }
+
+        .premium-profile-email,
+        .premium-profile-menu-text {
             font-family: 'Manrope', sans-serif !important;
             font-size: 12px !important;
             font-weight: 800 !important;
             color: #191c1e !important;
-            max-width: 150px !important;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: block !important;
+            line-height: 20px !important;
+            text-align: left !important;
+            width: 100% !important;
+        }
+
+        .premium-profile-email {
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
+        }
+
+        .premium-profile-menu-text {
+            position: absolute !important;
+            transform: translateY(180%) !important;
+            white-space: nowrap !important;
+        }
+
+        .premium-profile-trigger:hover .premium-profile-email {
+            transform: translateY(-180%) !important;
+        }
+
+        .premium-profile-trigger:hover .premium-profile-menu-text {
+            transform: translateY(0) !important;
         }
 
         .premium-dropdown-menu {
@@ -259,8 +309,7 @@
             z-index: 1000 !important;
         }
 
-        .premium-profile-dropdown:hover .premium-dropdown-menu,
-        .premium-dropdown-menu:hover {
+        .premium-dropdown-menu.show {
             display: flex !important;
         }
 
@@ -269,7 +318,7 @@
             font-family: 'Manrope', sans-serif !important;
             font-size: 13px !important;
             font-weight: 800 !important;
-            color: #ba1a1a !important; /* error color */
+            color: #191c1e !important;
             text-decoration: none !important;
             display: flex !important;
             align-items: center !important;
@@ -278,6 +327,14 @@
         }
 
         .premium-dropdown-item:hover {
+            background-color: rgba(25, 28, 30, 0.08) !important;
+        }
+
+        .premium-dropdown-item.logout {
+            color: #ba1a1a !important;
+        }
+
+        .premium-dropdown-item.logout:hover {
             background-color: rgba(186, 26, 26, 0.08) !important;
         }
 
@@ -628,6 +685,43 @@
 </head>
 
 <body>
+    <!-- Global Page Loader Component -->
+    <div id="page-loader" class="page-loader">
+        <div class="loader" style="--main-size: 5.5em;">
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="text"><span>KHATA</span></div>
+            <div class="line"></div>
+        </div>
+    </div>
+    <script>
+        // Smoothly fade out the loader when page has loaded fully
+        window.addEventListener('DOMContentLoaded', function() {
+            // Keep loader visible for at least 750ms to allow animation to show
+            setTimeout(function() {
+                const loader = document.getElementById('page-loader');
+                if (loader) {
+                    loader.classList.add('fade-out');
+                    setTimeout(() => loader.remove(), 500);
+                }
+            }, 750);
+        });
+        // Safety timeout in case load events don't trigger or resources stall
+        setTimeout(function() {
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.classList.add('fade-out');
+                setTimeout(() => loader.remove(), 500);
+            }
+        }, 2500);
+    </script>
+
     {% if session.user_id %}
         {% if session.user_role == 'seller' %}
             <!-- Premium Seller Header -->
@@ -702,12 +796,21 @@
                             </div>
                         </div>
                         <div class="premium-profile-dropdown">
-                            <button class="premium-profile-trigger">
-                                <span class="premium-profile-email">{{ session.user_email or session.user_name }}</span>
+                            <button class="premium-profile-trigger" id="premiumProfileTrigger">
+                                <div class="premium-profile-text-container">
+                                    <span class="premium-profile-email">{{ session.user_email or session.user_name }}</span>
+                                    <span class="premium-profile-menu-text">Account Menu</span>
+                                </div>
                                 <span class="material-symbols-outlined notranslate text-[16px] text-on-surface-variant transition-transform" translate="no">expand_more</span>
                             </button>
-                            <div class="premium-dropdown-menu">
-                                <a href="{{ url_for('logout') }}" class="premium-dropdown-item">
+                            <div class="premium-dropdown-menu" id="premiumProfileDropdown">
+                                {% if session.user_role == 'seller' %}
+                                <a href="{{ url_for('seller_settings') }}" class="premium-dropdown-item">
+                                    <span class="material-symbols-outlined notranslate text-[18px]" translate="no">settings</span>
+                                    Settings
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('logout') }}" class="premium-dropdown-item logout">
                                     <span class="material-symbols-outlined notranslate text-[18px]" translate="no">logout</span>
                                     Logout
                                 </a>
@@ -984,7 +1087,7 @@
             }
         });
     </script>
-    <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=5.0"></script>
+    <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=11.0"></script>
     {% endif %}
 </body>
 

@@ -504,7 +504,20 @@ class AIAssistant {
         loadingDiv.className = 'ai-message ai';
         loadingDiv.innerHTML = `
             <div class="ai-avatar"><i class="fas fa-robot"></i></div>
-            <div class="ai-text"><i class="fas fa-spinner fa-spin"></i> Thinking...</div>
+            <div class="ai-text" style="display: flex; align-items: center; justify-content: center; min-width: 180px; padding: 14px 20px;">
+                <div class="loader" style="--main-size: 2.2em;">
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="line"></div>
+                </div>
+            </div>
         `;
         container.appendChild(loadingDiv);
         container.scrollTop = container.scrollHeight;
@@ -583,6 +596,15 @@ class AIAssistant {
             cleanText = cleanText.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
             cleanText = cleanText.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
 
+            const currentLang = this.selectedLang || 'en-IN';
+            // Pronunciation workaround for Hindi offline voices (e.g. Kalpana) where "है" and "हैं" are mispronounced as "हो"
+            if (currentLang.startsWith('hi')) {
+                // Standalone "हैं" is replaced with "हए"
+                cleanText = cleanText.replace(/(\s|^)हैं(\s|$|[.,!?;:।])/g, '$1हए$2');
+                // Standalone "है" is replaced with "हए" which bypasses the Kalpana pronunciation bug
+                cleanText = cleanText.replace(/(\s|^)है(\s|$|[.,!?;:।])/g, '$1हए$2');
+            }
+
             if (cleanText) {
                 const utterance = new SpeechSynthesisUtterance(cleanText);
                 
@@ -609,7 +631,7 @@ class AIAssistant {
                 const voicePreferences = {
                     'en-IN': ['google in english', 'google us english', 'microsoft ravina', 'microsoft heera', 'en-in'],
                     'en-US': ['google us english', 'google uk english', 'samantha', 'microsoft david', 'microsoft zira', 'en-us'],
-                    'hi-IN': ['google हिन्दी', 'google hindi', 'microsoft kalpana', 'microsoft ananya', 'microsoft hemant', 'hi-in'],
+                    'hi-IN': ['google हिन्दी', 'google hindi', 'microsoft ananya', 'microsoft swara', 'microsoft kalpana', 'microsoft hemant', 'hi-in'],
                     'fr-FR': ['google français', 'google french', 'microsoft hortense', 'microsoft julie', 'fr-fr'],
                     'es-ES': ['google español', 'google spanish', 'microsoft helena', 'microsoft laura', 'es-es'],
                     'de-DE': ['google deutsch', 'google german', 'microsoft hedda', 'microsoft stefan', 'de-de'],
@@ -880,9 +902,19 @@ class AIAssistant {
         
         overlay.innerHTML = `
             <div class="ai-transition-content">
-                <div class="ai-transition-logo"><i class="fas fa-robot"></i></div>
-                <div class="ai-transition-text">Navigating to ${names[target] || target}...</div>
-                <div class="ai-transition-bar"><div class="ai-transition-progress"></div></div>
+                <div class="loader" style="--main-size: 5em; margin-bottom: 24px;">
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="text"><span>KHATA</span></div>
+                    <div class="line"></div>
+                </div>
+                <div class="ai-transition-text" style="font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 14px;">Navigating to ${names[target] || target}...</div>
             </div>
         `;
         

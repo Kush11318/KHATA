@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime, date, timedelta
 from config import Config
@@ -26,29 +27,28 @@ def migrate_database():
             inspector = inspect(db.engine)
             tables = inspector.get_table_names()
             
-            if 'invoices' not in tables:
-                print("Invoices table does not exist yet. It will be created by db.create_all()")
-                return
-            
-            # Get existing columns
-            columns = [col['name'] for col in inspector.get_columns('invoices')]
-            
-            # Add due_date column if it doesn't exist
-            if 'due_date' not in columns:
-                print("Adding due_date column to invoices table...")
-                try:
-                    db.session.execute(text("ALTER TABLE invoices ADD COLUMN due_date DATE NULL"))
-                    db.session.commit()
-                    print("Migration completed: due_date column added successfully!")
-                except (OperationalError, ProgrammingError) as e:
-                    error_msg = str(e).lower()
-                    if 'duplicate column name' in error_msg or 'already exists' in error_msg:
-                        print("due_date column already exists, skipping migration.")
-                    else:
-                        print(f"Error adding due_date column: {e}")
-                        db.session.rollback()
+            if 'invoices' in tables:
+                # Get existing columns
+                columns = [col['name'] for col in inspector.get_columns('invoices')]
+                
+                # Add due_date column if it doesn't exist
+                if 'due_date' not in columns:
+                    print("Adding due_date column to invoices table...")
+                    try:
+                        db.session.execute(text("ALTER TABLE invoices ADD COLUMN due_date DATE NULL"))
+                        db.session.commit()
+                        print("Migration completed: due_date column added successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("due_date column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding due_date column: {e}")
+                            db.session.rollback()
+                else:
+                    print("due_date column already exists, no migration needed.")
             else:
-                print("due_date column already exists, no migration needed.")
+                print("Invoices table does not exist yet. It will be created by db.create_all()")
             
             # Check if customers table exists and add s_id column if needed
             if 'customers' in tables:
@@ -69,6 +69,41 @@ def migrate_database():
                             db.session.rollback()
                 else:
                     print("s_id column already exists in customers table, no migration needed.")
+            
+            # Check if sellers table exists and add s_logo column if needed
+            if 'sellers' in tables:
+                seller_columns = [col['name'] for col in inspector.get_columns('sellers')]
+                if 's_logo' not in seller_columns:
+                    print("Adding s_logo column to sellers table...")
+                    try:
+                        db.session.execute(text("ALTER TABLE sellers ADD COLUMN s_logo VARCHAR(255) NULL"))
+                        db.session.commit()
+                        print("Migration completed: s_logo column added to sellers table successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("s_logo column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding s_logo column: {e}")
+                            db.session.rollback()
+                else:
+                    print("s_logo column already exists in sellers table, no migration needed.")
+                
+                if 's_theme' not in seller_columns:
+                    print("Adding s_theme column to sellers table...")
+                    try:
+                        db.session.execute(text("ALTER TABLE sellers ADD COLUMN s_theme VARCHAR(20) DEFAULT 'system' NULL"))
+                        db.session.commit()
+                        print("Migration completed: s_theme column added to sellers table successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("s_theme column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding s_theme column: {e}")
+                            db.session.rollback()
+                else:
+                    print("s_theme column already exists in sellers table, no migration needed.")
     except Exception as e:
         print(f"Migration check error: {e}")
         try:
@@ -247,6 +282,7 @@ def login():
             session['user_name'] = seller.s_name
             session['user_email'] = seller.s_email
             session['user_role'] = 'seller'
+            session['user_theme'] = seller.s_theme or 'system'
             return redirect(url_for('seller_dashboard'))
         
         # Check if user is a customer
@@ -422,6 +458,110 @@ def seller_dashboard():
     }
     
     return render_template('seller/dashboard.html', stats=stats, activities=recent_activities)
+
+@app.route('/seller/settings', methods=['GET', 'POST'])
+@login_required
+@role_required('seller')
+def seller_settings():
+    seller = db.session.get(Seller, session['user_id'])
+    if not seller:
+        flash('Seller not found.', 'error')
+        return redirect(url_for('login'))
+        
+    if request.method == 'POST':
+        # Handlers for text fields
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
+        address = request.form.get('address', '').strip()
+        theme = request.form.get('theme', 'system').strip().lower()
+        remove_logo = request.form.get('remove_logo') == 'true'
+        
+        if theme not in {'light', 'dark', 'system'}:
+            theme = 'system'
+        
+        # Validation
+        if not name or not email:
+            flash('Name and Email are required.', 'error')
+            return render_template('seller/settings.html', seller=seller)
+            
+        # Check if email is already in use by another seller
+        existing_seller = Seller.query.filter(Seller.s_email == email, Seller.s_id != seller.s_id).first()
+        if existing_seller:
+            flash('Email is already in use by another seller.', 'error')
+            return render_template('seller/settings.html', seller=seller)
+            
+        # Handle Logo File Upload
+        logo_file = request.files.get('logo')
+        
+        # Create uploads folder if not exists
+        upload_folder = os.path.join(app.static_folder, 'uploads', 'logos')
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+            
+        # Remove logo if requested
+        if remove_logo:
+            if seller.s_logo:
+                old_logo_path = os.path.join(app.static_folder, seller.s_logo)
+                if os.path.exists(old_logo_path):
+                    try:
+                        os.remove(old_logo_path)
+                    except Exception as e:
+                        print(f"Error removing old logo: {e}")
+                seller.s_logo = None
+                
+        elif logo_file and logo_file.filename != '':
+            # Validate extension
+            ext = logo_file.filename.rsplit('.', 1)[1].lower() if '.' in logo_file.filename else ''
+            if ext not in {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'}:
+                flash('Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF, WEBP, SVG.', 'error')
+                return render_template('seller/settings.html', seller=seller)
+                
+            # Read file length to check size (limit 2MB)
+            logo_file.seek(0, os.SEEK_END)
+            file_length = logo_file.tell()
+            logo_file.seek(0) # reset pointer
+            if file_length > 2 * 1024 * 1024:
+                flash('File size exceeds 2MB limit.', 'error')
+                return render_template('seller/settings.html', seller=seller)
+                
+            # Remove old logo if it exists
+            if seller.s_logo:
+                old_logo_path = os.path.join(app.static_folder, seller.s_logo)
+                if os.path.exists(old_logo_path):
+                    try:
+                        os.remove(old_logo_path)
+                    except Exception as e:
+                        print(f"Error removing old logo: {e}")
+            
+            # Secure new filename
+            import time
+            from werkzeug.utils import secure_filename
+            safe_filename = f"logo_{seller.s_id}_{int(time.time())}.{ext}"
+            logo_file.save(os.path.join(upload_folder, safe_filename))
+            
+            # Save relative path (relative to static/)
+            seller.s_logo = f"uploads/logos/{safe_filename}"
+            
+        # Update database fields
+        seller.s_name = name
+        seller.s_email = email
+        seller.s_phone = phone
+        seller.s_address = address
+        seller.s_theme = theme
+        
+        db.session.commit()
+        
+        # Sync session variables
+        session['user_name'] = name
+        session['user_email'] = email
+        session['user_theme'] = theme
+        
+        log_activity('profile_update', 'Updated organization settings and profile details.')
+        flash('Settings updated successfully!', 'success')
+        return redirect(url_for('seller_settings'))
+        
+    return render_template('seller/settings.html', seller=seller)
 
 @app.route('/seller/academy')
 @login_required

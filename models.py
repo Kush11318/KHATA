@@ -59,14 +59,18 @@ class Seller(db.Model):
     s_address = db.Column(db.Text)
     s_phone = db.Column(db.String(20))
     password = db.Column(db.String(255))
+    s_logo = db.Column(db.String(255), nullable=True)
+    s_theme = db.Column(db.String(20), default='system', nullable=True)
     
-    def __init__(self, s_id=None, s_name=None, s_email=None, s_address=None, s_phone=None, password=None, **kwargs):
+    def __init__(self, s_id=None, s_name=None, s_email=None, s_address=None, s_phone=None, password=None, s_logo=None, s_theme='system', **kwargs):
         super().__init__(**kwargs)
         self.s_id = s_id
         self.s_name = s_name
         self.s_email = s_email
         self.s_address = s_address
         self.s_phone = s_phone
+        self.s_logo = s_logo
+        self.s_theme = s_theme
         if password is not None:
             self.password = password
     
@@ -85,6 +89,8 @@ class Seller(db.Model):
             'email': self.s_email,
             'phone': self.s_phone,
             'address': self.s_address,
+            'logo': self.s_logo,
+            'theme': self.s_theme,
             'role': 'seller'
         }
 
@@ -205,6 +211,7 @@ class Invoice(db.Model):
     # Relationships
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True)
     customer = db.relationship('Customer', backref='invoices', lazy=True)
+    seller = db.relationship('Seller', backref='invoices', lazy=True)
     
     # Properties for template compatibility
     @property

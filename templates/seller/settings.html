@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Khata{% endblock %}
+
+{% block content %}
+<style>
+.theme-option-card {
+    border-color: #000000 !important;
+}
+.theme-option-card:has(input:checked) {
+    background-color: #e2e8f0 !important;
+    transform: translate(2px, 2px) !important;
+    box-shadow: 1px 1px 0px #000000 !important;
+}
+html[data-theme="dark"] .theme-option-card {
+    background-color: #1e293b !important;
+    border-color: #475569 !important;
+    color: #f1f5f9 !important;
+    box-shadow: 3px 3px 0px #ffffff !important;
+}
+html[data-theme="dark"] .theme-option-card:has(input:checked) {
+    background-color: #334155 !important;
+    transform: translate(2px, 2px) !important;
+    box-shadow: 1px 1px 0px #ffffff !important;
+}
+</style>
+<div class="dashboard">
+    <div class="section-header">
+        <h2 class="section-title">Organization Settings</h2>
+    </div>
+
+    <div class="card">
+        <form method="POST" enctype="multipart/form-data" class="settings-form">
+            <input type="hidden" id="remove_logo_input" name="remove_logo" value="false">
+            
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label" style="display: block; font-weight: 800; font-size: 13px; color: #191c1e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Organization Logo</label>
+                
+                <div class="logo-upload-container" style="display: flex; align-items: center; gap: 20px; padding: 16px; border: 2px dashed #cbd5e1; border-radius: 12px; background-color: #f8fafc; transition: border-color 0.2s ease;">
+                    <div class="logo-preview-box" style="width: 100px; height: 100px; border: 2.5px solid #000000; border-radius: 8px; background-color: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 3px 3px 0px #000000; flex-shrink: 0;">
+                        <div id="logo_placeholder" style="display: {% if seller.s_logo %}none{% else %}flex{% endif %}; flex-direction: column; align-items: center; justify-content: center; color: #64748b; font-size: 10px; font-weight: 700; text-align: center; padding: 8px;">
+                            <i class="fas fa-image" style="font-size: 24px; margin-bottom: 4px; color: #94a3b8;"></i>
+                            No Logo
+                        </div>
+                        <img id="logo_preview" src="{% if seller.s_logo %}{{ url_for('static', filename=seller.s_logo) }}{% endif %}" alt="Logo Preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: {% if seller.s_logo %}block{% else %}none{% endif %};" />
+                    </div>
+                    
+                    <div class="logo-upload-actions" style="display: flex; flex-direction: column; gap: 8px;">
+                        <label class="btn btn-outline" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; margin: 0;">
+                            <i class="fas fa-upload"></i> Choose Image
+                            <input type="file" name="logo" id="logo_input" accept="image/*" style="display: none;" onchange="previewImage(this);" />
+                        </label>
+                        <button type="button" id="remove_logo_btn" class="btn btn-danger" style="display: {% if seller.s_logo %}inline-flex{% else %}none{% endif %}; align-items: center; gap: 8px; font-size: 13px;" onclick="handleRemoveLogo();">
+                            <i class="fas fa-trash"></i> Remove Logo
+                        </button>
+                        <span style="font-size: 11px; color: #64748b;">Supports PNG, JPG, JPEG, WEBP, SVG, GIF (Max 2MB)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" style="display: block; font-weight: 800; font-size: 13px; color: #191c1e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Organization Name</label>
+                <input
+                    type="text"
+                    name="name"
+                    class="form-input"
+                    value="{{ seller.s_name }}"
+                    placeholder="Enter organization or seller name"
+                    style="width: 100%; padding: 10px 14px; border: 2.5px solid #000000; border-radius: 8px; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700; outline: none; box-shadow: 2px 2px 0px #000000; transition: transform 0.1s ease, box-shadow 0.1s ease;"
+                    required
+                />
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" style="display: block; font-weight: 800; font-size: 13px; color: #191c1e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Email Address</label>
+                <input
+                    type="email"
+                    name="email"
+                    class="form-input"
+                    value="{{ seller.s_email }}"
+                    placeholder="Enter email address"
+                    style="width: 100%; padding: 10px 14px; border: 2.5px solid #000000; border-radius: 8px; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700; outline: none; box-shadow: 2px 2px 0px #000000; transition: transform 0.1s ease, box-shadow 0.1s ease;"
+                    required
+                />
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" style="display: block; font-weight: 800; font-size: 13px; color: #191c1e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Phone Number</label>
+                <input
+                    type="tel"
+                    name="phone"
+                    class="form-input"
+                    value="{{ seller.s_phone or '' }}"
+                    placeholder="Enter phone number"
+                    style="width: 100%; padding: 10px 14px; border: 2.5px solid #000000; border-radius: 8px; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700; outline: none; box-shadow: 2px 2px 0px #000000; transition: transform 0.1s ease, box-shadow 0.1s ease;"
+                />
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label" style="display: block; font-weight: 800; font-size: 13px; color: #191c1e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Billing Address</label>
+                <textarea
+                    name="address"
+                    class="form-input form-textarea"
+                    placeholder="Enter billing/organization address"
+                    style="width: 100%; min-height: 100px; padding: 10px 14px; border: 2.5px solid #000000; border-radius: 8px; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700; outline: none; box-shadow: 2px 2px 0px #000000; resize: vertical;"
+                >{{ seller.s_address or '' }}</textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label" style="display: block; font-weight: 800; font-size: 13px; color: #191c1e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Interface Theme</label>
+                
+                <div class="theme-selector-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                    <label class="theme-option-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2.5px solid #000000; border-radius: 12px; background-color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 3px 3px 0px #000000; text-align: center;">
+                        <input type="radio" name="theme" value="light" style="display: none;" {% if seller.s_theme == 'light' %}checked{% endif %} onchange="updateThemePreview(this.value);" />
+                        <span class="material-symbols-outlined notranslate" style="font-size: 28px;" translate="no">light_mode</span>
+                        <span style="font-size: 13px; font-weight: 800;">Light</span>
+                    </label>
+                    
+                    <label class="theme-option-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2.5px solid #000000; border-radius: 12px; background-color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 3px 3px 0px #000000; text-align: center;">
+                        <input type="radio" name="theme" value="dark" style="display: none;" {% if seller.s_theme == 'dark' %}checked{% endif %} onchange="updateThemePreview(this.value);" />
+                        <span class="material-symbols-outlined notranslate" style="font-size: 28px;" translate="no">dark_mode</span>
+                        <span style="font-size: 13px; font-weight: 800;">Dark</span>
+                    </label>
+                    
+                    <label class="theme-option-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 2.5px solid #000000; border-radius: 12px; background-color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 3px 3px 0px #000000; text-align: center;">
+                        <input type="radio" name="theme" value="system" style="display: none;" {% if not seller.s_theme or seller.s_theme == 'system' %}checked{% endif %} onchange="updateThemePreview(this.value);" />
+                        <span class="material-symbols-outlined notranslate" style="font-size: 28px;" translate="no">desktop_windows</span>
+                        <span style="font-size: 13px; font-weight: 800;">System</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <a href="{{ url_for('seller_dashboard') }}" class="btn btn-outline">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-save"></i>
+                    Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function updateThemePreview(theme) {
+        localStorage.setItem('theme', theme);
+        let activeTheme = theme;
+        if (theme === 'system') {
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            activeTheme = systemPrefersDark ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', activeTheme);
+        document.documentElement.setAttribute('data-theme-preference', theme);
+    }
+    
+    // Sync local storage on load
+    localStorage.setItem('theme', "{{ seller.s_theme or 'system' }}");
+
+    function previewImage(input) {
+        const file = input.files[0];
+        if (file) {
+            // Check size limit (2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert("File size exceeds the 2MB limit.");
+                input.value = "";
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('logo_preview');
+                const placeholder = document.getElementById('logo_placeholder');
+                const removeBtn = document.getElementById('remove_logo_btn');
+                const removeInput = document.getElementById('remove_logo_input');
+                
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                removeBtn.style.display = 'inline-flex';
+                removeInput.value = 'false';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function handleRemoveLogo() {
+        const preview = document.getElementById('logo_preview');
+        const placeholder = document.getElementById('logo_placeholder');
+        const removeBtn = document.getElementById('remove_logo_btn');
+        const removeInput = document.getElementById('remove_logo_input');
+        const logoInput = document.getElementById('logo_input');
+        
+        logoInput.value = ""; // clear file input
+        preview.src = "";
+        preview.style.display = 'none';
+        placeholder.style.display = 'flex';
+        removeBtn.style.display = 'none';
+        removeInput.value = 'true';
+    }
+</script>
+{% endblock %}
