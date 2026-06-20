@@ -195,8 +195,9 @@ class Invoice(db.Model):
     amount = db.Column(db.Numeric(10, 2), default=0)
     s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
     c_id = db.Column(db.String(50), db.ForeignKey('customer.c_id'))
+    is_bill = db.Column(db.Boolean, default=False, nullable=False)
 
-    def __init__(self, invoice_no=None, invoice_datetime=None, due_date=None, status='pending', tax=0, amount=0, s_id=None, c_id=None, **kwargs):
+    def __init__(self, invoice_no=None, invoice_datetime=None, due_date=None, status='pending', tax=0, amount=0, s_id=None, c_id=None, is_bill=False, **kwargs):
         super().__init__(**kwargs)
         self.invoice_no = invoice_no
         if invoice_datetime is not None:
@@ -207,6 +208,7 @@ class Invoice(db.Model):
         self.amount = amount
         self.s_id = s_id
         self.c_id = c_id
+        self.is_bill = is_bill
     
     # Relationships
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True)
@@ -241,6 +243,7 @@ class Invoice(db.Model):
             'customer_id': self.c_id,
             'customer_name': self.customer_name,
             'customer_email': self.customer_email,
+            'is_bill': self.is_bill,
             'items': [item.to_dict() for item in self.items]
         }
 

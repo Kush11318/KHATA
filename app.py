@@ -23,19 +23,19 @@ def migrate_database():
     
     try:
         with app.app_context():
-            # Check if invoices table exists
+            # Check if invoice/invoices table exists
             inspector = inspect(db.engine)
             tables = inspector.get_table_names()
-            
-            if 'invoices' in tables:
+            invoice_table = 'invoice' if 'invoice' in tables else ('invoices' if 'invoices' in tables else None)
+            if invoice_table:
                 # Get existing columns
-                columns = [col['name'] for col in inspector.get_columns('invoices')]
+                columns = [col['name'] for col in inspector.get_columns(invoice_table)]
                 
                 # Add due_date column if it doesn't exist
                 if 'due_date' not in columns:
-                    print("Adding due_date column to invoices table...")
+                    print(f"Adding due_date column to {invoice_table} table...")
                     try:
-                        db.session.execute(text("ALTER TABLE invoices ADD COLUMN due_date DATE NULL"))
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN due_date DATE NULL"))
                         db.session.commit()
                         print("Migration completed: due_date column added successfully!")
                     except (OperationalError, ProgrammingError) as e:
@@ -47,19 +47,37 @@ def migrate_database():
                             db.session.rollback()
                 else:
                     print("due_date column already exists, no migration needed.")
-            else:
-                print("Invoices table does not exist yet. It will be created by db.create_all()")
-            
-            # Check if customers table exists and add s_id column if needed
-            if 'customers' in tables:
-                customer_columns = [col['name'] for col in inspector.get_columns('customers')]
-                if 's_id' not in customer_columns:
-                    print("Adding s_id column to customers table...")
+                
+                # Add is_bill column if it doesn't exist
+                if 'is_bill' not in columns:
+                    print(f"Adding is_bill column to {invoice_table} table...")
                     try:
-                        db.session.execute(text("ALTER TABLE customers ADD COLUMN s_id VARCHAR(10) NULL"))
-                        db.session.execute(text("ALTER TABLE customers ADD CONSTRAINT fk_customers_seller FOREIGN KEY (s_id) REFERENCES sellers(s_id)"))
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN is_bill BOOLEAN NOT NULL DEFAULT 0"))
                         db.session.commit()
-                        print("Migration completed: s_id column added to customers table successfully!")
+                        print("Migration completed: is_bill column added successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("is_bill column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding is_bill column: {e}")
+                            db.session.rollback()
+                else:
+                    print("is_bill column already exists, no migration needed.")
+            else:
+                print("Invoice table does not exist yet. It will be created by db.create_all()")
+            
+            # Check if customer/customers table exists and add s_id column if needed
+            customer_table = 'customer' if 'customer' in tables else ('customers' if 'customers' in tables else None)
+            if customer_table:
+                customer_columns = [col['name'] for col in inspector.get_columns(customer_table)]
+                if 's_id' not in customer_columns:
+                    print(f"Adding s_id column to {customer_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {customer_table} ADD COLUMN s_id VARCHAR(10) NULL"))
+                        db.session.execute(text(f"ALTER TABLE {customer_table} ADD CONSTRAINT fk_customers_seller FOREIGN KEY (s_id) REFERENCES sellers(s_id)"))
+                        db.session.commit()
+                        print(f"Migration completed: s_id column added to {customer_table} table successfully!")
                     except (OperationalError, ProgrammingError) as e:
                         error_msg = str(e).lower()
                         if 'duplicate column name' in error_msg or 'already exists' in error_msg:
@@ -68,7 +86,7 @@ def migrate_database():
                             print(f"Error adding s_id column: {e}")
                             db.session.rollback()
                 else:
-                    print("s_id column already exists in customers table, no migration needed.")
+                    print(f"s_id column already exists in {customer_table} table, no migration needed.")
             
             # Check if sellers table exists and add s_logo column if needed
             if 'sellers' in tables:
@@ -447,10 +465,10 @@ def seller_dashboard():
     total_products = Product.query.filter_by(s_id=session['user_id']).count()
     # Count customers created by this seller
     total_customers = Customer.query.filter_by(s_id=session['user_id']).count()
-    total_invoices = Invoice.query.filter_by(s_id=session['user_id']).count()
-    paid_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='paid')
-    pending_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='pending')
-    overdue_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='overdue')
+    total_invoices = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False).count()
+    paid_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='paid', is_bill=False)
+    pending_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='pending', is_bill=False)
+    overdue_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='overdue', is_bill=False)
     paid_invoices_count = paid_invoices_qs.count()
     unpaid_invoices_count = pending_invoices_qs.count()
     overdue_invoices_count = overdue_invoices_qs.count()
@@ -465,12 +483,14 @@ def seller_dashboard():
     this_month_paid_val = db.session.query(db.func.sum(Invoice.amount)).filter(
         Invoice.s_id == session['user_id'],
         Invoice.status == 'paid',
+        Invoice.is_bill == False,
         Invoice.invoice_datetime >= thirty_days_ago
     ).scalar() or 0.0
     
     last_month_paid_val = db.session.query(db.func.sum(Invoice.amount)).filter(
         Invoice.s_id == session['user_id'],
         Invoice.status == 'paid',
+        Invoice.is_bill == False,
         Invoice.invoice_datetime >= sixty_days_ago,
         Invoice.invoice_datetime < thirty_days_ago
     ).scalar() or 0.0
@@ -1140,7 +1160,7 @@ def seller_invoices():
     min_amount_str = request.args.get('min_amount', '').strip()
     max_amount_str = request.args.get('max_amount', '').strip()
 
-    query = Invoice.query.filter_by(s_id=session['user_id'])
+    query = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False)
 
     if q:
         query = query.filter(Invoice.invoice_no.ilike(f"%{q}%"))
@@ -1186,6 +1206,74 @@ def seller_invoices():
     return render_template(
         'seller/invoices.html',
         invoices=invoices,
+        q=q,
+        customer_q=customer_q,
+        status=status,
+        start_date=start_date_str,
+        end_date=end_date_str,
+        min_amount=min_amount_str,
+        max_amount=max_amount_str,
+    )
+
+
+@app.route('/seller/bills')
+@login_required
+@role_required('seller')
+def seller_bills():
+    # Update overdue invoices before displaying
+    update_overdue_invoices()
+    
+    q = request.args.get('q', '').strip()
+    customer_q = request.args.get('customer', '').strip() # Acts as Vendor filter
+    status = request.args.get('status', '').strip()
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+    min_amount_str = request.args.get('min_amount', '').strip()
+    max_amount_str = request.args.get('max_amount', '').strip()
+
+    query = Invoice.query.filter_by(s_id=session['user_id'], is_bill=True)
+
+    if q:
+        query = query.filter(Invoice.invoice_no.ilike(f"%{q}%"))
+
+    if customer_q:
+        query = query.join(Customer).filter(
+            (Customer.c_name.ilike(f"%{customer_q}%")) | (Customer.c_email.ilike(f"%{customer_q}%"))
+        )
+
+    if status:
+        query = query.filter(Invoice.status == status)
+
+    try:
+        if start_date_str:
+            start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+            query = query.filter(Invoice.invoice_datetime >= start_dt)
+    except ValueError:
+        pass
+
+    try:
+        if end_date_str:
+            end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
+            end_dt_inclusive = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            query = query.filter(Invoice.invoice_datetime <= end_dt_inclusive)
+    except ValueError:
+        pass
+
+    try:
+        if min_amount_str:
+            query = query.filter(Invoice.amount >= Decimal(min_amount_str))
+    except Exception:
+        pass
+    try:
+        if max_amount_str:
+            query = query.filter(Invoice.amount <= Decimal(max_amount_str))
+    except Exception:
+        pass
+
+    bills = query.order_by(Invoice.invoice_datetime.desc()).all()
+    return render_template(
+        'seller/bills.html',
+        bills=bills,
         q=q,
         customer_q=customer_q,
         status=status,
@@ -1473,6 +1561,7 @@ def upload_bill():
         
         s_id = session['user_id']
         customer = Customer.query.filter_by(s_id=s_id, c_name=vendor_name).first()
+        created_customer = False
         if not customer:
             customer = Customer.query.filter(Customer.s_id == s_id, Customer.c_name.like(f"%{vendor_name}%")).first()
             
@@ -1489,7 +1578,7 @@ def upload_bill():
             )
             db.session.add(customer)
             db.session.flush()
-            log_activity('customer_created', f'Created customer/vendor "{vendor_name}" automatically from digitized bill')
+            created_customer = True
         else:
             c_id = customer.c_id
             
@@ -1534,11 +1623,13 @@ def upload_bill():
             tax=tax,
             amount=total_amount,
             s_id=s_id,
-            c_id=c_id
+            c_id=c_id,
+            is_bill=True
         )
         db.session.add(new_invoice)
         db.session.flush()
         
+        added_products = []
         items_list = bill_info.get('items', [])
         for item in items_list:
             item_name = item.get('product_name', 'Unnamed Item').strip()
@@ -1562,7 +1653,7 @@ def upload_bill():
                 )
                 db.session.add(product)
                 db.session.flush()
-                log_activity('product_added', f'Added product "{item_name}" automatically from digitized bill')
+                added_products.append(item_name)
             else:
                 if product.p_stock < item_qty:
                     product.p_stock = item_qty + 10
@@ -1577,7 +1668,12 @@ def upload_bill():
             product.p_stock = product.p_stock - item_qty
             
         db.session.commit()
-        log_activity('invoice_created', f'Digitized bill and created invoice {invoice_no} for vendor "{vendor_name}"')
+        metadata = {
+            'created_customer': created_customer,
+            'vendor_name': vendor_name,
+            'added_products': added_products
+        }
+        log_activity('bill_digitized', f'Digitized bill and created invoice {invoice_no} for vendor "{vendor_name}"|{json.dumps(metadata)}')
         
         flash(f'Successfully digitized bill! Created invoice {invoice_no} for vendor "{vendor_name}".', 'success')
         return redirect(url_for('view_invoice', invoice_id=invoice_no))

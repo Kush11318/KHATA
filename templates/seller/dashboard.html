@@ -314,48 +314,69 @@
 <div class="activity-card bg-surface-bright bg-opacity-90 border rounded-2xl overflow-hidden shadow-sm border-outline border-primary flex-grow">
 <div class="divide-y divide-outline-variant">
   {% if activities %}
+  {% if activities %}
       {% for activity in activities %}
-      <div class="flex items-center gap-6 px-12 py-8 hover:bg-slate-50/50 transition-colors cursor-pointer group">
-          {% if activity.action_type == 'product_added' %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">add_box</span>
+      {% set parts = activity.description.split('|') %}
+      {% set main_desc = parts[0] %}
+      {% set metadata_str = parts[1] if parts|length > 1 else '' %}
+      <div class="flex flex-col border-b border-outline-variant hover:bg-slate-50/50 transition-colors">
+          <div class="flex items-center gap-6 px-12 py-8 group">
+              {% if activity.action_type == 'bill_digitized' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">psychology</span>
+                  </div>
+              {% elif activity.action_type == 'product_added' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">add_box</span>
+                  </div>
+              {% elif activity.action_type == 'invoice_created' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">receipt_long</span>
+                  </div>
+              {% elif activity.action_type == 'product_updated' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">edit_note</span>
+                  </div>
+              {% elif activity.action_type == 'product_deleted' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-red-100 group-hover:text-red-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">delete_sweep</span>
+                  </div>
+              {% elif activity.action_type == 'customer_created' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">person_add</span>
+                  </div>
+              {% elif activity.action_type == 'customer_updated' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">manage_accounts</span>
+                  </div>
+              {% elif activity.action_type == 'customer_deleted' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-rose-100 group-hover:text-rose-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">person_remove</span>
+                  </div>
+              {% else %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">info</span>
+                  </div>
+              {% endif %}
+              <div class="flex-grow">
+                  <p class="font-body-lg text-on-surface">{{ main_desc }}</p>
+                  <p class="text-label-sm font-label-sm text-on-surface-variant/70 mt-0.5">{{ activity.action_type|replace('_', ' ')|title }} • {{ activity.get_time_ago() }}</p>
               </div>
-          {% elif activity.action_type == 'invoice_created' %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">receipt_long</span>
-              </div>
-          {% elif activity.action_type == 'product_updated' %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">edit_note</span>
-              </div>
-          {% elif activity.action_type == 'product_deleted' %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-red-100 group-hover:text-red-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">delete_sweep</span>
-              </div>
-          {% elif activity.action_type == 'customer_created' %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">person_add</span>
-              </div>
-          {% elif activity.action_type == 'customer_updated' %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">manage_accounts</span>
-              </div>
-          {% elif activity.action_type == 'customer_deleted' %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-rose-100 group-hover:text-rose-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">person_remove</span>
-              </div>
-          {% else %}
-              <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700 transition-colors">
-                  <span class="material-symbols-outlined notranslate text-[22px]" translate="no">info</span>
-              </div>
-          {% endif %}
-          <div class="flex-grow">
-              <p class="font-body-lg text-on-surface">{{ activity.description }}</p>
-              <p class="text-label-sm font-label-sm text-on-surface-variant/70 mt-0.5">{{ activity.action_type|replace('_', ' ')|title }} • {{ activity.get_time_ago() }}</p>
+              {% if metadata_str %}
+              <button class="p-2 hover:bg-slate-100 rounded-full transition-colors toggle-details-btn" data-activity-id="{{ loop.index }}" data-metadata='{{ metadata_str | safe }}' title="View Details">
+                  <span class="material-symbols-outlined notranslate text-outline" translate="no">more_horiz</span>
+              </button>
+              {% else %}
+              <button class="p-2 hover:bg-slate-100 rounded-full transition-colors opacity-40 cursor-default" disabled>
+                  <span class="material-symbols-outlined notranslate text-outline" translate="no">more_horiz</span>
+              </button>
+              {% endif %}
           </div>
-          <button class="p-2 hover:bg-slate-100 rounded-full transition-colors">
-              <span class="material-symbols-outlined notranslate text-outline" translate="no">more_horiz</span>
-          </button>
+          {% if metadata_str %}
+          <div id="details-{{ loop.index }}" class="activity-details-panel" style="display: none; padding: 0 48px 16px 72px; font-size: 13px; color: #475569; font-family: 'Inter', sans-serif;">
+              <!-- Details populated by JavaScript -->
+          </div>
+          {% endif %}
       </div>
       {% endfor %}
   {% else %}
@@ -526,5 +547,53 @@ Voice Guidelines
     // Initial call and start ticking interval
     updateLiveTime();
     setInterval(updateLiveTime, 1000);
+
+    // Toggle Activity Details dropdown logic
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.toggle-details-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const actId = btn.getAttribute('data-activity-id');
+                const panel = document.getElementById(`details-${actId}`);
+                if (!panel) return;
+                
+                if (panel.style.display === 'none') {
+                    // Populate details if not done yet
+                    if (panel.innerHTML.trim() === '') {
+                        const metadata = JSON.parse(btn.getAttribute('data-metadata'));
+                        let html = '<div style="background: #f8fafc; border: 1.5px solid #000000; padding: 12px; border-radius: 8px; box-shadow: 2px 2px 0px #000000; margin-top: 4px;">';
+                        
+                        if (metadata.created_customer) {
+                            html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user-plus" style="color: #a855f7; margin-right: 6px;"></i> Automatically registered new vendor/customer: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
+                        } else {
+                            html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user" style="color: #64748b; margin-right: 6px;"></i> Matched with existing customer record: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
+                        }
+                        
+                        if (metadata.added_products && metadata.added_products.length > 0) {
+                            html += '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1);">';
+                            html += '<div style="font-weight: 600; margin-bottom: 4px;"><i class="fas fa-boxes" style="color: #10b981; margin-right: 6px;"></i> Products auto-added to inventory:</div>';
+                            html += '<ul style="margin: 0; padding-left: 20px; list-style-type: disc;">';
+                            metadata.added_products.forEach(p => {
+                                html += `<li style="font-weight: 500; font-family: monospace; font-size: 12px; color: #1e293b;">${p}</li>`;
+                            });
+                            html += '</ul>';
+                            html += '</div>';
+                        } else {
+                            html += `<div style="margin-top: 8px; color: #64748b; font-weight: 500;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i> All items mapped to existing products.</div>`;
+                        }
+                        
+                        html += '</div>';
+                        panel.innerHTML = html;
+                    }
+                    
+                    panel.style.display = 'block';
+                    btn.querySelector('.material-symbols-outlined').textContent = 'keyboard_arrow_up';
+                } else {
+                    panel.style.display = 'none';
+                    btn.querySelector('.material-symbols-outlined').textContent = 'more_horiz';
+                }
+            });
+        });
+    });
 </script>
 {% endblock %}

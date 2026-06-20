@@ -734,6 +734,10 @@
                             <span>Invoices</span>
                             <span>Invoices</span>
                         </a>
+                        <a class="premium-nav-link {% if request.endpoint in ['seller_bills'] %}active-link{% endif %}" href="{{ url_for('seller_bills') }}">
+                            <span>Bills</span>
+                            <span>Bills</span>
+                        </a>
                         <a class="premium-nav-link {% if request.endpoint in ['seller_customers', 'view_customer_invoices'] %}active-link{% endif %}" href="{{ url_for('seller_customers') }}">
                             <span>Customers</span>
                             <span>Customers</span>
