@@ -1384,6 +1384,211 @@ def create_invoice():
     products_data = [product.to_dict() for product in products]
     return render_template('seller/create_invoice.html', products=products_data, customers=customers)
 
+
+@app.route('/seller/invoices/upload_bill', methods=['POST'])
+@login_required
+@role_required('seller')
+def upload_bill():
+    if 'bill_file' not in request.files:
+        flash('No file uploaded', 'error')
+        return redirect(url_for('seller_invoices'))
+        
+    file = request.files['bill_file']
+    if not file or file.filename == '':
+        flash('No file selected', 'error')
+        return redirect(url_for('seller_invoices'))
+        
+    filename = file.filename.lower()
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.pdf'}
+    ext = os.path.splitext(filename)[1]
+    if ext not in allowed_extensions:
+        flash('Invalid file type. Only PDF and images (PNG, JPG) are allowed.', 'error')
+        return redirect(url_for('seller_invoices'))
+        
+    file_bytes = file.read()
+    if not file_bytes:
+        flash('Uploaded file is empty', 'error')
+        return redirect(url_for('seller_invoices'))
+        
+    mime_type = 'application/pdf' if ext == '.pdf' else f'image/{ext.lstrip(".")}'
+    if mime_type == 'image/jpg':
+        mime_type = 'image/jpeg'
+        
+    gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not gemini_key:
+        flash('Gemini API key is not configured. Please add GEMINI_API_KEY to your environment.', 'error')
+        return redirect(url_for('seller_invoices'))
+        
+    try:
+        from google import genai
+        from google.genai import types
+        import json
+        from pydantic import BaseModel, Field
+        from typing import List, Optional
+        
+        class BillItem(BaseModel):
+            product_name: str = Field(description="Name of the item/product")
+            quantity: int = Field(description="Quantity of the item")
+            price: float = Field(description="Unit price of the item")
+            discount: float = Field(default=0.0, description="Discount amount for this item")
+
+        class BillData(BaseModel):
+            vendor_name: str = Field(description="Name of the vendor or merchant or shop")
+            invoice_no: Optional[str] = Field(None, description="Invoice or bill number if present")
+            billing_date: Optional[str] = Field(None, description="Billing date in YYYY-MM-DD format")
+            due_date: Optional[str] = Field(None, description="Due date in YYYY-MM-DD format")
+            subtotal: float = Field(description="Subtotal amount before tax and discount")
+            tax: float = Field(description="Tax amount")
+            total_amount: float = Field(description="Total amount including tax")
+            items: List[BillItem] = Field(default=[], description="List of items on the bill")
+            is_paid: bool = Field(default=False, description="True if the bill is marked as Paid, Cash, Receipt or has zero balance due")
+
+        client = genai.Client(api_key=gemini_key)
+        
+        print("Calling Gemini 2.5 Flash to digitalize bill...")
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[
+                types.Part.from_bytes(
+                    data=file_bytes,
+                    mime_type=mime_type
+                ),
+                "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=BillData,
+                temperature=0.1
+            )
+        )
+        
+        bill_info = json.loads(response.text)
+        print(f"Gemini response: {bill_info}")
+        
+        vendor_name = bill_info.get('vendor_name', 'Unknown Vendor').strip()
+        subtotal = Decimal(str(bill_info.get('subtotal', 0.0)))
+        tax = Decimal(str(bill_info.get('tax', 0.0)))
+        total_amount = Decimal(str(bill_info.get('total_amount', 0.0)))
+        extracted_invoice_no = bill_info.get('invoice_no')
+        
+        s_id = session['user_id']
+        customer = Customer.query.filter_by(s_id=s_id, c_name=vendor_name).first()
+        if not customer:
+            customer = Customer.query.filter(Customer.s_id == s_id, Customer.c_name.like(f"%{vendor_name}%")).first()
+            
+        if not customer:
+            c_id = generate_next_customer_id()
+            customer = Customer(
+                c_id=c_id,
+                c_name=vendor_name,
+                c_email=f"{vendor_name.lower().replace(' ', '_')}@example.com",
+                c_phone_no="0000000000",
+                c_address="Extracted from digitized bill",
+                password='',
+                s_id=s_id
+            )
+            db.session.add(customer)
+            db.session.flush()
+            log_activity('customer_created', f'Created customer/vendor "{vendor_name}" automatically from digitized bill')
+        else:
+            c_id = customer.c_id
+            
+        existing_invoice_nos = {inv.invoice_no for inv in Invoice.query.all()}
+        if extracted_invoice_no and extracted_invoice_no.strip() and extracted_invoice_no.strip() not in existing_invoice_nos:
+            invoice_no = extracted_invoice_no.strip()
+        else:
+            invoice_num = 1
+            while True:
+                invoice_no = f"INV-{invoice_num:03d}"
+                if invoice_no not in existing_invoice_nos:
+                    break
+                invoice_num += 1
+                
+        billing_date_str = bill_info.get('billing_date')
+        invoice_datetime = datetime.utcnow()
+        if billing_date_str:
+            try:
+                invoice_datetime = datetime.strptime(billing_date_str, '%Y-%m-%d')
+            except ValueError:
+                pass
+                
+        due_date_str = bill_info.get('due_date')
+        due_date = None
+        if due_date_str:
+            try:
+                due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        if not due_date:
+            due_date = (invoice_datetime + timedelta(days=30)).date()
+            
+        status = 'paid' if bill_info.get('is_paid') else 'pending'
+        if status == 'pending' and due_date < date.today():
+            status = 'overdue'
+            
+        new_invoice = Invoice(
+            invoice_no=invoice_no,
+            invoice_datetime=invoice_datetime,
+            due_date=due_date,
+            status=status,
+            tax=tax,
+            amount=total_amount,
+            s_id=s_id,
+            c_id=c_id
+        )
+        db.session.add(new_invoice)
+        db.session.flush()
+        
+        items_list = bill_info.get('items', [])
+        for item in items_list:
+            item_name = item.get('product_name', 'Unnamed Item').strip()
+            item_qty = int(item.get('quantity', 1))
+            item_price = Decimal(str(item.get('price', 0.0)))
+            item_discount = Decimal(str(item.get('discount', 0.0)))
+            
+            product = Product.query.filter_by(s_id=s_id, p_name=item_name).first()
+            if not product:
+                product = Product.query.filter(Product.s_id == s_id, Product.p_name.like(f"%{item_name}%")).first()
+                
+            if not product:
+                p_id = generate_next_product_id()
+                product = Product(
+                    p_id=p_id,
+                    p_name=item_name,
+                    p_price=item_price,
+                    p_description="Digitized product from bill",
+                    p_stock=item_qty + 10,
+                    s_id=s_id
+                )
+                db.session.add(product)
+                db.session.flush()
+                log_activity('product_added', f'Added product "{item_name}" automatically from digitized bill')
+            else:
+                if product.p_stock < item_qty:
+                    product.p_stock = item_qty + 10
+                    
+            invoice_item = InvoiceItem(
+                invoice_no=invoice_no,
+                p_id=product.p_id,
+                item_quantity=item_qty,
+                discount=item_discount
+            )
+            db.session.add(invoice_item)
+            product.p_stock = product.p_stock - item_qty
+            
+        db.session.commit()
+        log_activity('invoice_created', f'Digitized bill and created invoice {invoice_no} for vendor "{vendor_name}"')
+        
+        flash(f'Successfully digitized bill! Created invoice {invoice_no} for vendor "{vendor_name}".', 'success')
+        return redirect(url_for('view_invoice', invoice_id=invoice_no))
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error digitalizing bill: {e}")
+        flash(f"Error digitalizing bill: {str(e)}", 'error')
+        return redirect(url_for('seller_invoices'))
+
+
 @app.route('/seller/invoices/edit/<invoice_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('seller')
