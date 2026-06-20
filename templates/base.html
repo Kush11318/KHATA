@@ -688,15 +688,34 @@
         </div>
     </div>
     <script>
+        // Check if current page is the dashboard
+        const currentPath = window.location.pathname;
+        const isDashboardPage = currentPath === '/seller' || currentPath === '/seller/';
+
+        // Immediately hide loader if not on the dashboard page to avoid transition screen flash
+        if (!isDashboardPage) {
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.classList.add('fade-out');
+            }
+        }
+
         // Smoothly fade out the loader when page has loaded fully
         window.addEventListener('DOMContentLoaded', function() {
-            // Keep loader visible for at least 750ms to allow animation to show
-            setTimeout(function() {
+            if (isDashboardPage) {
+                // Keep loader visible for at least 750ms to allow animation to show
+                setTimeout(function() {
+                    const loader = document.getElementById('page-loader');
+                    if (loader) {
+                        loader.classList.add('fade-out');
+                    }
+                }, 750);
+            } else {
                 const loader = document.getElementById('page-loader');
                 if (loader) {
                     loader.classList.add('fade-out');
                 }
-            }, 750);
+            }
         });
         // Safety timeout in case load events don't trigger or resources stall
         setTimeout(function() {
@@ -706,7 +725,7 @@
             }
         }, 2500);
 
-        // Intercept clicks on links to show loader on transition
+        // Intercept clicks on links to show loader on transition (only when going to the dashboard)
         document.addEventListener('click', function(e) {
             const link = e.target.closest('a');
             if (!link) return;
@@ -721,12 +740,19 @@
             }
             
             // Check if same origin (internal navigation)
+            let targetUrl;
             try {
-                const targetUrl = new URL(link.href, window.location.href);
+                targetUrl = new URL(link.href, window.location.href);
                 if (targetUrl.origin !== window.location.origin) {
                     return;
                 }
             } catch (err) {
+                return;
+            }
+            
+            // Only show loader if navigating to the dashboard
+            const isTargetDashboard = targetUrl.pathname === '/seller' || targetUrl.pathname === '/seller/';
+            if (!isTargetDashboard) {
                 return;
             }
             
