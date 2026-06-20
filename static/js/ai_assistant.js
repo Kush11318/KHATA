@@ -547,12 +547,20 @@ class AIAssistant {
             this.speak(data.response_text);
 
             // Handle different intents
+            // If the intent is missing information, we do NOT execute the intent action yet.
+            // We just let the conversational flow continue to gather info.
+            if (data.missing_info) {
+                console.log("Missing info for intent " + data.intent + ": " + data.missing_info);
+                return;
+            }
+
             if (data.intent === 'navigation') {
                 this.handleNavigation(data.data);
             } else if (data.intent === 'business_insights') {
                 this.showBusinessInsights(data.data);
             } else if (data.intent === 'create_invoice') {
-                this.createInvoice(data.data);
+                // Show invoice preview card for confirmation first, instead of redirecting immediately
+                this.showInvoicePreview(data.data);
             } else if (data.intent === 'add_product') {
                 if (data.success && data.product_id) {
                     // Product was already added by backend, redirect to products page
