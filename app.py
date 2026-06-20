@@ -1797,15 +1797,17 @@ def delete_invoice(invoice_id):
             flash('Invoice not found or access denied', 'error')
             return redirect(url_for('seller_invoices'))
         
-        # Only allow deletion of cancelled invoices
-        if invoice.status != 'cancelled':
-            flash('Only cancelled invoices can be deleted', 'error')
-            return redirect(url_for('seller_invoices'))
-        
         # Log activity before deletion
-        log_activity('invoice_deleted', f'Deleted cancelled invoice {invoice_id} for {invoice.customer.c_name}')
+        log_activity('invoice_deleted', f'Deleted invoice {invoice_id} for {invoice.customer.c_name if invoice.customer else "Unknown Customer"}')
         
-        # Delete invoice (invoice_items will be cascade deleted due to relationship)
+        # If the invoice was not already cancelled, restore product stock
+        if invoice.status != 'cancelled':
+            for item in invoice.items:
+                product = item.product
+                if product:
+                    product.p_stock = product.p_stock + item.item_quantity
+        
+        # Delete invoice (invoice_items will be cascade deleted due to relationship/DB constraints)
         db.session.delete(invoice)
         db.session.commit()
         flash('Invoice deleted successfully!', 'success')
