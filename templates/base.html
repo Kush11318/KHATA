@@ -673,7 +673,7 @@
 
 <body>
     <!-- Global Page Loader Component -->
-    <div id="page-loader" class="page-loader">
+    <div id="page-loader" class="page-loader fade-out">
         <div class="loader" style="--main-size: 5.5em;">
             <div class="text"><span>KHATA</span></div>
             <div class="text"><span>KHATA</span></div>
@@ -688,88 +688,29 @@
         </div>
     </div>
     <script>
-        // Check if current page is the dashboard
-        const currentPath = window.location.pathname;
-        const isDashboardPage = currentPath === '/seller' || currentPath === '/seller/';
-
-        // Immediately hide loader if not on the dashboard page to avoid transition screen flash
-        if (!isDashboardPage) {
+        (function() {
             const loader = document.getElementById('page-loader');
-            if (loader) {
-                loader.classList.add('fade-out');
-            }
-        }
+            if (!loader) return;
 
-        // Smoothly fade out the loader when page has loaded fully
-        window.addEventListener('DOMContentLoaded', function() {
-            if (isDashboardPage) {
-                // Keep loader visible for at least 750ms to allow animation to show
-                setTimeout(function() {
-                    const loader = document.getElementById('page-loader');
-                    if (loader) {
-                        loader.classList.add('fade-out');
-                    }
-                }, 750);
-            } else {
-                const loader = document.getElementById('page-loader');
-                if (loader) {
-                    loader.classList.add('fade-out');
-                }
-            }
-        });
-        // Safety timeout in case load events don't trigger or resources stall
-        setTimeout(function() {
-            const loader = document.getElementById('page-loader');
-            if (loader) {
-                loader.classList.add('fade-out');
-            }
-        }, 2500);
+            const currentPath = window.location.pathname;
+            const isDashboard = currentPath === '/seller' || currentPath === '/seller/';
 
-        // Intercept clicks on links to show loader on transition (only when going to the dashboard)
-        document.addEventListener('click', function(e) {
-            const link = e.target.closest('a');
-            if (!link) return;
-            
-            // Check if it is a normal internal link
-            const url = link.getAttribute('href');
-            if (!url) return;
-            
-            // Skip anchor links, javascript:, external links, and special targets
-            if (url.startsWith('#') || url.startsWith('javascript:') || link.target === '_blank' || link.hasAttribute('download')) {
-                return;
-            }
-            
-            // Check if same origin (internal navigation)
-            let targetUrl;
-            try {
-                targetUrl = new URL(link.href, window.location.href);
-                if (targetUrl.origin !== window.location.origin) {
-                    return;
-                }
-            } catch (err) {
-                return;
-            }
-            
-            // Only show loader if navigating to the dashboard
-            const isTargetDashboard = targetUrl.pathname === '/seller' || targetUrl.pathname === '/seller/';
-            if (!isTargetDashboard) {
-                return;
-            }
-            
-            // Show the loader by removing 'fade-out' class
-            const loader = document.getElementById('page-loader');
-            if (loader) {
+            if (isDashboard) {
+                // Show loader immediately on dashboard load
                 loader.classList.remove('fade-out');
+                
+                // Hide it after a short delay
+                const hide = () => loader.classList.add('fade-out');
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    setTimeout(hide, 750);
+                } else {
+                    window.addEventListener('DOMContentLoaded', () => setTimeout(hide, 750));
+                    window.addEventListener('load', hide);
+                }
+                // Safety fallback
+                setTimeout(hide, 2500);
             }
-        });
-
-        // Hide loader if page is restored from history/cache
-        window.addEventListener('pageshow', function(event) {
-            const loader = document.getElementById('page-loader');
-            if (loader) {
-                loader.classList.add('fade-out');
-            }
-        });
+        })();
     </script>
 
     {% if session.user_id %}

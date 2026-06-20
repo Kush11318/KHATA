@@ -115,6 +115,24 @@ function shouldHandleLink(link) {
 window.navigateToPage = async function(url, pushState = true) {
     showProgressBar();
     
+    // Check if we are navigating to the seller dashboard
+    let targetPath = '';
+    try {
+        targetPath = new URL(url, window.location.origin).pathname;
+    } catch (e) {
+        targetPath = url;
+    }
+    const isDashboard = targetPath === '/seller' || targetPath === '/seller/';
+    const hasAiOverlay = document.querySelector('.ai-transition-overlay') !== null;
+    
+    const loader = document.getElementById('page-loader');
+    let startTime = null;
+    
+    if (isDashboard && loader && !hasAiOverlay) {
+        loader.classList.remove('fade-out');
+        startTime = Date.now();
+    }
+    
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -163,6 +181,13 @@ window.navigateToPage = async function(url, pushState = true) {
         window.location.href = url;
     } finally {
         hideProgressBar();
+        if (loader && startTime !== null) {
+            const elapsed = Date.now() - startTime;
+            const delay = Math.max(0, 750 - elapsed);
+            setTimeout(() => {
+                loader.classList.add('fade-out');
+            }, delay);
+        }
     }
 };
 

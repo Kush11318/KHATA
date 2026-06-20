@@ -1586,7 +1586,7 @@ def upload_bill():
         db.session.rollback()
         print(f"Error digitalizing bill: {e}")
         flash(f"Error digitalizing bill: {str(e)}", 'error')
-        return redirect(url_for('seller_invoices'))
+        return redirect(request.referrer or url_for('seller_invoices'))
 
 
 @app.route('/seller/invoices/edit/<invoice_id>', methods=['GET', 'POST'])

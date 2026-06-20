@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Customers - Khata{% endblock %}
 
@@ -13,10 +13,18 @@
 <div class="dashboard">
     <div class="section-header">
         <h2 class="section-title">Customer Management</h2>
-        <button type="button" class="btn btn-primary" onclick="showAddCustomerForm()">
-            <i class="fas fa-plus"></i>
-            Add Customer
-        </button>
+        <div class="section-actions" style="display: flex; gap: 12px; align-items: center;">
+            <form id="digitize-form" action="{{ url_for('upload_bill') }}" method="post" enctype="multipart/form-data" style="display: flex; align-items: center; margin: 0;">
+                <input type="file" id="bill-file" name="bill_file" accept=".pdf,image/*" style="display: none;" onchange="submitDigitizeForm()">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('bill-file').click()" style="display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-file-upload"></i> Digitize Bill (PDF/Image)
+                </button>
+            </form>
+            <button type="button" class="btn btn-primary" onclick="showAddCustomerForm()">
+                <i class="fas fa-plus"></i>
+                Add Customer
+            </button>
+        </div>
     </div>
 
     <div class="card" style="margin-bottom: 16px;">
@@ -134,6 +142,17 @@
     {% endif %}
 </div>
 
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 999999; justify-content: center; align-items: center; flex-direction: column; color: white;">
+    <div class="spinner" style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1); border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+    <h3 style="margin: 0; font-family: sans-serif; font-weight: 600;">Processing with Gemini 1.5 Flash...</h3>
+    <p style="margin: 8px 0 0 0; opacity: 0.8; font-size: 14px;">Extracting vendor details, items, tax, and amounts...</p>
+</div>
+<style>
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
 <script>
 function showAddCustomerForm() {
     document.getElementById('add-customer-form').style.display = 'block';
@@ -146,6 +165,14 @@ function hideAddCustomerForm() {
     document.querySelector('input[name="email"]').value = '';
     document.querySelector('input[name="phone"]').value = '';
     document.querySelector('textarea[name="address"]').value = '';
+}
+
+function submitDigitizeForm() {
+    const fileInput = document.getElementById('bill-file');
+    if (fileInput.files.length > 0) {
+        document.getElementById('loading-overlay').style.display = 'flex';
+        document.getElementById('digitize-form').submit();
+    }
 }
 </script>
 {% endblock %}
