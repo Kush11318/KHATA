@@ -21,7 +21,14 @@ class AIAssistant {
         this.initSpeechRecognition();
         this.createUI();
         this.checkAndPopulateInvoice(); // Check if we need to fill the form
+        
+        // Auto-apply saved theme on load
+        const savedTheme = localStorage.getItem('ai_custom_theme');
+        if (savedTheme) {
+            this.applyAITheme(savedTheme);
+        }
     }
+
 
     initSpeechRecognition() {
         if ('webkitSpeechRecognition' in window) {
@@ -36,6 +43,8 @@ class AIAssistant {
                 this.updateUIState('listening');
                 if (this.silenceTimer) clearTimeout(this.silenceTimer);
             };
+
+
 
             this.recognition.onend = () => {
                 if (this.isListening) {
@@ -313,6 +322,7 @@ class AIAssistant {
                 <button id="ai-send-btn" class="ai-send-btn" title="Send message"><i class="fas fa-paper-plane"></i></button>
             </div>
         `;
+
         document.body.appendChild(modal);
 
         // Main button toggle modal
@@ -471,6 +481,8 @@ class AIAssistant {
     }
 
 
+
+
     addMessage(text, sender) {
         const container = document.getElementById('ai-chat-messages');
         const div = document.createElement('div');
@@ -495,6 +507,12 @@ class AIAssistant {
     async handleUserInput(text) {
         this.addMessage(text, 'user');
         this.chatHistory.push({ role: 'user', content: text });
+
+        const textLower = text.toLowerCase().trim();
+        if (this.checkThemeCommand(textLower)) {
+            return;
+        }
+
 
         // Show loading
         const loadingId = 'ai-loading-' + Date.now();
@@ -617,6 +635,7 @@ class AIAssistant {
                 const utterance = new SpeechSynthesisUtterance(cleanText);
                 
                 this.updateUIState('speaking');
+
 
                 utterance.onend = () => {
                     if (this.synth && !this.synth.speaking) {
@@ -1202,7 +1221,359 @@ class AIAssistant {
             this.addMessage("⚠️ Some products could not be matched automatically. Please select them manually below.", 'ai');
         }
     }
+
+    checkThemeCommand(text) {
+        const themeMap = {
+            'cyberpunk': ['cyberpunk', 'cyber', 'neon', 'futuristic'],
+            'glassmorphism': ['glassmorphic', 'glassmorphism', 'glass', 'glassy', 'emerald'],
+            'sunset': ['sunset', 'gold', 'amber', 'orange', 'warm'],
+            'retro': ['retro', 'terminal', 'matrix', 'classic green'],
+            'indigo': ['indigo', 'space', 'galaxy', 'dark blue', 'violet'],
+            'default': ['default', 'reset', 'standard', 'original', 'khata']
+        };
+
+        let matchedTheme = null;
+        for (const [themeName, keywords] of Object.entries(themeMap)) {
+            if (keywords.some(kw => text.includes(kw))) {
+                matchedTheme = themeName;
+                break;
+            }
+        }
+
+        if (matchedTheme) {
+            this.applyAITheme(matchedTheme);
+            return true;
+        }
+        return false;
+    }
+
+    applyAITheme(themeName) {
+        const existingStyle = document.getElementById('ai-custom-theme-style');
+        if (existingStyle) {
+            existingStyle.remove();
+        }
+        
+        const scanlines = document.getElementById('ai-retro-scanlines');
+        if (scanlines) {
+            scanlines.remove();
+        }
+
+        if (themeName === 'default') {
+            localStorage.removeItem('ai_custom_theme');
+            this.addMessage("Reverted to default Khata theme.", 'ai');
+            this.speak("Reverted to default theme.");
+            return;
+        }
+
+        localStorage.setItem('ai_custom_theme', themeName);
+
+        let css = '';
+        let themeDisplayName = '';
+        let welcomeVoice = '';
+
+        if (themeName === 'cyberpunk') {
+            themeDisplayName = 'Cyberpunk Neon';
+            welcomeVoice = "Cyberpunk theme activated. Systems operational in neon mode.";
+            css = `
+                body {
+                    background-color: #0b0c10 !important;
+                    background-image: radial-gradient(circle at 50% 50%, #1f2833 0%, #0b0c10 100%) !important;
+                    color: #00f0ff !important;
+                    font-family: 'Montserrat', sans-serif !important;
+                }
+                .card, .header, .table, .dashboard-card, .ai-chat-modal, .seller-sidebar, .card-body, .modal-content {
+                    background: rgba(20, 21, 33, 0.85) !important;
+                    border: 1px solid #ff007f !important;
+                    box-shadow: 0 0 15px rgba(255, 0, 127, 0.25) !important;
+                    backdrop-filter: blur(12px) !important;
+                    -webkit-backdrop-filter: blur(12px) !important;
+                }
+                .btn-primary, .btn-submit, button[type="submit"], .ai-assistant-btn {
+                    background: linear-gradient(135deg, #ff007f, #00f0ff) !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    box-shadow: 0 0 10px rgba(255, 0, 127, 0.5) !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 1px !important;
+                }
+                .btn-outline {
+                    border: 1px solid #00f0ff !important;
+                    color: #00f0ff !important;
+                    background: transparent !important;
+                }
+                .btn-outline:hover {
+                    background: #00f0ff !important;
+                    color: #000000 !important;
+                }
+                h1, h2, h3, h4, h5, h6, th, strong, .section-title, .ai-modal-title {
+                    color: #ff007f !important;
+                    text-shadow: 0 0 5px rgba(255, 0, 127, 0.5) !important;
+                }
+                td, span, p, label, div {
+                    color: #e2e8f0 !important;
+                }
+                input, select, textarea, .form-input {
+                    background-color: #1f2833 !important;
+                    border: 1px solid #00f0ff !important;
+                    color: #00f0ff !important;
+                }
+                .ai-insights-alert-row.alert-warning {
+                    background: rgba(245, 158, 11, 0.1) !important;
+                    border: 1px solid #f59e0b !important;
+                }
+                div[class*="bg-surface"], div[class*="bg-background"], main, section {
+                    background-color: #0b0c10 !important;
+                }
+                div[class*="bg-surface-container"] {
+                    background-color: rgba(20, 21, 33, 0.85) !important;
+                    border: 1px solid #ff007f !important;
+                    box-shadow: 0 0 15px rgba(255, 0, 127, 0.25) !important;
+                }
+                div[class*="text-on-surface"], p[class*="text-on-surface"], span[class*="text-on-surface"] {
+                    color: #e2e8f0 !important;
+                }
+                span[class*="text-primary"], div[class*="text-primary"] {
+                    color: #00f0ff !important;
+                }
+            `;
+        } else if (themeName === 'glassmorphism') {
+            themeDisplayName = 'Glassmorphic Emerald';
+            welcomeVoice = "Glassmorphic Emerald theme applied. Ambient transparency established.";
+            css = `
+                body {
+                    background: linear-gradient(135deg, #0d2b1d 0%, #153e2a 50%, #0d2b1d 100%) !important;
+                    color: #d1fae5 !important;
+                }
+                .card, .header, .table, .dashboard-card, .ai-chat-modal, .seller-sidebar, .card-body, .modal-content {
+                    background: rgba(255, 255, 255, 0.05) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+                    backdrop-filter: blur(18px) !important;
+                    -webkit-backdrop-filter: blur(18px) !important;
+                    border-radius: 16px !important;
+                }
+                .btn-primary, .btn-submit, button[type="submit"], .ai-assistant-btn {
+                    background: linear-gradient(135deg, #10b981, #059669) !important;
+                    color: #ffffff !important;
+                    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2) !important;
+                    border-radius: 8px !important;
+                }
+                .btn-outline {
+                    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+                    color: #ffffff !important;
+                    background: rgba(255, 255, 255, 0.05) !important;
+                }
+                .btn-outline:hover {
+                    background: #10b981 !important;
+                    color: #ffffff !important;
+                }
+                h1, h2, h3, h4, h5, h6, th, strong, .section-title, .ai-modal-title {
+                    color: #34d399 !important;
+                }
+                td, span, p, label, div {
+                    color: #ecfdf5 !important;
+                }
+                input, select, textarea, .form-input {
+                    background: rgba(255, 255, 255, 0.08) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                    color: #ffffff !important;
+                    backdrop-filter: blur(10px) !important;
+                }
+                div[class*="bg-surface"], div[class*="bg-background"], main, section {
+                    background-color: transparent !important;
+                }
+                div[class*="bg-surface-container"] {
+                    background: rgba(255, 255, 255, 0.05) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                    backdrop-filter: blur(18px) !important;
+                }
+            `;
+        } else if (themeName === 'sunset') {
+            themeDisplayName = 'Sunset Gold';
+            welcomeVoice = "Sunset gold theme activated. Bask in the warm twilight.";
+            css = `
+                body {
+                    background: linear-gradient(135deg, #1a1625 0%, #2a2233 100%) !important;
+                    color: #f7fafc !important;
+                }
+                .card, .header, .table, .dashboard-card, .ai-chat-modal, .seller-sidebar, .card-body, .modal-content {
+                    background: rgba(30, 27, 40, 0.85) !important;
+                    border: 1px solid #f5af19 !important;
+                    box-shadow: 0 0 15px rgba(245, 175, 25, 0.15) !important;
+                    border-radius: 12px !important;
+                }
+                .btn-primary, .btn-submit, button[type="submit"], .ai-assistant-btn {
+                    background: linear-gradient(135deg, #f12711, #f5af19) !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    box-shadow: 0 4px 15px rgba(245, 175, 25, 0.3) !important;
+                }
+                .btn-outline {
+                    border: 1px solid #f5af19 !important;
+                    color: #f5af19 !important;
+                    background: transparent !important;
+                }
+                .btn-outline:hover {
+                    background: #f5af19 !important;
+                    color: #000000 !important;
+                }
+                h1, h2, h3, h4, h5, h6, th, strong, .section-title, .ai-modal-title {
+                    color: #f5af19 !important;
+                }
+                td, span, p, label, div {
+                    color: #f7fafc !important;
+                }
+                input, select, textarea, .form-input {
+                    background-color: #2a2233 !important;
+                    border: 1px solid #f5af19 !important;
+                    color: #ffffff !important;
+                }
+                div[class*="bg-surface"], div[class*="bg-background"], main, section {
+                    background-color: #1a1625 !important;
+                }
+                div[class*="bg-surface-container"] {
+                    background-color: rgba(30, 27, 40, 0.85) !important;
+                    border: 1px solid #f5af19 !important;
+                }
+            `;
+        } else if (themeName === 'retro') {
+            themeDisplayName = 'Retro Matrix Terminal';
+            welcomeVoice = "Access granted. Retro terminal mode activated.";
+            css = `
+                body {
+                    background-color: #000000 !important;
+                    color: #39ff14 !important;
+                    font-family: 'Courier New', Courier, monospace !important;
+                }
+                .card, .header, .table, .dashboard-card, .ai-chat-modal, .seller-sidebar, .card-body, .modal-content {
+                    background: #000000 !important;
+                    border: 2px solid #39ff14 !important;
+                    border-radius: 0px !important;
+                    box-shadow: 0 0 10px rgba(57, 255, 20, 0.2) !important;
+                }
+                .btn-primary, .btn-submit, button[type="submit"], .ai-assistant-btn {
+                    background: #39ff14 !important;
+                    color: #000000 !important;
+                    border: 2px solid #39ff14 !important;
+                    font-weight: bold !important;
+                    border-radius: 0px !important;
+                    box-shadow: 0 0 8px rgba(57, 255, 20, 0.4) !important;
+                    text-transform: uppercase !important;
+                }
+                .btn-outline {
+                    border: 1px solid #39ff14 !important;
+                    color: #39ff14 !important;
+                    background: transparent !important;
+                    border-radius: 0px !important;
+                }
+                .btn-outline:hover {
+                    background: #39ff14 !important;
+                    color: #000000 !important;
+                }
+                h1, h2, h3, h4, h5, h6, th, strong, .section-title, .ai-modal-title {
+                    color: #39ff14 !important;
+                    text-shadow: 0 0 5px rgba(57, 255, 20, 0.5) !important;
+                }
+                td, span, p, label, div {
+                    color: #39ff14 !important;
+                    font-family: 'Courier New', Courier, monospace !important;
+                }
+                input, select, textarea, .form-input {
+                    background-color: #000000 !important;
+                    border: 1px solid #39ff14 !important;
+                    color: #39ff14 !important;
+                    border-radius: 0px !important;
+                }
+                div[class*="bg-surface"], div[class*="bg-background"], main, section {
+                    background-color: #000000 !important;
+                }
+                div[class*="bg-surface-container"] {
+                    background-color: #000000 !important;
+                    border: 2px solid #39ff14 !important;
+                }
+                div[class*="text-on-surface"], p[class*="text-on-surface"], span[class*="text-on-surface"] {
+                    color: #39ff14 !important;
+                }
+            `;
+            
+            const scanlineOverlay = document.createElement('div');
+            scanlineOverlay.id = 'ai-retro-scanlines';
+            scanlineOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+                background-size: 100% 4px, 6px 100%;
+                z-index: 999999;
+                pointer-events: none;
+                opacity: 0.85;
+            `;
+            document.body.appendChild(scanlineOverlay);
+        } else if (themeName === 'indigo') {
+            themeDisplayName = 'Deep Space Indigo';
+            welcomeVoice = "Quantum space coordinate lock. Indigo mode enabled.";
+            css = `
+                body {
+                    background: linear-gradient(135deg, #0b091a 0%, #17153a 50%, #0b091a 100%) !important;
+                    color: #e0e7ff !important;
+                }
+                .card, .header, .table, .dashboard-card, .ai-chat-modal, .seller-sidebar, .card-body, .modal-content {
+                    background: rgba(15, 12, 38, 0.8) !important;
+                    border: 1px solid #6366f1 !important;
+                    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2) !important;
+                    border-radius: 20px !important;
+                }
+                .btn-primary, .btn-submit, button[type="submit"], .ai-assistant-btn {
+                    background: linear-gradient(135deg, #4f46e5, #818cf8) !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4) !important;
+                    border-radius: 10px !important;
+                }
+                .btn-outline {
+                    border: 1px solid #818cf8 !important;
+                    color: #818cf8 !important;
+                    background: transparent !important;
+                }
+                .btn-outline:hover {
+                    background: #818cf8 !important;
+                    color: #000000 !important;
+                }
+                h1, h2, h3, h4, h5, h6, th, strong, .section-title, .ai-modal-title {
+                    color: #c7d2fe !important;
+                    text-shadow: 0 0 8px rgba(99, 102, 241, 0.6) !important;
+                }
+                td, span, p, label, div {
+                    color: #e0e7ff !important;
+                }
+                input, select, textarea, .form-input {
+                    background-color: #17153a !important;
+                    border: 1px solid #6366f1 !important;
+                    color: #ffffff !important;
+                }
+                div[class*="bg-surface"], div[class*="bg-background"], main, section {
+                    background-color: transparent !important;
+                }
+                div[class*="bg-surface-container"] {
+                    background-color: rgba(15, 12, 38, 0.8) !important;
+                    border: 1px solid #6366f1 !important;
+                }
+            `;
+        }
+
+        const style = document.createElement('style');
+        style.id = 'ai-custom-theme-style';
+        style.textContent = css;
+        document.head.appendChild(style);
+
+        this.addMessage(`🎨 Activated the <strong>${themeDisplayName}</strong> theme!`, 'ai');
+        this.speak(welcomeVoice);
+    }
 }
+
 
 // Initialize
 window.addEventListener('load', () => {

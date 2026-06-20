@@ -1684,9 +1684,24 @@ def process_ai_command():
         except Exception as e:
             print(f"Error compiling business stats context: {e}")
             
+        # Get all invoices for this seller to allow AI to query the database
+        invoices = Invoice.query.filter_by(s_id=session['user_id']).all()
+        invoices_data = []
+        for inv in invoices:
+            invoices_data.append({
+                'invoice_no': inv.invoice_no,
+                'customer_name': inv.customer.c_name if inv.customer else 'Unknown',
+                'amount': float(inv.amount),
+                'status': inv.status,
+                'date': inv.invoice_datetime.strftime('%Y-%m-%d') if inv.invoice_datetime else 'N/A',
+                'due_date': inv.due_date.strftime('%Y-%m-%d') if inv.due_date else 'N/A',
+                'items': [{'name': item.product.p_name if item.product else 'Unknown', 'quantity': item.item_quantity} for item in inv.items]
+            })
+
         context = {
             'products': [p.to_dict() for p in products],
             'customers': [c.to_dict() for c in customers],
+            'invoices': invoices_data,
             'stats': stats
         }
         
@@ -2021,5 +2036,6 @@ with app.app_context():
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=port)
+
 

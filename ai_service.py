@@ -5,6 +5,61 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def clean_and_normalize(text):
+    text = text.lower().strip()
+    char_map = {
+        'अ': 'a', 'आ': 'a', 'इ': 'i', 'ई': 'i', 'उ': 'u', 'ऊ': 'u', 'ऋ': 'ri',
+        'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+        'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'n',
+        'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'n',
+        'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n',
+        'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+        'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+        'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h',
+        'ा': 'a', 'ि': 'i', 'ी': 'i', 'ु': 'u', 'ू': 'u', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au',
+        'ं': 'n', '्': '', 'ः': 'h'
+    }
+    res = []
+    for char in text:
+        res.append(char_map.get(char, char))
+    return "".join(res)
+
+def edit_dist(s1, s2):
+    if len(s1) < len(s2):
+        return edit_dist(s2, s1)
+    if not s2:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+def is_name_match(part, word):
+    part = "".join(c for c in part if c.isalnum())
+    word = "".join(c for c in word if c.isalnum())
+    if not part or not word:
+        return False
+    if part == word:
+        return True
+    if len(part) >= 3 and len(word) >= 3:
+        if part in word or word in part:
+            return True
+    p_stripped = part.rstrip('aeiou')
+    w_stripped = word.rstrip('aeiou')
+    if p_stripped == w_stripped:
+        return True
+    if len(p_stripped) >= 3 and len(w_stripped) >= 3:
+        if edit_dist(p_stripped, w_stripped) <= 1:
+            return True
+    return False
+
+
 # Generative AI client is configured dynamically in parse_command using environment variables.
 
 
@@ -54,6 +109,7 @@ For 'create_invoice':
     - "items": list of objects {{ "product_name": string, "quantity": int, "is_new_product": boolean, "price": float (if mentioned), "discount": float (default 0) }}
     - "tax": float (default 0)
     - "due_date": string (YYYY-MM-DD) or null
+- Product Validation Warning: If any product specified in the invoice is not present in the 'Seller Products Catalog' (e.g. a new item like Milk), you MUST explicitly state this in the 'response_text' (e.g., "I noticed Milk is not in your product inventory, but I've added it to the invoice. Should we proceed?").
 
 For 'add_customer':
 - "data": {{ "name": string or null, "email": string or null, "phone": string, "address": string }}
@@ -66,8 +122,18 @@ MULTI-TURN CONVERSATION & CONTEXT RETENTION RULES:
    - Keep the same 'intent' (e.g. 'create_invoice').
    - Retain the previously extracted items/details from the history and merge them with the new user input.
    - Set 'customer_name' (or product name, etc.) to the value they just provided.
-2. If ANY required information is missing, you must set 'missing_info' to a direct question asking for the missing detail (e.g. "Who is this invoice for?" or "What items are they buying?"), and set 'response_text' to the same question.
-3. If all required information is gathered, 'missing_info' MUST be set to null.
+2. If the conversation history shows that you just compiled an invoice (or showed its preview/details) and the user wants to adjust it (e.g., "add monitor", "remove keyboard", "change quantity of mouse to 2", "add 2 more", "uh just a minute add monitor"), you MUST:
+   - Keep the intent as 'create_invoice' to modify the current invoice.
+   - Do NOT treat this as 'add_product' (which is for adding a product to the catalog) or 'add_customer'.
+   - Update the items list accordingly (fuzzy match the product, update quantity or append the new item).
+3. If ANY required information is missing, you must set 'missing_info' to a direct question asking for the missing detail (e.g. "Who is this invoice for?" or "What items are they buying?"), and set 'response_text' to the same question.
+4. If all required information is gathered, 'missing_info' MUST be set to null.
+
+DATABASE QUERIES & NATURAL LANGUAGE LEDGER QUESTIONS:
+- If the user asks database-related questions about their invoices, customer balances, payments, or purchase history (e.g. "How much is Anjali Patel pending?", "When did Arjun Mehta pay?", "What did Sneha buy?", "Show me Anjali's ledger"), you MUST:
+  - Analyze the provided 'Invoices History' context carefully.
+  - Formulate a friendly, natural, and accurate answer detailing dates, amounts, and items.
+  - Set the 'intent' to 'unknown' and put your answer in the 'response_text' field.
 
 Rules:
 - Fuzzy match product names from the provided context. If a product sounds similar to an existing one, use the existing name.
@@ -79,9 +145,32 @@ Rules:
 """
 
 def get_context_str(context):
-    product_names = [p['name'] for p in context.get('products', [])]
-    customer_names = [c['name'] for c in context.get('customers', [])]
-    context_str = f"Existing Products: {', '.join(product_names)}\nExisting Customers: {', '.join(customer_names)}"
+    # Formatted Products List
+    products_list = []
+    for p in context.get('products', []):
+        products_list.append(f"- {p['name']} (Price: INR {p['price']}, Stock: {p.get('stock', 0)})")
+    products_str = "\n".join(products_list)
+    
+    # Formatted Customers List
+    customers_list = []
+    for c in context.get('customers', []):
+        customers_list.append(f"- {c['name']} (Email: {c.get('email', 'N/A')}, Phone: {c.get('phone', 'N/A')})")
+    customers_str = "\n".join(customers_list)
+    
+    # Formatted Invoices List
+    invoices_list = []
+    for inv in context.get('invoices', []):
+        items_str = ", ".join([f"{item['name']} x{item['quantity']}" for item in inv['items']])
+        invoices_list.append(
+            f"- {inv['invoice_no']} for {inv['customer_name']}: INR {inv['amount']:.2f} ({inv['status']}) on {inv['date']} (due: {inv['due_date']}) - Items: [{items_str}]"
+        )
+    invoices_str = "\n".join(invoices_list)
+    
+    context_str = (
+        f"Seller Products Catalog:\n{products_str}\n\n"
+        f"Seller Customers:\n{customers_str}\n\n"
+        f"Invoices History:\n{invoices_str}"
+    )
     
     if 'stats' in context:
         s = context['stats']
@@ -180,73 +269,42 @@ def get_translated_insights(stats, lang_code):
     low_stock = stats.get('low_stock', [])
     top_selling = stats.get('top_selling', [])
     
-    best_seller = top_selling[0]['name'] if top_selling else None
-    low_names = [p['name'] for p in low_stock[:2]] if low_stock else []
+    # Format top selling products
+    top_selling_parts = []
+    for i, p in enumerate(top_selling[:3]):
+        name = p['name']
+        if i == 0 and not name[0].isupper():
+            name = f"the {name}"
+        top_selling_parts.append(f"{name} with {p['quantity']} units sold")
+    
+    if len(top_selling_parts) > 1:
+        top_selling_str = ", ".join(top_selling_parts[:-1]) + f", and {top_selling_parts[-1]}"
+    elif top_selling_parts:
+        top_selling_str = top_selling_parts[0]
+    else:
+        top_selling_str = "no products"
+        
+    # Format low stock alerts
+    if low_stock:
+        p = low_stock[0]
+        name = p['name']
+        if not name[0].isupper():
+            name = f"the {name}"
+        low_stock_str = f"You have low stock alerts for {name} with only {p['stock']} units available."
+    else:
+        low_stock_str = "You have no low stock alerts."
+        
+    summary_en = f"You have a total of {customers_count} customers and {products_count} products in your inventory. Your top-selling products are {top_selling_str}. {low_stock_str}"
     
     if lang_code == 'hi-IN':
-        summary = f"यहाँ आपकी वास्तविक समय की व्यापार रिपोर्ट है। आपने {invoices_count} इनवॉइस में कुल ₹{revenue:.2f} का राजस्व अर्जित किया है। "
-        summary += f"आपके पास {customers_count} ग्राहकों की सेवा करने वाले {products_count} सक्रिय उत्पाद हैं। "
-        if best_seller:
-            summary += f"आपका सबसे अधिक बिकने वाला उत्पाद {best_seller} है। "
-        if low_stock:
-            summary += f"आपके पास {len(low_stock)} उत्पाद हैं जिनका स्टॉक कम है, जिसमें {', '.join(low_names)} शामिल हैं। आपको जल्द ही स्टॉक अपडेट करना चाहिए!"
-        else:
-            summary += "आपके सभी उत्पाद पर्याप्त मात्रा में उपलब्ध हैं!"
-        return summary
+        top_selling_hi = []
+        for p in top_selling[:3]:
+            top_selling_hi.append(f"{p['name']} ({p['quantity']} बेचे गए)")
+        top_selling_str_hi = ", ".join(top_selling_hi)
+        low_stock_str_hi = f"{low_stock[0]['name']} के केवल {low_stock[0]['stock']} उपलब्ध हैं" if low_stock else "सभी उत्पाद पर्याप्त मात्रा में उपलब्ध हैं"
+        return f"आपके पास कुल {customers_count} ग्राहक और {products_count} उत्पाद हैं। आपके सबसे अधिक बिकने वाले उत्पाद {top_selling_str_hi} हैं। आपके पास {low_stock_str_hi} के लिए कम स्टॉक चेतावनी है।"
         
-    elif lang_code == 'fr-FR':
-        summary = f"Voici votre rapport d'activité en temps réel. Vous avez généré un chiffre d'affaires total de INR {revenue:.2f} sur {invoices_count} factures. "
-        summary += f"Votre inventaire contient {products_count} produits actifs pour {customers_count} clients enregistrés. "
-        if best_seller:
-            summary += f"Votre produit le plus vendu est {best_seller}. "
-        if low_stock:
-            summary += f"Vous avez {len(low_stock)} articles en rupture de stock, notamment {', '.join(low_names)}. Vous devriez vous réapprovisionner bientôt !"
-        else:
-            summary += "Les niveaux de stock de vos produits sont excellents !"
-        return summary
-
-    elif lang_code == 'es-ES':
-        summary = f"Aquí está su informe comercial en tiempo real. Ha obtenido un ingreso total de INR {revenue:.2f} a través de {invoices_count} facturas. "
-        summary += f"Su inventario cuenta con {products_count} productos activos para {customers_count} clientes registrados. "
-        if best_seller:
-            summary += f"Su producto más vendido es {best_seller}. "
-        if low_stock:
-            summary += f"Tiene {len(low_stock)} artículos con stock bajo, incluyendo {', '.join(low_names)}. ¡Debería reabastecerse pronto!"
-        else:
-            summary += "¡Los niveles de stock de sus productos están en perfecto estado!"
-        return summary
-
-    elif lang_code == 'de-DE':
-        summary = f"Hier ist Ihr Echtzeit-Geschäftsbericht. Sie haben einen Gesamtumsatz von INR {revenue:.2f} aus {invoices_count} Rechnungen erzielt. "
-        summary += f"Ihr Inventar umfasst {products_count} aktive Produkte für {customers_count} registrierte Kunden. "
-        if best_seller:
-            summary += f"Ihr meistverkauftes Produkt ist {best_seller}. "
-        if low_stock:
-            summary += f"Sie haben {len(low_stock)} Artikel mit geringem Lagerbestand, darunter {', '.join(low_names)}. Sie sollten bald nachbestellen!"
-        else:
-            summary += "Ihre Lagerbestände sind im grünen Bereich!"
-        return summary
-
-    elif lang_code == 'ja-JP':
-        summary = f"リアルタイムのビジネスレポートです。現在までに{invoices_count}件の請求書から、合計 {revenue:.2f} インドルピーの売上を達成しています。 "
-        summary += f"登録顧客数は{customers_count}名、取り扱い商品数は{products_count}点です。 "
-        if best_seller:
-            summary += f"最も売れている商品は{best_seller}です。 "
-        if low_stock:
-            summary += f"在庫数が残り少ない商品が{len(low_stock)}点（{', '.join(low_names)}など）あります。お早めに補充してください。"
-        else:
-            summary += "商品の在庫状況はすべて良好です！"
-        return summary
-        
-    summary = f"Here is your real-time business health report. You have earned a total revenue of INR {revenue:.2f} across {invoices_count} invoices. "
-    summary += f"Your inventory has {products_count} active products serving {customers_count} registered customers. "
-    if best_seller:
-        summary += f"Your top-performing product is {best_seller}. "
-    if low_stock:
-        summary += f"You have {len(low_stock)} items running low in stock, including {', '.join(low_names)}. You should restock soon!"
-    else:
-        summary += "Your product stock levels are fully healthy!"
-    return summary
+    return summary_en
 
 def parse_command(user_text, context, history=[], language='en-IN'):
     """
@@ -257,6 +315,129 @@ def parse_command(user_text, context, history=[], language='en-IN'):
     
     # 1. Deterministic Heuristic Routing for Navigation and Insights
     text_lower = user_text.lower().strip()
+    
+    # 0. Deterministic Heuristic for Customer Outstanding Balance
+    balance_keywords = [
+        'balance', 'pending', 'outstanding', 'due', 'how much', 'amount', 
+        'paisa', 'paise', 'rupay', 'rupee', 'rupees', 'lene', 'lena', 'dene', 'dena',
+        'baki', 'baaki', 'bakaya', 'udhaar', 'udhar', 'hisab', 'hisaab', 'khata',
+        'पैसे', 'पैसा', 'रुपये', 'रुपया', 'बाकी', 'बकाया', 'उधार', 'लेने', 'लेना', 'देने', 'देना', 'हिसाब', 'खाता',
+        'कितने', 'कितना', 'बैलेंस', 'bailens'
+    ]
+    norm_text = clean_and_normalize(text_lower)
+    is_balance_query = any(clean_and_normalize(keyword) in norm_text for keyword in balance_keywords)
+    
+    if is_balance_query:
+        matched_customer = None
+        best_match_len = 0
+        words = norm_text.split()
+        
+        for customer in context.get('customers', []):
+            name = customer['name']
+            name_lower = name.lower()
+            norm_name = clean_and_normalize(name_lower)
+            
+            # Match full name
+            if norm_name in norm_text:
+                if len(norm_name) > best_match_len:
+                    matched_customer = customer
+                    best_match_len = len(norm_name)
+            else:
+                # Match name parts
+                name_parts = norm_name.split()
+                for part in name_parts:
+                    if len(part) > 2:
+                        for word in words:
+                            if is_name_match(part, word):
+                                if len(part) > best_match_len:
+                                    matched_customer = customer
+                                    best_match_len = len(part)
+                                    
+        if matched_customer:
+            cust_name = matched_customer['name']
+            pending_sum = 0.0
+            paid_sum = 0.0
+            pending_count = 0
+            paid_count = 0
+            
+            for inv in context.get('invoices', []):
+                if inv['customer_name'].lower() == cust_name.lower():
+                    status = inv['status'].lower()
+                    amount = float(inv['amount'])
+                    if status in ['pending', 'overdue']:
+                        pending_sum += amount
+                        pending_count += 1
+                    elif status == 'paid':
+                        paid_sum += amount
+                        paid_count += 1
+                        
+            is_paid = 'paid' in text_lower or 'payment' in text_lower
+            
+            # Determine if Hindi/Hinglish query
+            is_hindi = (language == 'hi-IN') or any(clean_and_normalize(word) in norm_text for word in ['paise', 'paisa', 'lene', 'lena', 'dene', 'dena', 'baki', 'baaki', 'bakaya', 'udhaar', 'udhar', 'hisab', 'hisaab', 'khata', 'पैसे', 'पैसा', 'रुपये', 'रुपया', 'बाकी', 'बकाया', 'उधार', 'लेने', 'लेना', 'देने', 'देना', 'हिसाब', 'खाता'])
+            
+            if is_hindi:
+                if is_paid:
+                    reply = f"{cust_name} के कुल {paid_count} भुगतान किए गए इनवॉइस हैं जिनका कुल मूल्य INR {paid_sum:.2f} है।"
+                else:
+                    if pending_count == 0:
+                        reply = f"{cust_name} का कोई बकाया इनवॉइस नहीं है। वर्तमान बैलेंस INR 0.00 है।"
+                    else:
+                        reply = f"{cust_name} के कुल {pending_count} बकाया इनवॉइस हैं जिनका लंबित मूल्य INR {pending_sum:.2f} है।"
+            elif language == 'fr-FR':
+                if is_paid:
+                    reply = f"{cust_name} a un total de {paid_count} factures payées avec un montant payé de INR {paid_sum:.2f}."
+                else:
+                    if pending_count == 0:
+                        reply = f"{cust_name} n'a pas de factures impayées. Le solde actuel est de INR 0.00."
+                    else:
+                        reply = f"{cust_name} a un total de {pending_count} factures impayées avec un montant en attente de INR {pending_sum:.2f}."
+            elif language == 'es-ES':
+                if is_paid:
+                    reply = f"{cust_name} tiene un total de {paid_count} facturas pagadas con un monto pagado de INR {paid_sum:.2f}."
+                else:
+                    if pending_count == 0:
+                        reply = f"{cust_name} no tiene facturas pendientes. El saldo actual es de INR 0.00."
+                    else:
+                        reply = f"{cust_name} tiene un total de {pending_count} facturas pendientes con un monto pendiente de INR {pending_sum:.2f}."
+            elif language == 'de-DE':
+                if is_paid:
+                    reply = f"{cust_name} hat insgesamt {paid_count} bezahlte Rechnungen mit einem bezahlten Betrag von INR {paid_sum:.2f}."
+                else:
+                    if pending_count == 0:
+                        reply = f"{cust_name} hat keine ausstehenden Rechnungen. Der aktuelle Kontostand beträgt INR 0.00."
+                    else:
+                        reply = f"{cust_name} hat insgesamt {pending_count} ausstehende Rechnungen mit einem ausstehenden Betrag von INR {pending_sum:.2f}."
+            elif language == 'ja-JP':
+                if is_paid:
+                    reply = f"{cust_name}は合計{paid_count}件の支払い済み請求書があり、支払い額は INR {paid_sum:.2f} です。"
+                else:
+                    if pending_count == 0:
+                        reply = f"{cust_name}の未払いの請求書はありません。現在の残高は INR 0.00 です。"
+                    else:
+                        reply = f"{cust_name}は合計{pending_count}件の未払い請求書があり、保留額は INR {pending_sum:.2f} です。"
+            else:
+                if is_paid:
+                    if paid_count == 1:
+                        reply = f"{cust_name} has a total of 1 paid invoice with a total paid amount of INR {paid_sum:.2f}."
+                    else:
+                        reply = f"{cust_name} has a total of {paid_count} paid invoices with a total paid amount of INR {paid_sum:.2f}."
+                else:
+                    if pending_count == 0:
+                        reply = f"{cust_name} has no outstanding invoices. Current balance is INR 0.00."
+                    elif pending_count == 1:
+                        reply = f"{cust_name} has a total of 1 outstanding invoice with a pending amount of INR {pending_sum:.2f}."
+                    else:
+                        reply = f"{cust_name} has a total of {pending_count} outstanding invoices with a pending amount of INR {pending_sum:.2f}."
+                    
+            return {
+                "intent": "unknown",
+                "data": {},
+                "missing_info": None,
+                "response_text": reply
+            }
+
+
     
     # A. Navigation keywords mapping (multi-lingual)
     nav_targets = {
@@ -320,6 +501,12 @@ def parse_command(user_text, context, history=[], language='en-IN'):
     
     for target, phrases in nav_targets.items():
         if any(phrase in text_lower for phrase in phrases):
+            # If it is a create_invoice request but contains additional details,
+            # fall through to the LLM to parse items and customer details.
+            if target == 'create_invoice':
+                if len(text_lower.split()) > 3:
+                    continue
+                    
             return {
                 "intent": "navigation",
                 "data": {"target": target},
