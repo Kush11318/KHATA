@@ -1675,6 +1675,7 @@ body {
     margin-bottom: 8px;
     background: linear-gradient(to right, #ffffff, #c7d2fe);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -2508,5 +2509,19 @@ html[data-theme="dark"] {
   100% {
     background-position: 102% 0;
   }
+}
+
+/* Helper display classes to avoid inline Jinja CSS errors */
+.display-none {
+    display: none;
+}
+.display-flex {
+    display: flex;
+}
+.display-block {
+    display: block;
+}
+.display-inline-flex {
+    display: inline-flex;
 }
 

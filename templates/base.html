@@ -695,7 +695,6 @@
                 const loader = document.getElementById('page-loader');
                 if (loader) {
                     loader.classList.add('fade-out');
-                    setTimeout(() => loader.remove(), 500);
                 }
             }, 750);
         });
@@ -704,9 +703,47 @@
             const loader = document.getElementById('page-loader');
             if (loader) {
                 loader.classList.add('fade-out');
-                setTimeout(() => loader.remove(), 500);
             }
         }, 2500);
+
+        // Intercept clicks on links to show loader on transition
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if (!link) return;
+            
+            // Check if it is a normal internal link
+            const url = link.getAttribute('href');
+            if (!url) return;
+            
+            // Skip anchor links, javascript:, external links, and special targets
+            if (url.startsWith('#') || url.startsWith('javascript:') || link.target === '_blank' || link.hasAttribute('download')) {
+                return;
+            }
+            
+            // Check if same origin (internal navigation)
+            try {
+                const targetUrl = new URL(link.href, window.location.href);
+                if (targetUrl.origin !== window.location.origin) {
+                    return;
+                }
+            } catch (err) {
+                return;
+            }
+            
+            // Show the loader by removing 'fade-out' class
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.classList.remove('fade-out');
+            }
+        });
+
+        // Hide loader if page is restored from history/cache
+        window.addEventListener('pageshow', function(event) {
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.classList.add('fade-out');
+            }
+        });
     </script>
 
     {% if session.user_id %}

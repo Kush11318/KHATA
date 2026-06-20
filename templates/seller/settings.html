@@ -3,27 +3,6 @@
 {% block title %}Settings - Khata{% endblock %}
 
 {% block content %}
-<style>
-.theme-option-card {
-    border-color: #000000 !important;
-}
-.theme-option-card:has(input:checked) {
-    background-color: #e2e8f0 !important;
-    transform: translate(2px, 2px) !important;
-    box-shadow: 1px 1px 0px #000000 !important;
-}
-html[data-theme="dark"] .theme-option-card {
-    background-color: #1e293b !important;
-    border-color: #475569 !important;
-    color: #f1f5f9 !important;
-    box-shadow: 3px 3px 0px #ffffff !important;
-}
-html[data-theme="dark"] .theme-option-card:has(input:checked) {
-    background-color: #334155 !important;
-    transform: translate(2px, 2px) !important;
-    box-shadow: 1px 1px 0px #ffffff !important;
-}
-</style>
 <div class="dashboard">
     <div class="section-header">
         <h2 class="section-title">Organization Settings</h2>
@@ -38,11 +17,11 @@ html[data-theme="dark"] .theme-option-card:has(input:checked) {
                 
                 <div class="logo-upload-container" style="display: flex; align-items: center; gap: 20px; padding: 16px; border: 2px dashed #cbd5e1; border-radius: 12px; background-color: #f8fafc; transition: border-color 0.2s ease;">
                     <div class="logo-preview-box" style="width: 100px; height: 100px; border: 2.5px solid #000000; border-radius: 8px; background-color: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 3px 3px 0px #000000; flex-shrink: 0;">
-                        <div id="logo_placeholder" style="display: {% if seller.s_logo %}none{% else %}flex{% endif %}; flex-direction: column; align-items: center; justify-content: center; color: #64748b; font-size: 10px; font-weight: 700; text-align: center; padding: 8px;">
+                        <div id="logo_placeholder" class="{% if seller.s_logo %}display-none{% else %}display-flex{% endif %}" style="flex-direction: column; align-items: center; justify-content: center; color: #64748b; font-size: 10px; font-weight: 700; text-align: center; padding: 8px;">
                             <i class="fas fa-image" style="font-size: 24px; margin-bottom: 4px; color: #94a3b8;"></i>
                             No Logo
                         </div>
-                        <img id="logo_preview" src="{% if seller.s_logo %}{{ url_for('static', filename=seller.s_logo) }}{% endif %}" alt="Logo Preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: {% if seller.s_logo %}block{% else %}none{% endif %};" />
+                        <img id="logo_preview" src="{% if seller.s_logo %}{{ url_for('static', filename=seller.s_logo) }}{% endif %}" alt="Logo Preview" class="{% if seller.s_logo %}display-block{% else %}display-none{% endif %}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
                     </div>
                     
                     <div class="logo-upload-actions" style="display: flex; flex-direction: column; gap: 8px;">
@@ -50,7 +29,7 @@ html[data-theme="dark"] .theme-option-card:has(input:checked) {
                             <i class="fas fa-upload"></i> Choose Image
                             <input type="file" name="logo" id="logo_input" accept="image/*" style="display: none;" onchange="previewImage(this);" />
                         </label>
-                        <button type="button" id="remove_logo_btn" class="btn btn-danger" style="display: {% if seller.s_logo %}inline-flex{% else %}none{% endif %}; align-items: center; gap: 8px; font-size: 13px;" onclick="handleRemoveLogo();">
+                        <button type="button" id="remove_logo_btn" class="btn btn-danger {% if seller.s_logo %}display-inline-flex{% else %}display-none{% endif %}" style="align-items: center; gap: 8px; font-size: 13px;" onclick="handleRemoveLogo();">
                             <i class="fas fa-trash"></i> Remove Logo
                         </button>
                         <span style="font-size: 11px; color: #64748b;">Supports PNG, JPG, JPEG, WEBP, SVG, GIF (Max 2MB)</span>

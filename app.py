@@ -376,10 +376,73 @@ def customer_dashboard():
     
     return render_template('customer/dashboard.html', stats=stats, invoices=invoices)
 
+def refresh_demo_data_dates():
+    """Dynamically shift the mock data invoice dates so they are always fresh,
+    allowing the demo dashboard to show logical growth and overdue days."""
+    try:
+        from datetime import datetime, date, timedelta
+        from extensions import db
+        from models import Invoice
+        
+        # Define offsets for the seeded invoices to show stable, beautiful dashboard figures.
+        offsets = {
+            # Paid Invoices:
+            "INV-2024-001": (90, "paid"),
+            "INV-2024-002": (85, "paid"),
+            "INV-2024-003": (80, "paid"),
+            "INV-2024-004": (75, "paid"),
+            "INV-2024-005": (70, "paid"),
+            "INV-2024-006": (65, "paid"),
+            "INV-2024-007": (10, "paid"),      # 10 days ago (this month)
+            "INV-2024-008": (55, "paid"),
+            "INV-2024-009": (45, "paid"),
+            "INV-2024-010": (25, "paid"),      # 25 days ago (this month)
+            "INV-2024-011": (15, "paid"),      # 15 days ago (this month)
+            "INV-2024-012": (5, "paid"),       # 5 days ago (this month)
+            
+            # Pending Invoices:
+            "INV-2025-001": (20, "pending"),
+            "INV-2025-002": (15, "pending"),
+            "INV-2025-003": (10, "pending"),
+            "INV-2025-004": (5, "pending"),
+            "INV-2025-005": (3, "pending"),
+            
+            # Overdue Invoices:
+            "INV-OD-001": (50, "overdue"),
+            "INV-OD-002": (45, "overdue"),
+            "INV-OD-003": (38, "overdue"),
+        }
+        
+        today = date.today()
+        now = datetime.now()
+        
+        invoices = Invoice.query.filter_by(s_id="DEMO01").all()
+        for inv in invoices:
+            if inv.invoice_no in offsets:
+                days_ago, status = offsets[inv.invoice_no]
+                inv.status = status
+                inv.invoice_datetime = now - timedelta(days=days_ago)
+                
+                if status == 'overdue':
+                    inv.due_date = today - timedelta(days=days_ago - 30) if days_ago > 30 else today - timedelta(days=5)
+                elif status == 'pending':
+                    inv.due_date = today + timedelta(days=30 - days_ago) if days_ago < 30 else today + timedelta(days=5)
+                else:
+                    inv.due_date = today - timedelta(days=inv_date_diff if (inv_date_diff := days_ago - 15) > 0 else 5)
+                    
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error refreshing demo dates: {e}")
+
 @app.route('/seller')
 @login_required
 @role_required('seller')
 def seller_dashboard():
+    # Dynamically refresh demo invoices' dates to prevent stale data metrics over time
+    if session.get('user_id') == 'DEMO01':
+        refresh_demo_data_dates()
+        
     # Calculate stats from database
     total_products = Product.query.filter_by(s_id=session['user_id']).count()
     # Count customers created by this seller
@@ -1875,7 +1938,12 @@ def auto_seed():
 
         def make_invoice(inv_no, cust_id, status, days_ago, items_list, tax_pct=18):
             inv_date = datetime.utcnow() - timedelta(days=days_ago)
-            due = today - timedelta(days=days_ago - 30) if status == 'overdue' else today + timedelta(days=15)
+            if status == 'overdue':
+                due = today - timedelta(days=days_ago - 30) if days_ago > 30 else today - timedelta(days=5)
+            elif status == 'pending':
+                due = today + timedelta(days=30 - days_ago) if days_ago < 30 else today + timedelta(days=5)
+            else:
+                due = today - timedelta(days=days_ago - 15)
             subtotal = sum(Decimal(str(price)) * qty - Decimal(str(disc)) for price, qty, disc in items_list)
             tax_amt  = (subtotal * Decimal(str(tax_pct))) / Decimal('100')
             total    = subtotal + tax_amt
@@ -1898,12 +1966,12 @@ def auto_seed():
         make_invoice("INV-2024-004", "DC004", "paid",    75, [(1299, 3, 150), (5999, 1, 0)])
         make_invoice("INV-2024-005", "DC005", "paid",    70, [(6499, 2, 500)])
         make_invoice("INV-2024-006", "DC001", "paid",    65, [(8999, 1, 0),   (999, 2, 0)])
-        make_invoice("INV-2024-007", "DC006", "paid",    60, [(3499, 2, 0),   (2199, 1, 0)])
+        make_invoice("INV-2024-007", "DC006", "paid",    10, [(3499, 2, 0),   (2199, 1, 0)])  # 10 days ago (this month)
         make_invoice("INV-2024-008", "DC002", "paid",    55, [(5999, 1, 0),   (1299, 2, 0)])
         make_invoice("INV-2024-009", "DC007", "paid",    45, [(24999, 1, 2000)])
-        make_invoice("INV-2024-010", "DC003", "paid",    40, [(6499, 1, 0),   (999, 3, 0)])
-        make_invoice("INV-2024-011", "DC004", "paid",    35, [(8999, 1, 500), (2199, 2, 0)])
-        make_invoice("INV-2024-012", "DC005", "paid",    30, [(3499, 1, 0),   (1299, 1, 0)])
+        make_invoice("INV-2024-010", "DC003", "paid",    25, [(6499, 1, 0),   (999, 3, 0)])   # 25 days ago (this month)
+        make_invoice("INV-2024-011", "DC004", "paid",    15, [(8999, 1, 500), (2199, 2, 0)])  # 15 days ago (this month)
+        make_invoice("INV-2024-012", "DC005", "paid",    5, [(3499, 1, 0),   (1299, 1, 0)])   # 5 days ago (this month)
 
         # Pending invoices (awaiting payment)
         make_invoice("INV-2025-001", "DC001", "pending", 20, [(5999, 1, 0),   (999, 2, 0)])
@@ -1954,4 +2022,4 @@ if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
-
+
