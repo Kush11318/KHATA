@@ -185,6 +185,53 @@
     .animate-float {
         animation: ambientFloat 3s ease-in-out infinite;
     }
+
+    /* OCR Promo Card Style & Laser Scanning Animation */
+    .ocr-promo-card {
+        position: relative !important;
+        overflow: hidden !important;
+        background: rgba(70, 72, 212, 0.04) !important;
+        border: 2.5px solid #000000 !important;
+        box-shadow: 4px 4px 0px 0px #000000 !important;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+    }
+    
+    .ocr-promo-card:hover {
+        transform: translate(-4px, -4px) !important;
+        box-shadow: 8px 8px 0px 0px #000000 !important;
+        background: rgba(70, 72, 212, 0.08) !important;
+    }
+    
+    /* Interactive laser scanning overlay */
+    .ocr-promo-card::after {
+        content: '' !important;
+        position: absolute !important;
+        top: -150% !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 150% !important;
+        background: linear-gradient(
+            to bottom,
+            transparent 40%,
+            rgba(70, 72, 212, 0.12) 48%,
+            rgba(70, 72, 212, 0.28) 50%,
+            rgba(70, 72, 212, 0.12) 52%,
+            transparent 60%
+        ) !important;
+        animation: ocr-laser-scan 4s infinite linear !important;
+        pointer-events: none !important;
+    }
+    
+    @keyframes ocr-laser-scan {
+        0% {
+            top: -150%;
+        }
+        35%, 100% {
+            top: 150%;
+        }
+    }
 </style>
 
 <!-- Background Shader Canvas -->
@@ -311,9 +358,8 @@
 <h2 class="comic-section-title">Recent Activity</h2>
 <a href="{{ url_for('seller_invoices') }}" class="comic-sticker-badge px-4 py-2 text-xs font-bold text-black uppercase tracking-wider transition-all" style="text-decoration: none !important;">View All Activity</a>
 </div>
-<div class="activity-card bg-surface-bright bg-opacity-90 border rounded-2xl overflow-hidden shadow-sm border-outline border-primary flex-grow">
+<div class="activity-card bg-surface-bright bg-opacity-90 border rounded-2xl overflow-hidden shadow-sm border-outline border-primary flex-grow mb-6">
 <div class="divide-y divide-outline-variant">
-  {% if activities %}
   {% if activities %}
       {% for activity in activities %}
       {% set parts = activity.description.split('|') %}
@@ -390,6 +436,28 @@
           </div>
       </div>
   {% endif %}
+</div>
+</div>
+<!-- AI Digitizer OCR Promo Banner -->
+<div class="ocr-promo-card p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl border-2 border-black bg-white flex items-center justify-center text-[#4648d4] shadow-[2px_2px_0px_#000000] flex-shrink-0">
+            <span class="material-symbols-outlined notranslate text-[26px]" translate="no">document_scanner</span>
+        </div>
+        <div>
+            <h3 class="font-bold text-lg uppercase tracking-tight flex items-center gap-2 text-on-surface" style="font-family: 'Manrope', sans-serif !important; margin: 0;">
+                <span>AI OCR Bill Digitizer</span>
+                <span class="text-[10px] bg-black text-white px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wider">NEW</span>
+            </h3>
+            <p class="text-sm font-medium mt-1 text-on-surface-variant opacity-90 leading-relaxed max-w-[500px]" style="font-family: 'Inter', sans-serif !important; margin: 4px 0 0 0;">
+                Stop entering bills manually! Upload a PDF or receipt image, and let Khata's advanced OCR automatically extract items, quantities, vendors, and update inventory in seconds.
+            </p>
+        </div>
+    </div>
+    <a href="{{ url_for('seller_invoices') }}?tab=bills" class="comic-btn-primary py-3 px-6 font-bold text-sm tracking-wider uppercase flex items-center gap-2 whitespace-nowrap bg-white hover:bg-slate-100 text-black border-2 border-black shadow-[3px_3px_0px_#000000] hover:shadow-[5px_5px_0px_#000000] rounded-xl" style="text-decoration: none !important; color: #000000 !important; background-color: #ffffff !important; font-family: 'Manrope', sans-serif !important;">
+        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">upload_file</span>
+        Digitize Bill
+    </a>
 </div>
 </div>
 </div>

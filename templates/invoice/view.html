@@ -9,9 +9,35 @@
     <div class="action-buttons">
       <button onclick="window.print();" class="btn btn-primary btn-print-invoice" style="display: inline-flex; align-items: center; gap: 8px;">
         <i class="fas fa-print"></i>
-        Print Invoice
+        Print {% if invoice.is_bill %}Bill{% else %}Invoice{% endif %}
       </button>
+      
+      {% if invoice.original_file %}
+        {% if invoice.original_file.startswith('http') %}
+          {% set orig_url = invoice.original_file %}
+        {% else %}
+          {% set orig_url = url_for('static', filename=invoice.original_file) %}
+        {% endif %}
+        <a href="{{ orig_url }}" target="_blank" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 8px; border-color: #10b981; color: #10b981;">
+          <i class="fas fa-file-image"></i>
+          View Original Document
+        </a>
+      {% endif %}
+      
       {% if session.user_role == 'seller' %}
+      {% if invoice.is_bill %}
+      <a href="{{ url_for('seller_bills') }}" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fas fa-arrow-left"></i>
+        Back to Bills
+      </a>
+      {% if invoice.status == 'cancelled' %}
+      <a href="{{ url_for('delete_invoice', invoice_id=invoice.id) }}" class="btn btn-danger"
+        onclick="return confirm('Are you sure you want to delete bill {{ invoice.id }}? This action cannot be undone.')" style="display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fas fa-trash"></i>
+        Delete Bill
+      </a>
+      {% endif %}
+      {% else %}
       <a href="{{ url_for('seller_invoices') }}" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 8px;">
         <i class="fas fa-arrow-left"></i>
         Back to Invoices
@@ -22,6 +48,7 @@
         <i class="fas fa-trash"></i>
         Delete Invoice
       </a>
+      {% endif %}
       {% endif %}
       {% elif session.user_role == 'customer' %}
       <a href="{{ url_for('customer_dashboard') }}" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 8px;">
@@ -37,23 +64,36 @@
       <!-- Seller Info & Logo Row -->
       <div class="invoice-seller-row" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #000000; padding-bottom: 20px; margin-bottom: 20px; gap: 20px;">
         <div class="seller-identity">
-          {% if invoice.seller and invoice.seller.s_logo %}
+          {% if not invoice.is_bill and invoice.seller and invoice.seller.s_logo %}
             <div class="seller-logo-container" style="margin-bottom: 12px;">
               <img src="{{ url_for('static', filename=invoice.seller.s_logo) }}" alt="Logo" class="seller-logo" style="max-height: 65px; max-width: 200px; object-fit: contain; border: 2.5px solid #000000; padding: 4px; background: #ffffff; box-shadow: 2px 2px 0px #000000;" />
             </div>
           {% endif %}
-          <h3 style="font-size: 20px; font-weight: 800; margin: 0 0 8px 0; color: #191c1e;">{{ invoice.seller.s_name if invoice.seller else 'Seller Organization' }}</h3>
           
-          {% if invoice.seller %}
-            {% if invoice.seller.s_address %}<p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-map-marker-alt" style="margin-right: 4px;"></i> {{ invoice.seller.s_address }}</p>{% endif %}
-            {% if invoice.seller.s_phone %}<p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-phone" style="margin-right: 4px;"></i> {{ invoice.seller.s_phone }}</p>{% endif %}
-            <p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-envelope" style="margin-right: 4px;"></i> {{ invoice.seller.s_email }}</p>
+          {% if invoice.is_bill %}
+            <!-- For purchase bills, the vendor is the issuer/seller -->
+            <h3 style="font-size: 20px; font-weight: 800; margin: 0 0 8px 0; color: #191c1e;">{{ invoice.customer_name if invoice.customer_name else 'Vendor / Merchant' }}</h3>
+            {% if invoice.customer %}
+              {% if invoice.customer.c_address %}<p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-map-marker-alt" style="margin-right: 4px;"></i> {{ invoice.customer.c_address }}</p>{% endif %}
+              {% if invoice.customer.c_phone_no %}<p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-phone" style="margin-right: 4px;"></i> {{ invoice.customer.c_phone_no }}</p>{% endif %}
+              <p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-envelope" style="margin-right: 4px;"></i> {{ invoice.customer_email }}</p>
+            {% endif %}
+          {% else %}
+            <!-- For sales invoices, the shop owner is the issuer/seller -->
+            <h3 style="font-size: 20px; font-weight: 800; margin: 0 0 8px 0; color: #191c1e;">{{ invoice.seller.s_name if invoice.seller else 'Seller Organization' }}</h3>
+            {% if invoice.seller %}
+              {% if invoice.seller.s_address %}<p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-map-marker-alt" style="margin-right: 4px;"></i> {{ invoice.seller.s_address }}</p>{% endif %}
+              {% if invoice.seller.s_phone %}<p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-phone" style="margin-right: 4px;"></i> {{ invoice.seller.s_phone }}</p>{% endif %}
+              <p style="margin: 2px 0; font-size: 13px; color: #475569;"><i class="fas fa-envelope" style="margin-right: 4px;"></i> {{ invoice.seller.s_email }}</p>
+            {% endif %}
           {% endif %}
         </div>
         
         <div class="invoice-meta-info" style="text-align: right;">
-          <h2 style="font-size: 26px; font-weight: 900; margin: 0 0 10px 0; letter-spacing: -0.5px; text-transform: uppercase;">INVOICE</h2>
-          <p style="margin: 4px 0; font-size: 13px;"><strong>Invoice No:</strong> {{ invoice.id }}</p>
+          <h2 style="font-size: 26px; font-weight: 900; margin: 0 0 10px 0; letter-spacing: -0.5px; text-transform: uppercase;">
+            {% if invoice.is_bill %}BILL{% else %}INVOICE{% endif %}
+          </h2>
+          <p style="margin: 4px 0; font-size: 13px;"><strong>{% if invoice.is_bill %}Bill{% else %}Invoice{% endif %} No:</strong> {{ invoice.id }}</p>
           <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> {{ invoice.date }}</p>
           {% if invoice.due_date_str %}
             <p style="margin: 4px 0; font-size: 13px;"><strong>Due Date:</strong> {{ invoice.due_date_str }}</p>
@@ -67,19 +107,29 @@
         </div>
       </div>
 
+      {% if not invoice.is_bill or invoice.bill_buyer_name %}
       <div class="invoice-header" style="margin-bottom: 24px;">
         <div class="customer-details">
-          <h4 style="font-weight: 800; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Bill To:</h4>
-          <p style="margin: 2px 0; font-weight: 800; font-size: 16px; color: #0f172a;">{{ invoice.customer_name }}</p>
-          {% if invoice.customer and invoice.customer.c_address %}
-            <p style="margin: 2px 0; font-size: 13px; color: #475569;">{{ invoice.customer.c_address }}</p>
+          {% if invoice.is_bill %}
+            <!-- For purchase bills, show the buyer/recipient name if explicitly extracted -->
+            <h4 style="font-weight: 800; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Bill To:</h4>
+            <p style="margin: 2px 0; font-weight: 800; font-size: 16px; color: #0f172a;">{{ invoice.bill_buyer_name }}</p>
+          {% else %}
+            <!-- For sales invoices, the customer is the recipient/buyer -->
+            <h4 style="font-weight: 800; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Bill To:</h4>
+            <p style="margin: 2px 0; font-weight: 800; font-size: 16px; color: #0f172a;">{{ invoice.customer_name }}</p>
+            {% if invoice.customer and invoice.customer.c_address %}
+              <p style="margin: 2px 0; font-size: 13px; color: #475569;">{{ invoice.customer.c_address }}</p>
+            {% endif %}
+            {% if invoice.customer and invoice.customer.c_phone_no %}
+              <p style="margin: 2px 0; font-size: 13px; color: #475569;">{{ invoice.customer.c_phone_no }}</p>
+            {% endif %}
+            <p style="margin: 2px 0; font-size: 13px; color: #475569;">{{ invoice.customer_email }}</p>
           {% endif %}
-          {% if invoice.customer and invoice.customer.c_phone_no %}
-            <p style="margin: 2px 0; font-size: 13px; color: #475569;">{{ invoice.customer.c_phone_no }}</p>
-          {% endif %}
-          <p style="margin: 2px 0; font-size: 13px; color: #475569;">{{ invoice.customer_email }}</p>
         </div>
       </div>
+      {% endif %}
+
 
       <div class="invoice-items">
         <h4 style="font-weight: 800; font-size: 13px; margin-bottom: 12px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Items</h4>

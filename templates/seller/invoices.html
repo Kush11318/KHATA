@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Invoices - Khata{% endblock %}
+{% block title %}Invoices & Bills - Khata{% endblock %}
 
 {% block back_button %}
 <a href="{{ url_for('seller_dashboard') }}" class="btn btn-outline btn-sm back-btn">
@@ -10,26 +10,95 @@
 {% endblock %}
 
 {% block content %}
+<style>
+/* Premium Toggle slider switch styles */
+.premium-toggle {
+    --toggle-width: 44px;
+    --toggle-height: 24px;
+    --toggle-border: 2.5px;
+    width: var(--toggle-width);
+    height: var(--toggle-height);
+    display: inline-block;
+    position: relative;
+    user-select: none;
+}
+
+.premium-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #e2e8f0;
+    border: var(--toggle-border) solid #000000;
+    border-radius: 999px;
+    transition: background-color 0.15s ease-out;
+}
+
+.premium-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: calc(var(--toggle-height) - (var(--toggle-border) * 2) - 4px);
+    width: calc(var(--toggle-height) - (var(--toggle-border) * 2) - 4px);
+    left: 2px;
+    bottom: 2px;
+    background-color: #ffffff;
+    border: var(--toggle-border) solid #000000;
+    border-radius: 50%;
+    transition: transform 0.15s ease-out;
+}
+
+.accommodation-toggle:checked + .premium-toggle-slider {
+    background-color: #10b981 !important;
+}
+
+.accommodation-toggle:checked + .premium-toggle-slider:before {
+    transform: translateX(calc(var(--toggle-width) - var(--toggle-height)));
+}
+
+.accommodation-status-label.accommodated {
+    color: #10b981;
+}
+
+.accommodation-status-label.private {
+    color: #64748b;
+}
+</style>
+
 <div class="dashboard">
     <div class="section-header">
-        <h2 class="section-title">Invoices</h2>
+        <h2 class="section-title">Invoices & Expenses</h2>
         <div class="section-actions" style="display: flex; gap: 12px; align-items: center;">
-            <form id="digitize-form" action="{{ url_for('upload_bill') }}" method="post" enctype="multipart/form-data" style="display: flex; align-items: center; margin: 0;">
-                <input type="file" id="bill-file" name="bill_file" accept=".pdf,image/*" style="display: none;" onchange="submitDigitizeForm()">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('bill-file').click()" style="display: flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-file-upload"></i> Digitize Bill (PDF/Image)
-                </button>
-            </form>
-            <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                Create Invoice
-            </a>
+            <!-- Invoice actions -->
+            <div id="invoice-header-actions">
+                <a href="{{ url_for('create_invoice') }}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-plus"></i>
+                    Create Invoice
+                </a>
+            </div>
+            <!-- Bill actions -->
+            <div id="bill-header-actions" style="display: none;">
+                <form id="digitize-form" action="{{ url_for('upload_bill') }}" method="post" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 12px; margin: 0;">
+                    <input type="file" id="bill-file" name="bill_file" accept=".pdf,image/*" style="display: none;" onchange="submitDigitizeForm()">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('bill-file').click()" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-file-upload"></i> Digitize Bill (PDF/Image)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium Sliding Tab Menu -->
+    <div class="tabs-container" style="display: flex; justify-content: center; margin-bottom: 24px;">
+        <div class="sliding-tabs" style="position: relative; display: flex; background: #e2e8f0; border: 2.5px solid #000000; border-radius: 12px; padding: 4px; box-shadow: 4px 4px 0px #000000; width: 400px; max-width: 100%;">
+            <div id="tab-active-indicator" style="position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); background: #ffffff; border: 2.5px solid #000000; border-radius: 8px; transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1); box-sizing: border-box; z-index: 1;"></div>
+            <button type="button" class="tab-btn active" id="btn-tab-invoices" onclick="switchTab('invoices')" style="flex: 1; border: none; background: none; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 800; padding: 10px 0; cursor: pointer; position: relative; z-index: 2; color: #000000; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Sales Invoices</button>
+            <button type="button" class="tab-btn" id="btn-tab-bills" onclick="switchTab('bills')" style="flex: 1; border: none; background: none; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 800; padding: 10px 0; cursor: pointer; position: relative; z-index: 2; color: #475569; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Scanned Bills</button>
         </div>
     </div>
 
     <!-- Beautiful, Neo-Brutalist Reorganized Filter Section -->
     <div class="card" style="margin-bottom: 24px; padding: 20px; border-radius: 12px;">
         <form method="get" class="filter-form" style="margin: 0;">
+            <input type="hidden" name="tab" id="active-tab-input" value="{{ active_tab }}">
             <!-- Row 1: Main Search and Status -->
             <div class="filter-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;">
                 <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0;">
@@ -42,7 +111,7 @@
                 </div>
                 <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0;">
                     <label class="form-label" for="status" style="font-weight: 600; margin-bottom: 6px; font-size: 13px;">Status</label>
-                    <select id="status" name="status" class="form-input" style="width: 100%; box-sizing: border-box; height: 42px; max-width: 100%;">
+                    <select id="status" name="status" class="form-input" style="width: 100%; box-sizing: border-box; max-width: 100%;">
                         <option value="" {{ '' == (status or '') and 'selected' or '' }}>Any Status</option>
                         <option value="pending" {{ (status or '') == 'pending' and 'selected' or '' }}>Pending</option>
                         <option value="paid" {{ (status or '') == 'paid' and 'selected' or '' }}>Paid</option>
@@ -91,95 +160,223 @@
         </form>
     </div>
 
-    {% if invoices %}
-    <div class="card">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Invoice No</th>
-                    <th>Customer</th>
-                    <th>Date</th>
-                    <th>Due Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for invoice in invoices %}
-                <tr>
-                    <td>
-                        <div class="invoice-id">
-                            <strong>{{ invoice.id }}</strong>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="customer-info">
-                            <div class="customer-name">{{ invoice.customer_name }}</div>
-                            <div class="customer-email">{{ invoice.customer_email }}</div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="date-info">
-                            <i class="fas fa-calendar"></i>
-                            {{ invoice.date }}
-                        </div>
-                    </td>
-                    <td>
-                        <div class="date-info">
-                            <i class="fas fa-calendar-check"></i>
-                            {% if invoice.due_date_str %}
-                                {{ invoice.due_date_str }}
-                            {% else %}
-                                <span style="color: #999;">Not set</span>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <div class="amount-info">
-                            ₹{{ "%.2f"|format(invoice.amount) }}
-                        </div>
-                    </td>
-                    <td>
-                        <span class="status-badge status-{{ invoice.status }}">
-                            {{ invoice.status.title() }}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="action-buttons">
-                            <a href="{{ url_for('view_invoice', invoice_id=invoice.id) }}" class="btn btn-outline btn-sm" title="View Invoice">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            {% if invoice.status != 'paid' and invoice.status != 'cancelled' %}
-                            <a href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}" class="btn btn-primary btn-sm" title="Edit Invoice">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            {% endif %}
-                            <a href="{{ url_for('delete_invoice', invoice_id=invoice.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete invoice {{ invoice.id }}? This action cannot be undone.')" title="Delete Invoice">
-                                <i class="fas fa-trash"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Invoices Section -->
+    <div id="invoices-section">
+        {% if invoices %}
+        <div class="card">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Invoice No</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Due Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td>
+                            <div class="invoice-id">
+                                <strong>{{ invoice.id }}</strong>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="customer-info">
+                                <div class="customer-name">{{ invoice.customer_name }}</div>
+                                <div class="customer-email">{{ invoice.customer_email }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="date-info">
+                                <i class="fas fa-calendar"></i>
+                                {{ invoice.date }}
+                             </div>
+                        </td>
+                        <td>
+                            <div class="date-info">
+                                <i class="fas fa-calendar-check"></i>
+                                {% if invoice.due_date_str %}
+                                    {{ invoice.due_date_str }}
+                                {% else %}
+                                    <span style="color: #999;">Not set</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="amount-info">
+                                ₹{{ "%.2f"|format(invoice.amount) }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ invoice.status }}">
+                                {{ invoice.status.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('view_invoice', invoice_id=invoice.id) }}" class="btn btn-outline btn-sm" title="View Invoice">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if invoice.status != 'paid' and invoice.status != 'cancelled' %}
+                                <a href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}" class="btn btn-primary btn-sm" title="Edit Invoice">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% else %}
+                                <button class="btn btn-sm btn-disabled" title="Cannot Edit Paid/Cancelled Invoice" style="background: #cbd5e1 !important; color: #64748b !important; border-color: #94a3b8 !important; cursor: not-allowed; box-shadow: none !important; transform: none !important;" disabled>
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                {% endif %}
+                                <a href="{{ url_for('delete_invoice', invoice_id=invoice.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete invoice {{ invoice.id }}? This action cannot be undone.')" title="Delete Invoice">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+         </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-file-invoice empty-state-icon"></i>
+            <h3 class="empty-state-title">No Invoices Found</h3>
+            <p class="empty-state-description">
+                Create your first invoice to start managing billing.
+            </p>
+            <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Create Invoice
+            </a>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="empty-state">
-        <i class="fas fa-file-invoice empty-state-icon"></i>
-        <h3 class="empty-state-title">No Invoices Found</h3>
-        <p class="empty-state-description">
-            Create your first invoice to start managing billing.
-        </p>
-        <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i>
-            Create Invoice
-        </a>
+
+    <!-- Bills Section -->
+    <div id="bills-section" style="display: none;">
+        {% if bills %}
+        <div class="card">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Bill No</th>
+                        <th>Vendor</th>
+                        <th>Date</th>
+                        <th>Due Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Accommodate</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bill in bills %}
+                    <tr>
+                        <td>
+                            <div class="invoice-id">
+                                <strong>{{ bill.id }}</strong>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="customer-info">
+                                <div class="customer-name">{{ bill.customer_name }}</div>
+                                <div class="customer-email">{{ bill.customer_email }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="date-info">
+                                <i class="fas fa-calendar"></i>
+                                {{ bill.date }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="date-info">
+                                <i class="fas fa-calendar-check"></i>
+                                {% if bill.due_date_str %}
+                                    {{ bill.due_date_str }}
+                                {% else %}
+                                    <span style="color: #999;">Not set</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="amount-info">
+                                ₹{{ "%.2f"|format(bill.amount) }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ bill.status }}">
+                                {{ bill.status.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                                <label class="premium-toggle" style="display: inline-flex; align-items: center; cursor: pointer; position: relative;">
+                                    <input type="checkbox" class="accommodation-toggle" data-bill-id="{{ bill.id }}" {% if bill.accommodate_in_metrics %}checked{% endif %} style="opacity: 0; width: 0; height: 0; position: absolute;">
+                                    <span class="premium-toggle-slider"></span>
+                                </label>
+                                <span class="accommodation-status-label {% if bill.accommodate_in_metrics %}accommodated{% else %}private{% endif %}" id="label-{{ bill.id }}" style="font-size: 11px; font-weight: 750; text-transform: uppercase;">
+                                    {% if bill.accommodate_in_metrics %}Business Metric{% else %}Saved / Private{% endif %}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('view_invoice', invoice_id=bill.id) }}" class="btn btn-outline btn-sm" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if bill.original_file %}
+                                    {% if bill.original_file.startswith('http') %}
+                                        {% set orig_url = bill.original_file %}
+                                    {% else %}
+                                        {% set orig_url = url_for('static', filename=bill.original_file) %}
+                                    {% endif %}
+                                    <a href="{{ orig_url }}" target="_blank" class="btn btn-outline btn-sm" title="View Original Document" style="border-color: #10b981; color: #10b981;">
+                                        <i class="fas fa-file-image"></i>
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-outline btn-sm" title="No Original Document Available" style="border-color: #94a3b8 !important; color: #94a3b8 !important; cursor: not-allowed; opacity: 0.5; box-shadow: none !important; transform: none !important;" disabled>
+                                        <i class="fas fa-file-image"></i>
+                                    </button>
+                                {% endif %}
+                                {% if bill.status != 'paid' and bill.status != 'cancelled' %}
+                                <a href="{{ url_for('edit_invoice', invoice_id=bill.id) }}" class="btn btn-primary btn-sm" title="Edit Bill">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% else %}
+                                <button class="btn btn-sm btn-disabled" title="Cannot Edit Paid/Cancelled Bill" style="background: #cbd5e1 !important; color: #64748b !important; border-color: #94a3b8 !important; cursor: not-allowed; box-shadow: none !important; transform: none !important;" disabled>
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                {% endif %}
+                                <a href="{{ url_for('delete_invoice', invoice_id=bill.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete bill {{ bill.id }}? This action cannot be undone.')" title="Delete Bill">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-file-invoice-dollar empty-state-icon"></i>
+            <h3 class="empty-state-title">No Scanned Bills Found</h3>
+            <p class="empty-state-description">
+                Upload and digitize your first receipt or expense bill using Gemini AI.
+            </p>
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('bill-file').click()">
+                <i class="fas fa-file-upload"></i> Digitize Bill (PDF/Image)
+            </button>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
+<!-- AI Bill Upload Loader Overlay -->
 <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--page-loader-bg); backdrop-filter: blur(5px); z-index: 999999; justify-content: center; align-items: center; flex-direction: column;">
     <div class="loader" style="--main-size: 5.5em; margin-bottom: 24px;">
         <div class="text"><span>KHATA</span></div>
@@ -196,7 +393,91 @@
     <h3 style="margin: 0; font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 16px; color: var(--loader-text);">KHATA AI DOING ITS JOB...</h3>
     <p style="margin: 8px 0 0 0; opacity: 0.8; font-size: 14px; color: var(--loader-text); font-family: 'Inter', sans-serif;">Extracting vendor details, items, tax, and amounts...</p>
 </div>
+
 <script>
+function switchTab(tab) {
+    const indicator = document.getElementById('tab-active-indicator');
+    const btnInvoices = document.getElementById('btn-tab-invoices');
+    const btnBills = document.getElementById('btn-tab-bills');
+    const invoicesSection = document.getElementById('invoices-section');
+    const billsSection = document.getElementById('bills-section');
+    const invoiceActions = document.getElementById('invoice-header-actions');
+    const billActions = document.getElementById('bill-header-actions');
+    const tabInput = document.getElementById('active-tab-input');
+    
+    if (tab === 'bills') {
+        // Move indicator
+        indicator.style.transform = 'translateX(100%)';
+        btnBills.style.color = '#000000';
+        btnInvoices.style.color = '#475569';
+        
+        // Show/Hide sections
+        invoicesSection.style.display = 'none';
+        billsSection.style.display = 'block';
+        
+        // Show/Hide actions
+        invoiceActions.style.display = 'none';
+        billActions.style.display = 'block';
+        
+        // Update input
+        tabInput.value = 'bills';
+        
+        // Update URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('tab', 'bills');
+        window.history.replaceState(null, '', newUrl.toString());
+        
+        // Swap Filter Labels
+        const numberLabel = document.querySelector('label[for="q"]');
+        const clientLabel = document.querySelector('label[for="customer"]');
+        if (numberLabel) numberLabel.textContent = 'Bill No';
+        if (clientLabel) clientLabel.textContent = 'Vendor';
+        
+        const qInput = document.getElementById('q');
+        if (qInput) qInput.placeholder = 'Search bill number (e.g. INV-001)';
+        const clientInput = document.getElementById('customer');
+        if (clientInput) clientInput.placeholder = 'Search vendor name or email';
+        
+        const resetBtn = document.querySelector('.filter-actions a.btn-outline');
+        if (resetBtn) resetBtn.setAttribute('href', '/seller/invoices?tab=bills');
+    } else {
+        // Move indicator
+        indicator.style.transform = 'none';
+        btnInvoices.style.color = '#000000';
+        btnBills.style.color = '#475569';
+        
+        // Show/Hide sections
+        invoicesSection.style.display = 'block';
+        billsSection.style.display = 'none';
+        
+        // Show/Hide actions
+        invoiceActions.style.display = 'block';
+        billActions.style.display = 'none';
+        
+        // Update input
+        tabInput.value = 'invoices';
+        
+        // Update URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('tab', 'invoices');
+        window.history.replaceState(null, '', newUrl.toString());
+        
+        // Swap Filter Labels
+        const numberLabel = document.querySelector('label[for="q"]');
+        const clientLabel = document.querySelector('label[for="customer"]');
+        if (numberLabel) numberLabel.textContent = 'Invoice No';
+        if (clientLabel) clientLabel.textContent = 'Customer';
+        
+        const qInput = document.getElementById('q');
+        if (qInput) qInput.placeholder = 'Search by number (e.g. INV-001)';
+        const clientInput = document.getElementById('customer');
+        if (clientInput) clientInput.placeholder = 'Search name or email';
+        
+        const resetBtn = document.querySelector('.filter-actions a.btn-outline');
+        if (resetBtn) resetBtn.setAttribute('href', '/seller/invoices');
+    }
+}
+
 function submitDigitizeForm() {
     const fileInput = document.getElementById('bill-file');
     if (fileInput.files.length > 0) {
@@ -220,7 +501,7 @@ function toggleAdvancedFilters() {
 }
 
 // Automatically expand advanced filters if they are pre-filled
-document.addEventListener('DOMContentLoaded', () => {
+(function() {
     const start_date = document.getElementById('start_date');
     const end_date = document.getElementById('end_date');
     const min_amount = document.getElementById('min_amount');
@@ -232,6 +513,59 @@ document.addEventListener('DOMContentLoaded', () => {
         (max_amount && max_amount.value)) {
         toggleAdvancedFilters();
     }
-});
+})();
+
+// Initialize tab based on server parameter
+(function() {
+    const activeTab = "{{ active_tab }}";
+    if (activeTab === 'bills') {
+        switchTab('bills');
+    } else {
+        switchTab('invoices');
+    }
+})();
+
+// AJAX Toggle Accommodation Handler
+(function() {
+    document.querySelectorAll('.accommodation-toggle').forEach(checkbox => {
+        checkbox.addEventListener('change', async function() {
+            const billId = this.getAttribute('data-bill-id');
+            const isChecked = this.checked;
+            const statusLabel = document.getElementById(`label-${billId}`);
+            
+            try {
+                const response = await fetch(`/seller/bills/${billId}/toggle_accommodation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        accommodate_in_metrics: isChecked
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    if (isChecked) {
+                        statusLabel.textContent = 'Business Metric';
+                        statusLabel.classList.remove('private');
+                        statusLabel.classList.add('accommodated');
+                    } else {
+                        statusLabel.textContent = 'Saved / Private';
+                        statusLabel.classList.remove('accommodated');
+                        statusLabel.classList.add('private');
+                    }
+                } else {
+                    alert('Error: ' + result.message);
+                    this.checked = !isChecked; // Revert checkbox
+                }
+            } catch (error) {
+                console.error('Error updating bill accommodation:', error);
+                alert('An error occurred. Please try again.');
+                this.checked = !isChecked; // Revert checkbox
+            }
+        });
+    });
+})();
 </script>
 {% endblock %}

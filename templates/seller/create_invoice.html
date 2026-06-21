@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %} {% block title %}Create Invoice - Invoice Management
+{% extends "base.html" %} {% block title %}Create Invoice - Invoice Management
 System{% endblock %} {% block back_button %}
 <a
   href="{{ url_for('seller_invoices') }}"
@@ -239,9 +239,13 @@ System{% endblock %} {% block back_button %}
   </form>
 </div>
 
+<script id="products-data" type="application/json">
+    {{ products | tojson }}
+</script>
+
 <script>
     let itemCount = 0;
-    const products = {{ products | tojson }};
+    const availableProducts = JSON.parse(document.getElementById('products-data').textContent);
 
     function addItem() {
         itemCount++;
@@ -260,7 +264,7 @@ System{% endblock %} {% block back_button %}
                     <label class="form-label">Product</label>
                     <select name="product_${itemCount}_id" class="form-input product-select" onchange="updateItemTotal(${itemCount})" required>
                         <option value="">Select product...</option>
-                        ${products.map(p => `<option value="${p.id}">${p.name} - ₹${p.price} (Stock: ${p.stock})</option>`).join('')}
+                        ${availableProducts.map(p => `<option value="${p.id}">${p.name} - ₹${p.price} (Stock: ${p.stock})</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
@@ -321,7 +325,7 @@ System{% endblock %} {% block back_button %}
         const totalDisplay = document.getElementById(`item-total-${itemIndex}`);
 
         if (productSelect.value && quantityInput.value) {
-            const product = products.find(p => p.id === productSelect.value);
+            const product = availableProducts.find(p => p.id === productSelect.value);
             if (product) {
                 const quantity = parseInt(quantityInput.value) || 0;
                 const discount = parseFloat(discountInput.value) || 0;
@@ -450,7 +454,7 @@ System{% endblock %} {% block back_button %}
     .then(data => {
         if (data.success) {
             // Add the new product to the products array
-            products.push(data.product);
+            availableProducts.push(data.product);
             // Add it as an invoice item - no need for temp product handling
             addItem();
             const select = document.querySelector(`select[name="product_${itemCount}_id"]`);

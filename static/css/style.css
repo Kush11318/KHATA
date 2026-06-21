@@ -438,6 +438,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
     margin-bottom: 24px;
     padding-bottom: 16px;
     border-bottom: 1px solid #000000; /* Obsidian line */
@@ -626,6 +628,12 @@ body {
     font-size: 14px;
     border-radius: 8px;
     transition: all 0.2s ease;
+}
+
+select.form-input {
+    padding: 10px 14px;
+    height: auto;
+    line-height: 1.5;
 }
 
 .form-input:focus {
@@ -854,6 +862,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-bottom: 16px;
 }
 

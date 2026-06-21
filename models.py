@@ -104,8 +104,9 @@ class Customer(db.Model):
     c_address = db.Column(db.Text)
     password = db.Column(db.String(255))
     s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
+    is_synced = db.Column(db.Boolean, default=True, nullable=False)
 
-    def __init__(self, c_id=None, c_name=None, c_email=None, c_phone_no=None, c_address=None, password=None, s_id=None, **kwargs):
+    def __init__(self, c_id=None, c_name=None, c_email=None, c_phone_no=None, c_address=None, password=None, s_id=None, is_synced=True, **kwargs):
         super().__init__(**kwargs)
         self.c_id = c_id
         self.c_name = c_name
@@ -113,6 +114,7 @@ class Customer(db.Model):
         self.c_phone_no = c_phone_no
         self.password = password
         self.s_id = s_id
+        self.is_synced = is_synced
     
     def set_password(self, password):
         """Set password as plain text"""
@@ -141,7 +143,8 @@ class Customer(db.Model):
             'email': self.c_email,
             'phone': self.c_phone_no,
             'address': self.c_address,
-            'role': 'customer'
+            'role': 'customer',
+            'is_synced': self.is_synced
         }
 
 class Product(db.Model):
@@ -153,8 +156,9 @@ class Product(db.Model):
     p_description = db.Column(db.Text)
     p_stock = db.Column(db.Integer, default=0)
     s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
+    is_synced = db.Column(db.Boolean, default=True, nullable=False)
 
-    def __init__(self, p_id=None, p_name=None, p_price=None, p_description=None, p_stock=0, s_id=None, **kwargs):
+    def __init__(self, p_id=None, p_name=None, p_price=None, p_description=None, p_stock=0, s_id=None, is_synced=True, **kwargs):
         super().__init__(**kwargs)
         self.p_id = p_id
         self.p_name = p_name
@@ -162,6 +166,7 @@ class Product(db.Model):
         self.p_description = p_description
         self.p_stock = p_stock
         self.s_id = s_id
+        self.is_synced = is_synced
     
     # Properties for template compatibility
     @property
@@ -182,7 +187,8 @@ class Product(db.Model):
             'price': float(self.p_price) if self.p_price else 0,
             'description': self.p_description,
             'stock': self.p_stock,
-            'seller_id': self.s_id
+            'seller_id': self.s_id,
+            'is_synced': self.is_synced
         }
 
 class Invoice(db.Model):
@@ -196,8 +202,12 @@ class Invoice(db.Model):
     s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
     c_id = db.Column(db.String(50), db.ForeignKey('customer.c_id'))
     is_bill = db.Column(db.Boolean, default=False, nullable=False)
+    accommodate_in_metrics = db.Column(db.Boolean, default=True, nullable=False)
+    original_file = db.Column(db.String(255), nullable=True)
+    processed_file = db.Column(db.String(255), nullable=True)
+    bill_buyer_name = db.Column(db.String(100), nullable=True)
 
-    def __init__(self, invoice_no=None, invoice_datetime=None, due_date=None, status='pending', tax=0, amount=0, s_id=None, c_id=None, is_bill=False, **kwargs):
+    def __init__(self, invoice_no=None, invoice_datetime=None, due_date=None, status='pending', tax=0, amount=0, s_id=None, c_id=None, is_bill=False, accommodate_in_metrics=True, original_file=None, processed_file=None, bill_buyer_name=None, **kwargs):
         super().__init__(**kwargs)
         self.invoice_no = invoice_no
         if invoice_datetime is not None:
@@ -209,6 +219,10 @@ class Invoice(db.Model):
         self.s_id = s_id
         self.c_id = c_id
         self.is_bill = is_bill
+        self.accommodate_in_metrics = accommodate_in_metrics
+        self.original_file = original_file
+        self.processed_file = processed_file
+        self.bill_buyer_name = bill_buyer_name
     
     # Relationships
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True)
@@ -244,6 +258,10 @@ class Invoice(db.Model):
             'customer_name': self.customer_name,
             'customer_email': self.customer_email,
             'is_bill': self.is_bill,
+            'accommodate_in_metrics': self.accommodate_in_metrics,
+            'original_file': self.original_file,
+            'processed_file': self.processed_file,
+            'bill_buyer_name': self.bill_buyer_name,
             'items': [item.to_dict() for item in self.items]
         }
 

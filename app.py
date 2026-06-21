@@ -14,7 +14,115 @@ app.config.from_object(Config)
 # Initialize database
 db.init_app(app)
 
+import cloudinary
+import cloudinary.uploader
+from PIL import Image, ImageEnhance, ImageOps
+import io
+
+cloudinary_configured = False
+if os.environ.get("CLOUDINARY_URL") or (
+    os.environ.get("CLOUDINARY_CLOUD_NAME") and
+    os.environ.get("CLOUDINARY_API_KEY") and
+    os.environ.get("CLOUDINARY_API_SECRET")
+):
+    try:
+        cloudinary.config(
+            cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+            api_key=os.environ.get("CLOUDINARY_API_KEY"),
+            api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+            secure=True
+        )
+        cloudinary_configured = True
+        print("Cloudinary configured successfully!")
+    except Exception as e:
+        print(f"Error configuring Cloudinary: {e}")
+
+def compress_image_bytes(image_bytes, max_dim=1600, quality=75):
+    """Resizes the image if its dimensions exceed max_dim and compresses it with JPEG format at given quality"""
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        width, height = img.size
+        
+        # Check if resize is needed
+        if width > max_dim or height > max_dim:
+            if width > height:
+                new_width = max_dim
+                new_height = int(height * (max_dim / width))
+            else:
+                new_height = max_dim
+                new_width = int(width * (max_dim / height))
+            print(f"Resizing original image from {width}x{height} to {new_width}x{new_height}")
+            try:
+                resample_filter = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample_filter = Image.ANTIALIAS
+            img = img.resize((new_width, new_height), resample_filter)
+            
+        out_io = io.BytesIO()
+        # Convert RGBA to RGB for JPEG format compatibility
+        if img.mode in ('RGBA', 'LA'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[-1]) # Use alpha channel as mask
+            img = background
+        elif img.mode != 'RGB':
+            img = img.convert('RGB')
+            
+        img.save(out_io, format='JPEG', quality=quality, optimize=True)
+        return out_io.getvalue()
+    except Exception as e:
+        print(f"Error compressing image: {e}")
+        return image_bytes
+
+def get_high_contrast_bytes(image_bytes, max_dim=1600, quality=75):
+    """Processes image bytes to create a compressed, high-contrast, scanned-like document image in bytes"""
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        width, height = img.size
+        
+        # Downscale if needed
+        if width > max_dim or height > max_dim:
+            if width > height:
+                new_width = max_dim
+                new_height = int(height * (max_dim / width))
+            else:
+                new_height = max_dim
+                new_width = int(width * (max_dim / height))
+            print(f"Resizing high contrast image from {width}x{height} to {new_width}x{new_height}")
+            try:
+                resample_filter = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample_filter = Image.ANTIALIAS
+            img = img.resize((new_width, new_height), resample_filter)
+            
+        # Convert to grayscale
+        gray_img = ImageOps.grayscale(img)
+        # Enhance contrast
+        enhancer = ImageEnhance.Contrast(gray_img)
+        high_contrast_img = enhancer.enhance(2.5) # Strong contrast increase for document look
+        # Enhance sharpness
+        sharpness_enhancer = ImageEnhance.Sharpness(high_contrast_img)
+        sharper_img = sharpness_enhancer.enhance(1.5)
+        
+        # Save to bytes with compression
+        out_io = io.BytesIO()
+        sharper_img.save(out_io, format='JPEG', quality=quality, optimize=True)
+        return out_io.getvalue()
+    except Exception as e:
+        print(f"Error in high contrast generation: {e}")
+        return None
+
+
+def save_file_locally(file_bytes, filename, folder='bills'):
+    upload_folder = os.path.join(app.static_folder, 'uploads', folder)
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+    filepath = os.path.join(upload_folder, filename)
+    with open(filepath, 'wb') as f:
+        f.write(file_bytes)
+    return f"uploads/{folder}/{filename}"
+
 # Helper utilities
+
 
 def migrate_database():
     """Add missing columns to existing database tables"""
@@ -64,6 +172,76 @@ def migrate_database():
                             db.session.rollback()
                 else:
                     print("is_bill column already exists, no migration needed.")
+
+                # Add accommodate_in_metrics column if it doesn't exist
+                if 'accommodate_in_metrics' not in columns:
+                    print(f"Adding accommodate_in_metrics column to {invoice_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN accommodate_in_metrics BOOLEAN NOT NULL DEFAULT 1"))
+                        db.session.commit()
+                        print("Migration completed: accommodate_in_metrics column added successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("accommodate_in_metrics column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding accommodate_in_metrics column: {e}")
+                            db.session.rollback()
+                else:
+                    print("accommodate_in_metrics column already exists, no migration needed.")
+
+                # Add original_file column if it doesn't exist
+                if 'original_file' not in columns:
+                    print(f"Adding original_file column to {invoice_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN original_file VARCHAR(255) NULL"))
+                        db.session.commit()
+                        print("Migration completed: original_file column added successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("original_file column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding original_file column: {e}")
+                            db.session.rollback()
+                else:
+                    print("original_file column already exists, no migration needed.")
+
+                # Add processed_file column if it doesn't exist
+                if 'processed_file' not in columns:
+                    print(f"Adding processed_file column to {invoice_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN processed_file VARCHAR(255) NULL"))
+                        db.session.commit()
+                        print("Migration completed: processed_file column added successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("processed_file column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding processed_file column: {e}")
+                            db.session.rollback()
+                else:
+                    print("processed_file column already exists, no migration needed.")
+
+                # Add bill_buyer_name column if it doesn't exist
+                if 'bill_buyer_name' not in columns:
+                    print(f"Adding bill_buyer_name column to {invoice_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN bill_buyer_name VARCHAR(100) NULL"))
+                        db.session.commit()
+                        print("Migration completed: bill_buyer_name column added successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("bill_buyer_name column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding bill_buyer_name column: {e}")
+                            db.session.rollback()
+                else:
+                    print("bill_buyer_name column already exists, no migration needed.")
+
+
             else:
                 print("Invoice table does not exist yet. It will be created by db.create_all()")
             
@@ -87,6 +265,42 @@ def migrate_database():
                             db.session.rollback()
                 else:
                     print(f"s_id column already exists in {customer_table} table, no migration needed.")
+                
+                if 'is_synced' not in customer_columns:
+                    print(f"Adding is_synced column to {customer_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {customer_table} ADD COLUMN is_synced BOOLEAN NOT NULL DEFAULT 1"))
+                        db.session.commit()
+                        print(f"Migration completed: is_synced column added to {customer_table} table successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("is_synced column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding is_synced column: {e}")
+                            db.session.rollback()
+                else:
+                    print(f"is_synced column already exists in {customer_table} table, no migration needed.")
+            
+            # Check if product/products table exists and add is_synced column if needed
+            product_table = 'product' if 'product' in tables else ('products' if 'products' in tables else None)
+            if product_table:
+                product_columns = [col['name'] for col in inspector.get_columns(product_table)]
+                if 'is_synced' not in product_columns:
+                    print(f"Adding is_synced column to {product_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {product_table} ADD COLUMN is_synced BOOLEAN NOT NULL DEFAULT 1"))
+                        db.session.commit()
+                        print(f"Migration completed: is_synced column added to {product_table} table successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("is_synced column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding is_synced column: {e}")
+                            db.session.rollback()
+                else:
+                    print(f"is_synced column already exists in {product_table} table, no migration needed.")
             
             # Check if sellers table exists and add s_logo column if needed
             if 'sellers' in tables:
@@ -462,9 +676,9 @@ def seller_dashboard():
         refresh_demo_data_dates()
         
     # Calculate stats from database
-    total_products = Product.query.filter_by(s_id=session['user_id']).count()
+    total_products = Product.query.filter_by(s_id=session['user_id'], is_synced=True).count()
     # Count customers created by this seller
-    total_customers = Customer.query.filter_by(s_id=session['user_id']).count()
+    total_customers = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).count()
     total_invoices = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False).count()
     paid_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='paid', is_bill=False)
     pending_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='pending', is_bill=False)
@@ -657,7 +871,7 @@ def seller_academy():
 @role_required('seller')
 def seller_products():
     q = request.args.get('q', '').strip()
-    base_query = Product.query.filter_by(s_id=session['user_id'])
+    base_query = Product.query.filter_by(s_id=session['user_id'], is_synced=True)
     if q:
         products = base_query.filter(Product.p_name.ilike(f"%{q}%")).all()
     else:
@@ -810,8 +1024,8 @@ def seller_customers():
             flash('Session expired. Please log in again.', 'error')
             return redirect(url_for('login'))
         
-        # Get customers created by this seller only (s_id must match)
-        base = Customer.query.filter(Customer.s_id == session['user_id'])
+        # Get customers created by this seller only (s_id must match) and are synced
+        base = Customer.query.filter(Customer.s_id == session['user_id'], Customer.is_synced == True)
         
         if q:
             base = base.filter(Customer.c_name.ilike(f"%{q}%"))
@@ -1048,7 +1262,8 @@ def customer_analytics():
     # Build base filter for paid invoices
     paid_filters = [
         Invoice.s_id == session['user_id'],
-        Invoice.status == 'paid'
+        Invoice.status == 'paid',
+        Invoice.is_bill == False
     ]
     
     if start_date_str:
@@ -1076,6 +1291,7 @@ def customer_analytics():
     ).join(
         Invoice, Customer.c_id == Invoice.c_id
     ).filter(
+        Customer.is_synced == True,
         and_(*paid_filters)
     ).group_by(
         Customer.c_id, Customer.c_name, Customer.c_email
@@ -1099,10 +1315,12 @@ def customer_analytics():
         Invoice, 
         and_(
             Customer.c_id == Invoice.c_id,
-            Invoice.s_id == session['user_id']
+            Invoice.s_id == session['user_id'],
+            Invoice.is_bill == False
         )
     ).filter(
-        Customer.s_id == session['user_id']
+        Customer.s_id == session['user_id'],
+        Customer.is_synced == True
     )
     
     # Apply date filters to the LEFT JOIN query
@@ -1160,52 +1378,66 @@ def seller_invoices():
     min_amount_str = request.args.get('min_amount', '').strip()
     max_amount_str = request.args.get('max_amount', '').strip()
 
-    query = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False)
+    inv_query = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False)
+    bill_query = Invoice.query.filter_by(s_id=session['user_id'], is_bill=True)
 
     if q:
-        query = query.filter(Invoice.invoice_no.ilike(f"%{q}%"))
+        inv_query = inv_query.filter(Invoice.invoice_no.ilike(f"%{q}%"))
+        bill_query = bill_query.filter(Invoice.invoice_no.ilike(f"%{q}%"))
 
     if customer_q:
-        query = query.join(Customer).filter(
+        inv_query = inv_query.join(Customer).filter(
+            (Customer.c_name.ilike(f"%{customer_q}%")) | (Customer.c_email.ilike(f"%{customer_q}%"))
+        )
+        bill_query = bill_query.join(Customer).filter(
             (Customer.c_name.ilike(f"%{customer_q}%")) | (Customer.c_email.ilike(f"%{customer_q}%"))
         )
 
     if status:
-        query = query.filter(Invoice.status == status)
+        inv_query = inv_query.filter(Invoice.status == status)
+        bill_query = bill_query.filter(Invoice.status == status)
 
     # Date range filter (expects YYYY-MM-DD)
     try:
         if start_date_str:
             start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
-            query = query.filter(Invoice.invoice_datetime >= start_dt)
+            inv_query = inv_query.filter(Invoice.invoice_datetime >= start_dt)
+            bill_query = bill_query.filter(Invoice.invoice_datetime >= start_dt)
     except ValueError:
         pass
 
     try:
         if end_date_str:
-            # include entire end day by adding one day and using < next day
             end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
             end_dt_inclusive = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(Invoice.invoice_datetime <= end_dt_inclusive)
+            inv_query = inv_query.filter(Invoice.invoice_datetime <= end_dt_inclusive)
+            bill_query = bill_query.filter(Invoice.invoice_datetime <= end_dt_inclusive)
     except ValueError:
         pass
 
     # Amount range filter
     try:
         if min_amount_str:
-            query = query.filter(Invoice.amount >= Decimal(min_amount_str))
+            inv_query = inv_query.filter(Invoice.amount >= Decimal(min_amount_str))
+            bill_query = bill_query.filter(Invoice.amount >= Decimal(min_amount_str))
     except Exception:
         pass
     try:
         if max_amount_str:
-            query = query.filter(Invoice.amount <= Decimal(max_amount_str))
+            inv_query = inv_query.filter(Invoice.amount <= Decimal(max_amount_str))
+            bill_query = bill_query.filter(Invoice.amount <= Decimal(max_amount_str))
     except Exception:
         pass
 
-    invoices = query.order_by(Invoice.invoice_datetime.desc()).all()
+    invoices = inv_query.order_by(Invoice.invoice_datetime.desc()).all()
+    bills = bill_query.order_by(Invoice.invoice_datetime.desc()).all()
+    active_tab = request.args.get('tab', 'invoices')
+
     return render_template(
         'seller/invoices.html',
         invoices=invoices,
+        bills=bills,
+        active_tab=active_tab,
         q=q,
         customer_q=customer_q,
         status=status,
@@ -1220,68 +1452,38 @@ def seller_invoices():
 @login_required
 @role_required('seller')
 def seller_bills():
-    # Update overdue invoices before displaying
-    update_overdue_invoices()
+    return redirect(url_for('seller_invoices', tab='bills'))
+
+@app.route('/seller/bills/<invoice_id>/toggle_accommodation', methods=['POST'])
+@login_required
+@role_required('seller')
+def toggle_bill_accommodation(invoice_id):
+    invoice = Invoice.query.filter_by(invoice_no=invoice_id, s_id=session['user_id'], is_bill=True).first()
+    if not invoice:
+        return jsonify({'success': False, 'message': 'Scanned bill not found'}), 404
+        
+    data = request.get_json() or {}
+    accommodate = data.get('accommodate_in_metrics', True)
     
-    q = request.args.get('q', '').strip()
-    customer_q = request.args.get('customer', '').strip() # Acts as Vendor filter
-    status = request.args.get('status', '').strip()
-    start_date_str = request.args.get('start_date', '').strip()
-    end_date_str = request.args.get('end_date', '').strip()
-    min_amount_str = request.args.get('min_amount', '').strip()
-    max_amount_str = request.args.get('max_amount', '').strip()
-
-    query = Invoice.query.filter_by(s_id=session['user_id'], is_bill=True)
-
-    if q:
-        query = query.filter(Invoice.invoice_no.ilike(f"%{q}%"))
-
-    if customer_q:
-        query = query.join(Customer).filter(
-            (Customer.c_name.ilike(f"%{customer_q}%")) | (Customer.c_email.ilike(f"%{customer_q}%"))
-        )
-
-    if status:
-        query = query.filter(Invoice.status == status)
-
-    try:
-        if start_date_str:
-            start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
-            query = query.filter(Invoice.invoice_datetime >= start_dt)
-    except ValueError:
-        pass
-
-    try:
-        if end_date_str:
-            end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
-            end_dt_inclusive = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(Invoice.invoice_datetime <= end_dt_inclusive)
-    except ValueError:
-        pass
-
-    try:
-        if min_amount_str:
-            query = query.filter(Invoice.amount >= Decimal(min_amount_str))
-    except Exception:
-        pass
-    try:
-        if max_amount_str:
-            query = query.filter(Invoice.amount <= Decimal(max_amount_str))
-    except Exception:
-        pass
-
-    bills = query.order_by(Invoice.invoice_datetime.desc()).all()
-    return render_template(
-        'seller/bills.html',
-        bills=bills,
-        q=q,
-        customer_q=customer_q,
-        status=status,
-        start_date=start_date_str,
-        end_date=end_date_str,
-        min_amount=min_amount_str,
-        max_amount=max_amount_str,
+    invoice.accommodate_in_metrics = accommodate
+    db.session.commit()
+    
+    # Log activity for this change
+    desc = f"Updated accommodation state of bill {invoice_id} to {'Accommodate' if accommodate else 'Exclude'}"
+    activity = Activity(
+        description=desc,
+        user_id=session['user_id'],
+        user_role='seller',
+        action_type='bill_updated'
     )
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'accommodate_in_metrics': invoice.accommodate_in_metrics,
+        'message': "Bill accommodation status updated successfully."
+    })
 
 @app.route('/seller/invoices/create', methods=['GET', 'POST'])
 @login_required
@@ -1465,9 +1667,9 @@ def create_invoice():
             db.session.rollback()
             flash('Failed to create invoice', 'error')
     
-    products = Product.query.filter_by(s_id=session['user_id']).all()
-    # Show only customers created by this seller
-    customers = Customer.query.filter_by(s_id=session['user_id']).order_by(Customer.c_name.asc()).all()
+    products = Product.query.filter_by(s_id=session['user_id'], is_synced=True).all()
+    # Show only customers created by this seller and are synced
+    customers = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).order_by(Customer.c_name.asc()).all()
     # Convert products to dictionaries for JSON serialization
     products_data = [product.to_dict() for product in products]
     return render_template('seller/create_invoice.html', products=products_data, customers=customers)
@@ -1479,24 +1681,24 @@ def create_invoice():
 def upload_bill():
     if 'bill_file' not in request.files:
         flash('No file uploaded', 'error')
-        return redirect(url_for('seller_invoices'))
+        return redirect(url_for('seller_bills'))
         
     file = request.files['bill_file']
     if not file or file.filename == '':
         flash('No file selected', 'error')
-        return redirect(url_for('seller_invoices'))
+        return redirect(url_for('seller_bills'))
         
     filename = file.filename.lower()
     allowed_extensions = {'.png', '.jpg', '.jpeg', '.pdf'}
     ext = os.path.splitext(filename)[1]
     if ext not in allowed_extensions:
         flash('Invalid file type. Only PDF and images (PNG, JPG) are allowed.', 'error')
-        return redirect(url_for('seller_invoices'))
+        return redirect(url_for('seller_bills'))
         
     file_bytes = file.read()
     if not file_bytes:
         flash('Uploaded file is empty', 'error')
-        return redirect(url_for('seller_invoices'))
+        return redirect(url_for('seller_bills'))
         
     mime_type = 'application/pdf' if ext == '.pdf' else f'image/{ext.lstrip(".")}'
     if mime_type == 'image/jpg':
@@ -1522,6 +1724,7 @@ def upload_bill():
 
         class BillData(BaseModel):
             vendor_name: str = Field(description="Name of the vendor or merchant or shop")
+            buyer_name: Optional[str] = Field(None, description="Name of the buyer or customer or recipient explicitly written on the bill/receipt. Leave empty/null if it's just a generic receipt or doesn't explicitly state a buyer name.")
             invoice_no: Optional[str] = Field(None, description="Invoice or bill number if present")
             billing_date: Optional[str] = Field(None, description="Billing date in YYYY-MM-DD format")
             due_date: Optional[str] = Field(None, description="Due date in YYYY-MM-DD format")
@@ -1554,16 +1757,24 @@ def upload_bill():
         print(f"Gemini response: {bill_info}")
         
         vendor_name = bill_info.get('vendor_name', 'Unknown Vendor').strip()
+        buyer_name = bill_info.get('buyer_name')
+        if buyer_name:
+            buyer_name = buyer_name.strip()
         subtotal = Decimal(str(bill_info.get('subtotal', 0.0)))
         tax = Decimal(str(bill_info.get('tax', 0.0)))
         total_amount = Decimal(str(bill_info.get('total_amount', 0.0)))
         extracted_invoice_no = bill_info.get('invoice_no')
+        sync_db = True
         
         s_id = session['user_id']
-        customer = Customer.query.filter_by(s_id=s_id, c_name=vendor_name).first()
+        customer = Customer.query.filter_by(s_id=s_id, c_name=vendor_name, is_synced=sync_db).first()
         created_customer = False
         if not customer:
-            customer = Customer.query.filter(Customer.s_id == s_id, Customer.c_name.like(f"%{vendor_name}%")).first()
+            customer = Customer.query.filter(
+                Customer.s_id == s_id, 
+                Customer.c_name.like(f"%{vendor_name}%"),
+                Customer.is_synced == sync_db
+            ).first()
             
         if not customer:
             c_id = generate_next_customer_id()
@@ -1574,7 +1785,8 @@ def upload_bill():
                 c_phone_no="0000000000",
                 c_address="Extracted from digitized bill",
                 password='',
-                s_id=s_id
+                s_id=s_id,
+                is_synced=sync_db
             )
             db.session.add(customer)
             db.session.flush()
@@ -1615,6 +1827,33 @@ def upload_bill():
         if status == 'pending' and due_date < date.today():
             status = 'overdue'
             
+        # Compress and save original file (Cloudinary with local fallback)
+        safe_invoice_no = "".join(c for c in invoice_no if c.isalnum() or c in ('-', '_'))
+        
+        original_upload_bytes = file_bytes
+        if ext != '.pdf':
+            original_upload_bytes = compress_image_bytes(file_bytes)
+            original_filename = f"{safe_invoice_no}_original.jpg"
+        else:
+            original_filename = f"{safe_invoice_no}_original.pdf"
+        
+        original_path = None
+        
+        if cloudinary_configured:
+            try:
+                print("Uploading original file to Cloudinary...")
+                original_upload = cloudinary.uploader.upload(
+                    original_upload_bytes,
+                    public_id=f"bills/{safe_invoice_no}_original",
+                    resource_type="auto"
+                )
+                original_path = original_upload.get('secure_url')
+            except Exception as cl_err:
+                print(f"Cloudinary upload failed: {cl_err}. Falling back to local storage.")
+                
+        if not original_path:
+            original_path = save_file_locally(original_upload_bytes, original_filename)
+
         new_invoice = Invoice(
             invoice_no=invoice_no,
             invoice_datetime=invoice_datetime,
@@ -1624,10 +1863,14 @@ def upload_bill():
             amount=total_amount,
             s_id=s_id,
             c_id=c_id,
-            is_bill=True
+            is_bill=True,
+            original_file=original_path,
+            processed_file=None,
+            bill_buyer_name=buyer_name
         )
         db.session.add(new_invoice)
         db.session.flush()
+
         
         added_products = []
         items_list = bill_info.get('items', [])
@@ -1637,9 +1880,13 @@ def upload_bill():
             item_price = Decimal(str(item.get('price', 0.0)))
             item_discount = Decimal(str(item.get('discount', 0.0)))
             
-            product = Product.query.filter_by(s_id=s_id, p_name=item_name).first()
+            product = Product.query.filter_by(s_id=s_id, p_name=item_name, is_synced=sync_db).first()
             if not product:
-                product = Product.query.filter(Product.s_id == s_id, Product.p_name.like(f"%{item_name}%")).first()
+                product = Product.query.filter(
+                    Product.s_id == s_id, 
+                    Product.p_name.like(f"%{item_name}%"),
+                    Product.is_synced == sync_db
+                ).first()
                 
             if not product:
                 p_id = generate_next_product_id()
@@ -1648,14 +1895,15 @@ def upload_bill():
                     p_name=item_name,
                     p_price=item_price,
                     p_description="Digitized product from bill",
-                    p_stock=item_qty + 10,
-                    s_id=s_id
+                    p_stock=item_qty + 10 if sync_db else 0,
+                    s_id=s_id,
+                    is_synced=sync_db
                 )
                 db.session.add(product)
                 db.session.flush()
                 added_products.append(item_name)
             else:
-                if product.p_stock < item_qty:
+                if sync_db and product.p_stock < item_qty:
                     product.p_stock = item_qty + 10
                     
             invoice_item = InvoiceItem(
@@ -1665,13 +1913,15 @@ def upload_bill():
                 discount=item_discount
             )
             db.session.add(invoice_item)
-            product.p_stock = product.p_stock - item_qty
+            if sync_db:
+                product.p_stock = product.p_stock - item_qty
             
         db.session.commit()
         metadata = {
             'created_customer': created_customer,
             'vendor_name': vendor_name,
-            'added_products': added_products
+            'added_products': added_products,
+            'is_synced': sync_db
         }
         log_activity('bill_digitized', f'Digitized bill and created invoice {invoice_no} for vendor "{vendor_name}"|{json.dumps(metadata)}')
         
@@ -1682,7 +1932,7 @@ def upload_bill():
         db.session.rollback()
         print(f"Error digitalizing bill: {e}")
         flash(f"Error digitalizing bill: {str(e)}", 'error')
-        return redirect(request.referrer or url_for('seller_invoices'))
+        return redirect(request.referrer or url_for('seller_bills'))
 
 
 @app.route('/seller/invoices/edit/<invoice_id>', methods=['GET', 'POST'])
@@ -1693,11 +1943,13 @@ def edit_invoice(invoice_id):
     
     if not invoice:
         flash('Invoice not found', 'error')
-        return redirect(url_for('seller_invoices'))
+        return redirect(request.referrer or url_for('seller_invoices'))
     
     # Check if invoice is cancelled - make it uneditable
     if invoice.status == 'cancelled':
         flash('Cannot edit a cancelled invoice', 'error')
+        if invoice.is_bill:
+            return redirect(url_for('seller_bills'))
         return redirect(url_for('seller_invoices'))
     
     if request.method == 'POST':
@@ -1841,15 +2093,17 @@ def edit_invoice(invoice_id):
             log_activity('invoice_updated', f'Updated invoice {invoice_id} - Status: {new_status}')
             
             flash('Invoice updated successfully!', 'success')
+            if invoice.is_bill:
+                return redirect(url_for('seller_bills'))
             return redirect(url_for('seller_invoices'))
             
         except Exception as e:
             db.session.rollback()
             flash(f'Failed to update invoice: {str(e)}', 'error')
     
-    products = Product.query.filter_by(s_id=session['user_id']).all()
-    # Show only customers created by this seller (for reference, but invoice customer is already set)
-    customers = Customer.query.filter_by(s_id=session['user_id']).all()
+    products = Product.query.filter_by(s_id=session['user_id'], is_synced=True).all()
+    # Show only customers created by this seller and are synced (for reference, but invoice customer is already set)
+    customers = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).all()
     products_data = [product.to_dict() for product in products]
     
     return render_template('seller/edit_invoice.html', invoice=invoice, products=products_data, customers=customers)
@@ -1886,12 +2140,15 @@ def view_invoice(invoice_id):
 @login_required
 @role_required('seller')
 def delete_invoice(invoice_id):
+    is_bill = False
     try:
         # Verify invoice belongs to this seller
         invoice = Invoice.query.filter_by(invoice_no=invoice_id, s_id=session['user_id']).first()
         if not invoice:
             flash('Invoice not found or access denied', 'error')
             return redirect(url_for('seller_invoices'))
+        
+        is_bill = invoice.is_bill
         
         # Log activity before deletion
         log_activity('invoice_deleted', f'Deleted invoice {invoice_id} for {invoice.customer.c_name if invoice.customer else "Unknown Customer"}')
@@ -1906,12 +2163,17 @@ def delete_invoice(invoice_id):
         # Delete invoice (invoice_items will be cascade deleted due to relationship/DB constraints)
         db.session.delete(invoice)
         db.session.commit()
-        flash('Invoice deleted successfully!', 'success')
+        if is_bill:
+            flash('Bill deleted successfully!', 'success')
+        else:
+            flash('Invoice deleted successfully!', 'success')
         
     except Exception as e:
         db.session.rollback()
         flash(f'Failed to delete invoice: {str(e)}', 'error')
-    
+        
+    if is_bill:
+        return redirect(url_for('seller_bills'))
     return redirect(url_for('seller_invoices'))
 
 
@@ -1938,9 +2200,9 @@ def process_ai_command():
         if not user_text:
             return jsonify({'error': 'No text provided', 'success': False}), 400
         
-        # Get context (products and customers) - only for current seller
-        products = Product.query.filter_by(s_id=session['user_id']).all()
-        customers = Customer.query.filter_by(s_id=session['user_id']).all()
+        # Get context (products and customers) - only for current seller and are synced
+        products = Product.query.filter_by(s_id=session['user_id'], is_synced=True).all()
+        customers = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).all()
         
         # Aggregate Business Stats
         stats = {
@@ -1953,12 +2215,12 @@ def process_ai_command():
             'recent_invoices': []
         }
         try:
-            revenue_val = db.session.query(db.func.sum(Invoice.amount)).filter(Invoice.s_id == session['user_id']).scalar() or 0.0
+            revenue_val = db.session.query(db.func.sum(Invoice.amount)).filter(Invoice.s_id == session['user_id'], Invoice.is_bill == False).scalar() or 0.0
             stats['revenue'] = float(revenue_val)
-            stats['invoices_count'] = Invoice.query.filter_by(s_id=session['user_id']).count()
-            stats['customers_count'] = Customer.query.filter_by(s_id=session['user_id']).count()
+            stats['invoices_count'] = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False).count()
+            stats['customers_count'] = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).count()
             
-            low_stock_products = Product.query.filter(Product.s_id == session['user_id'], Product.p_stock < 10).all()
+            low_stock_products = Product.query.filter(Product.s_id == session['user_id'], Product.is_synced == True, Product.p_stock < 10).all()
             stats['low_stock'] = [{'name': p.p_name, 'stock': p.p_stock} for p in low_stock_products]
             
             top_selling = db.session.query(
@@ -1969,7 +2231,9 @@ def process_ai_command():
             ).join(
                 Invoice, InvoiceItem.invoice_no == Invoice.invoice_no
             ).filter(
-                Invoice.s_id == session['user_id']
+                Invoice.s_id == session['user_id'],
+                Product.is_synced == True,
+                Invoice.is_bill == False
             ).group_by(
                 Product.p_name
             ).order_by(
@@ -1977,7 +2241,7 @@ def process_ai_command():
             ).limit(3).all()
             stats['top_selling'] = [{'name': name, 'quantity': int(qty)} for name, qty in top_selling]
             
-            recent_invoices = Invoice.query.filter_by(s_id=session['user_id']).order_by(Invoice.invoice_datetime.desc()).limit(3).all()
+            recent_invoices = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False).order_by(Invoice.invoice_datetime.desc()).limit(3).all()
             stats['recent_invoices'] = [{
                 'invoice_no': inv.invoice_no,
                 'customer_name': inv.customer.c_name if inv.customer else 'Unknown',
@@ -1998,6 +2262,8 @@ def process_ai_command():
                 'status': inv.status,
                 'date': inv.invoice_datetime.strftime('%Y-%m-%d') if inv.invoice_datetime else 'N/A',
                 'due_date': inv.due_date.strftime('%Y-%m-%d') if inv.due_date else 'N/A',
+                'is_bill': inv.is_bill,
+                'accommodate_in_metrics': inv.accommodate_in_metrics,
                 'items': [{'name': item.product.p_name if item.product else 'Unknown', 'quantity': item.item_quantity} for item in inv.items]
             })
 

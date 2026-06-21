@@ -78,6 +78,10 @@ You will be provided with:
 2. Current Database Context (List of existing products, customers, and business statistics)
 3. Conversation History (if any)
 
+About Scanned Bills (is_bill = True):
+- Scanned bills with `[Acc. in Metrics: False]` are excluded/private records (just saved to not lose them). They should be IGNORED in any business expense summaries or total financial calculations unless the user explicitly asks about their "private" or "unaccommodated" bills.
+- Only bills with `[Acc. in Metrics: True]` should be counted as business expenses/outflows in financial stats.
+
 Output JSON format:
 {{
     "intent": "create_invoice" | "add_customer" | "add_product" | "navigation" | "business_insights" | "business_education" | "unknown",
@@ -161,8 +165,12 @@ def get_context_str(context):
     invoices_list = []
     for inv in context.get('invoices', []):
         items_str = ", ".join([f"{item['name']} x{item['quantity']}" for item in inv['items']])
+        type_str = "Bill" if inv.get('is_bill') else "Invoice"
+        acc_str = ""
+        if inv.get('is_bill'):
+            acc_str = f" [Acc. in Metrics: {inv.get('accommodate_in_metrics', True)}]"
         invoices_list.append(
-            f"- {inv['invoice_no']} for {inv['customer_name']}: INR {inv['amount']:.2f} ({inv['status']}) on {inv['date']} (due: {inv['due_date']}) - Items: [{items_str}]"
+            f"- {type_str} {inv['invoice_no']} for {inv['customer_name']}: INR {inv['amount']:.2f} ({inv['status']}) on {inv['date']} (due: {inv['due_date']}){acc_str} - Items: [{items_str}]"
         )
     invoices_str = "\n".join(invoices_list)
     
