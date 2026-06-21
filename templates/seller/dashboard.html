@@ -674,5 +674,40 @@ Voice Guidelines
             });
         });
     });
+
+    // Staggered springy GSAP entrance animations for Dashboard cards
+    (function initGSAPAnimations() {
+        if (typeof gsap === 'undefined') {
+            console.warn('GSAP is not loaded. Skipping dashboard animations.');
+            return;
+        }
+
+        // Clear the CSS animation styles so GSAP takes full control
+        gsap.set('.animate-fade-in-up, .metric-card, .activity-card, .ocr-promo-card, .conversion-promo-banner-container', { 
+            clearProps: 'animation,animationDelay' 
+        });
+
+        const tl = gsap.timeline();
+
+        // 1. Welcome Greeting Header Card
+        tl.fromTo('section.mb-12.comic-card', 
+            { opacity: 0, y: 30 }, 
+            { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.2)' }
+        );
+
+        // 2. Metric Cards (Total Products, Customers, Invoices, Revenue)
+        tl.fromTo('.metric-card', 
+            { opacity: 0, scale: 0.92, y: 20 }, 
+            { opacity: 1, scale: 1, y: 0, duration: 0.5, stagger: 0.08, ease: 'back.out(1.5)' },
+            '-=0.4'
+        );
+
+        // 3. Bottom Row Cards (Recent Activity, Academy Cards, and Free Conversion Banner)
+        tl.fromTo('.activity-card, .ocr-promo-card, .conversion-promo-banner-container, .lg\\:col-span-4 > div', 
+            { opacity: 0, y: 30 }, 
+            { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out' },
+            '-=0.3'
+        );
+    })();
 </script>
 {% endblock %}
