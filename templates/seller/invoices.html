@@ -391,7 +391,7 @@
         <div class="line"></div>
     </div>
     <h3 style="margin: 0; font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 16px; color: var(--loader-text);">KHATA AI DOING ITS JOB...</h3>
-    <p style="margin: 8px 0 0 0; opacity: 0.8; font-size: 14px; color: var(--loader-text); font-family: 'Inter', sans-serif;">Extracting vendor details, items, tax, and amounts...</p>
+    <p id="loader-subtitle" style="margin: 8px 0 0 0; opacity: 0.8; font-size: 14px; color: var(--loader-text); font-family: 'Inter', sans-serif;">Extracting vendor details, items, tax, and amounts...</p>
 </div>
 
 <script>
@@ -481,7 +481,34 @@ function switchTab(tab) {
 function submitDigitizeForm() {
     const fileInput = document.getElementById('bill-file');
     if (fileInput.files.length > 0) {
-        document.getElementById('loading-overlay').style.display = 'flex';
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.display = 'flex';
+        
+        // Dynamic funny status messages
+        const messages = [
+            "Waking up the AI... it needs its morning tea first.",
+            "Locating the vendor (they can hide, but they can't run).",
+            "Deciphering handwriting... looks like ancient hieroglyphics.",
+            "Filtering out coffee stains and grease marks...",
+            "Adding tax... unfortunately, we cannot delete the government.",
+            "Double checking the math... 1 + 1 is still 2, right?",
+            "Convincing the AI that this is a real bill, not a doodle.",
+            "Whispering sweet nothings to the OCR model...",
+            "Calculating total... brace yourself for the expense!",
+            "Nearly there... organizing your products and stocks.",
+            "Polishing the ledger... making it clean and Neo-Brutalist.",
+            "Telling the AI to work faster or no electricity tonight."
+        ];
+        
+        const subtitleEl = document.getElementById('loader-subtitle');
+        if (subtitleEl) {
+            let index = 0;
+            setInterval(() => {
+                index = (index + 1) % messages.length;
+                subtitleEl.textContent = messages[index];
+            }, 2000);
+        }
+        
         document.getElementById('digitize-form').submit();
     }
 }

@@ -33,5 +33,11 @@ class Config:
             
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # Engine options to prevent connection timeouts (especially for hosted PostgreSQL on Render)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_recycle': 280,
+        'pool_pre_ping': True
+    }
+    
     # Other configurations
     DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
