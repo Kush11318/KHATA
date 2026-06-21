@@ -273,16 +273,53 @@ class AIAssistant {
         `;
         document.body.appendChild(container);
 
-        // Welcome entry animation sequence & ripple wave
+        // Welcome entry animation sequence & hover effects with GSAP
         const mainBtn = container.querySelector('#ai-assistant-btn');
-        const ripple = container.querySelector('#ai-btn-ripple');
-        
-        mainBtn.classList.add('entrance');
-        
-        // Trigger glowing ripple wave right as entrance completes
-        setTimeout(() => {
-            if (ripple) ripple.classList.add('animate');
-        }, 500);
+        if (mainBtn && typeof gsap !== 'undefined') {
+            gsap.fromTo(mainBtn, 
+                { scale: 0, opacity: 0 }, 
+                { scale: 1, opacity: 1, duration: 0.8, ease: 'back.out(2)', clearProps: 'opacity' }
+            );
+
+            mainBtn.addEventListener('mouseenter', () => {
+                const icon = mainBtn.querySelector('.ai-btn-content i');
+                gsap.to(mainBtn, {
+                    y: -3,
+                    x: -3,
+                    scale: 1.05,
+                    boxShadow: '7px 7px 0px #000000',
+                    duration: 0.25,
+                    ease: 'power2.out'
+                });
+                if (icon) {
+                    gsap.to(icon, {
+                        rotate: 15,
+                        scale: 1.05,
+                        duration: 0.35,
+                        ease: 'power2.out'
+                    });
+                }
+            });
+            mainBtn.addEventListener('mouseleave', () => {
+                const icon = mainBtn.querySelector('.ai-btn-content i');
+                gsap.to(mainBtn, {
+                    y: 0,
+                    x: 0,
+                    scale: 1,
+                    boxShadow: '4px 4px 0px #000000',
+                    duration: 0.45,
+                    ease: 'back.out(1.8)'
+                });
+                if (icon) {
+                    gsap.to(icon, {
+                        rotate: 0,
+                        scale: 1,
+                        duration: 0.45,
+                        ease: 'back.out(1.8)'
+                    });
+                }
+            });
+        }
 
         // Create Chat Modal (hidden by default)
         const modal = document.createElement('div');
@@ -317,7 +354,9 @@ class AIAssistant {
                 ${pillsHtml}
             </div>
             <div class="ai-input-area">
-                <button id="ai-mic-btn" class="ai-mic-btn" title="Speak command"><i class="fas fa-microphone"></i></button>
+                <div class="ai-mic-wrapper">
+                    <button id="ai-mic-btn" class="ai-mic-btn" style="position: relative; z-index: 2;" title="Speak command"><i class="fas fa-microphone"></i></button>
+                </div>
                 <input type="text" id="ai-text-input" class="ai-input" placeholder="${this.getUIPlaceholder('idle', this.selectedLang)}">
                 <button id="ai-send-btn" class="ai-send-btn" title="Send message"><i class="fas fa-paper-plane"></i></button>
             </div>
@@ -379,6 +418,24 @@ class AIAssistant {
         const modal = document.getElementById('ai-chat-modal');
         if (modal) {
             modal.classList.add('active');
+            
+            // GSAP elastic scale-expand opening animation from the bottom-right trigger button
+            if (typeof gsap !== 'undefined') {
+                gsap.fromTo(modal,
+                    { opacity: 0, scale: 0.3, y: 50, x: 50 },
+                    { opacity: 1, scale: 1, y: 0, x: 0, duration: 0.5, ease: 'back.out(1.4)', clearProps: 'transform' }
+                );
+
+                // Stagger reveal quick action command pills
+                const pills = modal.querySelectorAll('.ai-pill-btn');
+                if (pills.length > 0) {
+                    gsap.fromTo(pills,
+                        { opacity: 0, y: 15, scale: 0.9 },
+                        { opacity: 1, y: 0, scale: 1, stagger: 0.06, duration: 0.45, ease: 'back.out(1.5)', delay: 0.2 }
+                    );
+                }
+            }
+            
             const input = document.getElementById('ai-text-input');
             if (input) input.focus();
         }
@@ -387,11 +444,26 @@ class AIAssistant {
     closeChatModal() {
         const modal = document.getElementById('ai-chat-modal');
         if (modal) {
-            modal.classList.remove('active');
+            if (typeof gsap !== 'undefined') {
+                gsap.to(modal, {
+                    opacity: 0,
+                    scale: 0.3,
+                    y: 50,
+                    x: 50,
+                    duration: 0.35,
+                    ease: 'power2.in',
+                    onComplete: () => {
+                        modal.classList.remove('active');
+                    }
+                });
+            } else {
+                modal.classList.remove('active');
+            }
         }
         if (this.synth) {
             this.synth.cancel();
         }
+        this.stopRippleEffect();
         this.updateUIState('idle');
     }
 
@@ -454,6 +526,7 @@ class AIAssistant {
                 textInput.placeholder = this.getUIPlaceholder('listening', currentLang);
                 textInput.value = '';
             }
+            this.startRippleEffect('listening');
         } else if (state === 'speaking') {
             if (micBtn) {
                 micBtn.innerHTML = '<i class="fas fa-stop" style="color: #ff3b30;"></i>';
@@ -464,6 +537,7 @@ class AIAssistant {
             if (mainBtn) {
                 mainBtn.classList.remove('listening');
             }
+            this.startRippleEffect('speaking');
         } else {
             if (micBtn) {
                 micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
@@ -477,7 +551,65 @@ class AIAssistant {
             if (textInput) {
                 textInput.placeholder = this.getUIPlaceholder('idle', currentLang);
             }
+            this.stopRippleEffect();
         }
+    }
+
+    startRippleEffect(mode) {
+        this.stopRippleEffect(); // Clear any existing ripples first
+
+        const container = document.getElementById('ai-assistant-container');
+        const micWrapper = document.querySelector('.ai-mic-wrapper');
+        
+        if (typeof gsap === 'undefined') return;
+
+        this.rippleTimelines = [];
+
+        // 1. Concentric ripples behind the main floating button
+        if (container) {
+            const btn = document.getElementById('ai-assistant-btn');
+            for (let i = 0; i < 3; i++) {
+                const ring = document.createElement('div');
+                ring.className = `ai-pulse-ring ${mode}`;
+                container.insertBefore(ring, btn); // Insert behind the button
+
+                const tl = gsap.timeline({ repeat: -1 });
+                tl.fromTo(ring,
+                    { scale: 1, opacity: 0.6 },
+                    { scale: 2.2, opacity: 0, duration: 1.5, ease: 'power1.out', delay: i * 0.5 }
+                );
+                this.rippleTimelines.push({ element: ring, tl: tl });
+            }
+        }
+
+        // 2. Concentric ripples behind the inner mic button
+        if (micWrapper) {
+            const micBtn = document.getElementById('ai-mic-btn');
+            for (let i = 0; i < 3; i++) {
+                const ring = document.createElement('div');
+                ring.className = `ai-mic-pulse-ring ${mode}`;
+                micWrapper.insertBefore(ring, micBtn); // Insert behind the mic button
+
+                const tl = gsap.timeline({ repeat: -1 });
+                tl.fromTo(ring,
+                    { scale: 1, opacity: 0.6 },
+                    { scale: 2.2, opacity: 0, duration: 1.5, ease: 'power1.out', delay: i * 0.5 }
+                );
+                this.rippleTimelines.push({ element: ring, tl: tl });
+            }
+        }
+    }
+
+    stopRippleEffect() {
+        if (this.rippleTimelines) {
+            this.rippleTimelines.forEach(item => {
+                try {
+                    item.tl.kill();
+                    item.element.remove();
+                } catch (e) {}
+            });
+        }
+        this.rippleTimelines = [];
     }
 
 
@@ -502,6 +634,35 @@ class AIAssistant {
 
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
+
+        // GSAP Staggered message entry animation
+        if (typeof gsap !== 'undefined') {
+            const avatar = div.querySelector('.ai-avatar');
+            const bubble = div.querySelector('.ai-text');
+            
+            if (avatar && bubble) {
+                // Set initial hidden styles
+                gsap.set(avatar, { scale: 0, rotation: -35 });
+                gsap.set(bubble, { opacity: 0, scale: 0.85, x: sender === 'user' ? 35 : -35 });
+
+                const tl = gsap.timeline();
+                // 1. Pop avatar with bouncy rotation
+                tl.to(avatar, {
+                    scale: 1,
+                    rotation: 0,
+                    duration: 0.45,
+                    ease: 'back.out(1.8)'
+                });
+                // 2. Bounce text bubble with dynamic slide-in
+                tl.to(bubble, {
+                    opacity: 1,
+                    scale: 1,
+                    x: 0,
+                    duration: 0.5,
+                    ease: 'back.out(1.4)'
+                }, '-=0.35');
+            }
+        }
     }
 
     async handleUserInput(text) {
@@ -723,6 +884,14 @@ class AIAssistant {
             </div>
         `;
         container.appendChild(previewDiv);
+        
+        if (typeof gsap !== 'undefined') {
+            gsap.fromTo(previewDiv,
+                { opacity: 0, scale: 0.7, y: 30 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: 'back.out(1.6)' }
+            );
+        }
+        
         container.scrollTop = container.scrollHeight;
     }
 
@@ -786,6 +955,14 @@ class AIAssistant {
             </div>
         `;
         container.appendChild(previewDiv);
+        
+        if (typeof gsap !== 'undefined') {
+            gsap.fromTo(previewDiv,
+                { opacity: 0, scale: 0.7, y: 30 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: 'back.out(1.6)' }
+            );
+        }
+        
         container.scrollTop = container.scrollHeight;
     }
 
@@ -814,6 +991,14 @@ class AIAssistant {
             </div>
         `;
         container.appendChild(previewDiv);
+        
+        if (typeof gsap !== 'undefined') {
+            gsap.fromTo(previewDiv,
+                { opacity: 0, scale: 0.7, y: 30 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: 'back.out(1.6)' }
+            );
+        }
+        
         container.scrollTop = container.scrollHeight;
     }
 
