@@ -2208,6 +2208,7 @@ select.form-input {
     letter-spacing: 0.5px;
     text-transform: uppercase;
     flex: 1;
+    line-height: 1.4;
 }
 
 .promo-link-btn {
