@@ -2169,7 +2169,7 @@ def upload_bill():
         tax = Decimal(str(bill_info.get('tax', 0.0)))
         total_amount = Decimal(str(bill_info.get('total_amount', 0.0)))
         extracted_invoice_no = bill_info.get('invoice_no')
-        sync_db = True
+        sync_db = False
         
         s_id = session['user_id']
         customer = Customer.query.filter_by(s_id=s_id, c_name=vendor_name, is_synced=sync_db).first()
