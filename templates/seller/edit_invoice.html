@@ -23,7 +23,7 @@
         <h2 class="section-title">Edit {% if invoice.is_bill %}Bill{% else %}Invoice{% endif %} {{ invoice.id }}</h2>
     </div>
 
-    {% if invoice.status == 'cancelled' %}
+    {% if invoice.status == 'cancelled' and not invoice.is_bill %}
     <div class="card" style="background-color: #fee; border: 2px solid #fcc; margin-bottom: 16px;">
         <p style="color: #c00; font-weight: 600;">
             <i class="fas fa-exclamation-triangle"></i>
@@ -32,22 +32,25 @@
     </div>
     {% endif %}
 
-    <form method="POST" class="invoice-form" {% if invoice.status=='cancelled'
+    <form method="POST" class="invoice-form" {% if invoice.status=='cancelled' and not invoice.is_bill
         %}onsubmit="event.preventDefault(); alert('Cannot edit a cancelled invoice'); return false;" {% endif %}>
         <div class="card">
-            <h3 class="form-section-title">Invoice Information</h3>
+            <h3 class="form-section-title">{% if invoice.is_bill %}Bill{% else %}Invoice{% endif %} Information</h3>
             <div class="form-group">
-                <label class="form-label">Invoice Number</label>
+                <label class="form-label">{% if invoice.is_bill %}Bill Number{% else %}Invoice Number{% endif %}</label>
                 <input type="text" class="form-input" value="{{ invoice.id }}" readonly>
             </div>
             <div class="form-group">
-                <label class="form-label">Customer</label>
-                <input type="text" class="form-input" value="{{ invoice.customer_name }} ({{ invoice.customer_email }})"
-                    readonly>
+                <label class="form-label">{% if invoice.is_bill %}Vendor Name{% else %}Customer Name{% endif %}</label>
+                <input type="text" name="customer_name" class="form-input" value="{{ invoice.customer_name }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">{% if invoice.is_bill %}Vendor Email{% else %}Customer Email{% endif %}</label>
+                <input type="email" name="customer_email" class="form-input" value="{{ invoice.customer_email }}">
             </div>
             <div class="form-group">
                 <label class="form-label">Date</label>
-                <input type="text" class="form-input" value="{{ invoice.date }}" readonly>
+                <input type="date" name="invoice_date" class="form-input" value="{{ invoice.date }}" required style="max-width: 200px">
             </div>
             <div class="form-group">
                 <label class="form-label">Due Date</label>

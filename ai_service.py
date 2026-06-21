@@ -103,15 +103,20 @@ Output JSON format:
 }}
 
 For 'db_operation':
-- Triggered when the user wants to update or delete existing records (e.g., delete an invoice, mark an invoice as paid/pending/cancelled, update the due date of an invoice, delete a product, or delete a customer).
+- Triggered when the user wants to update or delete existing records in the system (e.g. deleting invoices/products/customers, updating statuses or due dates, changing product prices or inventory stock counts, or updating customer contact info).
 - "data" should contain:
-    - "operation": one of "update_invoice_status" | "update_invoice_due_date" | "delete_invoice" | "delete_product" | "delete_customer"
-    - "invoice_no": string (e.g. "INV-001" or "INV-2025-001") or null if not applicable
+    - "operation": one of "update_invoice_status" | "update_invoice_due_date" | "delete_invoice" | "delete_product" | "delete_customer" | "update_product_price" | "update_product_stock" | "update_customer_details"
+    - "invoice_no": string (e.g. "INV-001") or null if not applicable
     - "status": string (e.g. "paid", "pending", "cancelled", "overdue") or null
     - "due_date": string (YYYY-MM-DD format) or null
-    - "product_name": string (the exact or similar product name to delete) or null
-    - "customer_name": string (the exact or similar customer name to delete) or null
-- "response_text": A clear, natural language confirmation in {lang_name} indicating what data will be updated or deleted.
+    - "product_name": string (product name to delete or update) or null
+    - "customer_name": string (customer name to delete or update) or null
+    - "price": float (new price of the product) or null
+    - "stock": integer (new stock quantity of the product) or null
+    - "phone": string (new phone number of the customer) or null
+    - "address": string (new address of the customer) or null
+    - "email": string (new email address of the customer) or null
+- "response_text": A clear, natural language confirmation in {lang_name} indicating what was updated or deleted.
 
 For 'navigation':
 - Triggered when the user asks to go to a specific page or dashboard.

@@ -2183,15 +2183,29 @@ def edit_invoice(invoice_id):
         flash('Invoice not found', 'error')
         return redirect(request.referrer or url_for('seller_invoices'))
     
-    # Check if invoice is cancelled - make it uneditable
-    if invoice.status == 'cancelled':
+    # Check if invoice is cancelled - make it uneditable (except for scanned bills)
+    if invoice.status == 'cancelled' and not invoice.is_bill:
         flash('Cannot edit a cancelled invoice', 'error')
-        if invoice.is_bill:
-            return redirect(url_for('seller_bills'))
         return redirect(url_for('seller_invoices'))
     
     if request.method == 'POST':
         try:
+            # Update customer/vendor details if present
+            customer_name = request.form.get('customer_name', '').strip()
+            customer_email = request.form.get('customer_email', '').strip()
+            if invoice.customer:
+                if customer_name:
+                    invoice.customer.c_name = customer_name
+                invoice.customer.c_email = customer_email
+            
+            # Update invoice/bill datetime
+            invoice_date_str = request.form.get('invoice_date', '').strip()
+            if invoice_date_str:
+                try:
+                    invoice.invoice_datetime = datetime.strptime(invoice_date_str, '%Y-%m-%d')
+                except ValueError:
+                    pass
+            
             # Update invoice status
             new_status = request.form.get('status', invoice.status)
             old_status = invoice.status
@@ -2803,6 +2817,64 @@ def process_ai_command():
                             db.session.delete(customer)
                             db.session.commit()
                             log_activity('customer_deleted', f'Deleted customer "{c_name}" via AI')
+                            result['success'] = True
+                            
+                elif operation == 'update_product_price':
+                    prod_name = op_data.get('product_name')
+                    new_price = op_data.get('price')
+                    if not prod_name or new_price is None:
+                        result['response_text'] = "❌ Missing product name or price value for update."
+                        result['success'] = False
+                    else:
+                        product = Product.query.filter(Product.s_id == s_id, Product.p_name.like(f"%{prod_name}%")).first()
+                        if not product:
+                            result['response_text'] = f"❌ Product '{prod_name}' not found."
+                            result['success'] = False
+                        else:
+                            product.p_price = Decimal(str(new_price))
+                            db.session.commit()
+                            log_activity('product_updated', f'Updated price of product "{product.p_name}" to ₹{new_price} via AI')
+                            result['success'] = True
+                            
+                elif operation == 'update_product_stock':
+                    prod_name = op_data.get('product_name')
+                    new_stock = op_data.get('stock')
+                    if not prod_name or new_stock is None:
+                        result['response_text'] = "❌ Missing product name or stock value for update."
+                        result['success'] = False
+                    else:
+                        product = Product.query.filter(Product.s_id == s_id, Product.p_name.like(f"%{prod_name}%")).first()
+                        if not product:
+                            result['response_text'] = f"❌ Product '{prod_name}' not found."
+                            result['success'] = False
+                        else:
+                            product.p_stock = int(new_stock)
+                            db.session.commit()
+                            log_activity('product_updated', f'Updated stock of product "{product.p_name}" to {new_stock} via AI')
+                            result['success'] = True
+                            
+                elif operation == 'update_customer_details':
+                    cust_name = op_data.get('customer_name')
+                    phone = op_data.get('phone')
+                    address = op_data.get('address')
+                    email = op_data.get('email')
+                    if not cust_name:
+                        result['response_text'] = "❌ Missing customer name for details update."
+                        result['success'] = False
+                    else:
+                        customer = Customer.query.filter(Customer.s_id == s_id, Customer.c_name.like(f"%{cust_name}%")).first()
+                        if not customer:
+                            result['response_text'] = f"❌ Customer '{cust_name}' not found."
+                            result['success'] = False
+                        else:
+                            if phone is not None:
+                                customer.c_phone_no = str(phone)
+                            if address is not None:
+                                customer.c_address = str(address)
+                            if email is not None:
+                                customer.c_email = str(email)
+                            db.session.commit()
+                            log_activity('customer_updated', f'Updated contact details for customer "{customer.c_name}" via AI')
                             result['success'] = True
                             
                 else:
