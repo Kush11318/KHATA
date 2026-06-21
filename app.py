@@ -2,6 +2,13 @@ import os
 import sys
 import io
 
+# Enable HEIC image format support natively
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
+
 # Force stdout/stderr to UTF-8 on Windows to prevent charmap codec errors with unicode characters
 if sys.stdout is not None:
     try:
@@ -1942,8 +1949,8 @@ def upload_bill():
         
     filename = file.filename.lower()
     cc_api_key = os.environ.get("CLOUDCONVERT_API_KEY")
-    allowed_extensions = {'.png', '.jpg', '.jpeg', '.jfif', '.webp', '.gif', '.pdf'}
-    image_convertible = {'.heic', '.tiff'}
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.jfif', '.webp', '.gif', '.heic', '.heif', '.pdf'}
+    image_convertible = {'.tiff'}
     doc_convertible = {'.docx', '.doc', '.xlsx', '.xls', '.txt'}
     
     if cc_api_key:
@@ -1953,9 +1960,9 @@ def upload_bill():
     ext = os.path.splitext(filename)[1]
     if ext not in allowed_extensions:
         if cc_api_key:
-            flash('Invalid file type. Allowed: PDF, PNG, JPG, JPEG, WEBP, GIF, and convertible formats (DOCX, XLSX, TXT, HEIC, TIFF).', 'error')
+            flash('Invalid file type. Allowed: PDF, PNG, JPG, JPEG, WEBP, GIF, HEIC, and convertible formats (DOCX, XLSX, TXT, TIFF).', 'error')
         else:
-            flash('Invalid file type. Only PDF and standard images (PNG, JPG, JFIF, WEBP, GIF) are allowed.', 'error')
+            flash('Invalid file type. Only PDF and standard images (PNG, JPG, JFIF, WEBP, GIF, HEIC) are allowed.', 'error')
         return redirect(url_for('seller_bills'))
         
     file_bytes = file.read()
@@ -1981,9 +1988,14 @@ def upload_bill():
             flash(f"Error during file conversion: {str(e)}", "error")
             return redirect(url_for('seller_bills'))
             
-    mime_type = 'application/pdf' if ext == '.pdf' else f'image/{ext.lstrip(".")}'
-    if mime_type in ('image/jpg', 'image/jfif'):
+    # Compress and convert all natively supported image formats to JPEG immediately before OCR/storage
+    if ext != '.pdf':
+        print(f"Natively compressing and converting image format {ext} to JPEG...")
+        file_bytes = compress_image_bytes(file_bytes)
+        ext = '.jpg'
         mime_type = 'image/jpeg'
+    else:
+        mime_type = 'application/pdf'
         
     gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not gemini_key:
@@ -2225,7 +2237,6 @@ def upload_bill():
         
         original_upload_bytes = file_bytes
         if ext != '.pdf':
-            original_upload_bytes = compress_image_bytes(file_bytes)
             original_filename = f"{safe_invoice_no}_original.jpg"
         else:
             original_filename = f"{safe_invoice_no}_original.pdf"

@@ -529,8 +529,8 @@ function submitDigitizeForm() {
         // Check if CloudConvert is configured (passed from Flask context)
         const cloudconvertAvailable = {{ 'true' if cloudconvert_available else 'false' }};
         
-        const nativeExtensions = ['png', 'jpg', 'jpeg', 'jfif', 'webp', 'gif', 'pdf'];
-        const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'heic', 'tiff'];
+        const nativeExtensions = ['png', 'jpg', 'jpeg', 'jfif', 'webp', 'gif', 'heic', 'heif', 'pdf'];
+        const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'tiff'];
         
         if (nativeExtensions.includes(ext)) {
             // Natively supported format, direct submission without modal popup
@@ -552,7 +552,7 @@ function submitDigitizeForm() {
             }
         } else {
             // Totally unsupported format: show an in-app error flash message
-            const msg = 'Unsupported file format. Please upload PDF, images (PNG, JPG, JFIF, WEBP, GIF), or document formats (DOCX, XLSX, TXT, HEIC, TIFF).';
+            const msg = 'Unsupported file format. Please upload PDF, images (PNG, JPG, JFIF, WEBP, GIF, HEIC, HEIF), or document formats (DOCX, XLSX, TXT, TIFF).';
             if (window.showFlashMessage) {
                 window.showFlashMessage(msg, 'error');
             } else {
