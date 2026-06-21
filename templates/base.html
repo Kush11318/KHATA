@@ -878,7 +878,13 @@
                 loader.classList.remove('fade-out');
                 
                 // Hide it after a short delay
-                const hide = () => loader.classList.add('fade-out');
+                const hide = () => {
+                    if (loader.classList.contains('fade-out')) return;
+                    loader.classList.add('fade-out');
+                    setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('page-loader-hidden'));
+                    }, 200);
+                };
                 if (document.readyState === 'complete' || document.readyState === 'interactive') {
                     setTimeout(hide, 750);
                 } else {
