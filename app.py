@@ -1841,7 +1841,10 @@ def upload_bill():
                     print(f"Key {key[:8]} failed for gemini-1.5-flash: {err}")
                     
         if not response:
-            raise last_err
+            if isinstance(last_err, Exception):
+                raise last_err
+            else:
+                raise Exception("Failed to digitalize bill: No response received from Gemini.")
             
         bill_info = json.loads(response.text)
         print(f"Gemini response: {bill_info}")

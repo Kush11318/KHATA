@@ -788,7 +788,10 @@ def parse_command_gemini(user_text, context, history, api_key, language):
                 print(f"Key {key[:8]} failed for Assistant gemini-1.5-flash: {err}")
                 
     if not response:
-        raise last_err
+        if isinstance(last_err, Exception):
+            raise last_err
+        else:
+            raise Exception("Failed to parse command: No response received from Gemini.")
     
     content = response.text
     if content.startswith("```json"):
