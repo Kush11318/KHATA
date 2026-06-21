@@ -423,7 +423,7 @@ class AIAssistant {
             if (typeof gsap !== 'undefined') {
                 gsap.fromTo(modal,
                     { opacity: 0, scale: 0.3, y: 50, x: 50 },
-                    { opacity: 1, scale: 1, y: 0, x: 0, duration: 0.5, ease: 'back.out(1.4)', clearProps: 'transform' }
+                    { opacity: 1, scale: 1, y: 0, x: 0, duration: 0.5, ease: 'back.out(1.4)' }
                 );
 
                 // Stagger reveal quick action command pills
