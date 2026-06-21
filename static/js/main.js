@@ -234,6 +234,9 @@ window.navigateToPage = async function(url, pushState = true) {
 
             currentMain.innerHTML = newMain.innerHTML;
             
+            // Reset scroll position to top of the page instantly
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            
             // Execute any scripts within the dynamic content block (e.g., canvas shaders)
             executeScripts(currentMain);
 
