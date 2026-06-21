@@ -1,6 +1,19 @@
-# Invoice Management System with AI Billing Assistant
+# KHATA - Invoice Management & AI Assistant
 
 A smart, modern billing, inventory, and customer management system built for small-to-medium businesses. Powered by Flask, SQLAlchemy, Google Gemini, and Cloudinary, this application features an interactive dashboard, role-based portals, and a state-of-the-art AI Billing Assistant supporting natural language voice/text commands, scanned bill OCR digitization, canvas markup annotations, and persistent notes.
+
+* **Live Demo**: [https://invoice-system-ai.onrender.com](https://invoice-system-ai.onrender.com)
+* **Developer Portfolio**: [github.com/Kush11318](https://github.com/Kush11318)
+
+---
+
+## Live Case Study: AI Chatbot Capabilities
+
+This repository showcases the core engine of the **KHATA AI Assistant**, demonstrating:
+- **Natural Language Parsing**: High-accuracy information extraction from free-form conversations.
+- **Workflow Automation**: Dynamic database updates (inventory levels, customer records) triggered via chat.
+- **Document Intelligence**: Interactive canvas viewer for scanned bills, including drawing tools, image manipulation, and database-stored notes.
+- **System Stability**: Connection pool recycling and unicode-safe stream routing.
 
 ---
 
