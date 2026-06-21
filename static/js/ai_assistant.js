@@ -2,6 +2,7 @@ class AIAssistant {
     constructor() {
         this.recognition = null;
         this.isListening = false;
+        this.isSpeaking = false;
         this.synth = window.speechSynthesis;
         this.chatHistory = []; // Memory
         this.selectedLang = localStorage.getItem('ai_assistant_lang') || 'en-IN';
@@ -86,7 +87,7 @@ class AIAssistant {
                     clearTimeout(this.silenceTimer);
                 }
 
-                // If user stops speaking for 1.2 seconds, auto-submit the sentence
+                // If user stops speaking for 2.5 seconds, auto-submit the sentence
                 this.silenceTimer = setTimeout(() => {
                     if (this.isListening) {
                         this.isListening = false;
@@ -99,7 +100,7 @@ class AIAssistant {
                             if (input) input.value = '';
                         }
                     }
-                }, 1200);
+                }, 2500);
             };
 
             this.recognition.onerror = (event) => {
@@ -468,7 +469,8 @@ class AIAssistant {
     }
 
     toggleListening() {
-        if (this.synth && this.synth.speaking) {
+        if (this.synth && (this.isSpeaking || this.synth.speaking)) {
+            this.isSpeaking = false;
             this.synth.cancel();
             this.updateUIState('idle');
             return;
@@ -801,11 +803,12 @@ class AIAssistant {
             if (cleanText) {
                 const utterance = new SpeechSynthesisUtterance(cleanText);
                 
+                this.isSpeaking = true;
                 this.updateUIState('speaking');
 
-
                 utterance.onend = () => {
-                    if (this.synth && !this.synth.speaking) {
+                    if (this.isSpeaking) {
+                        this.isSpeaking = false;
                         this.updateUIState('idle');
                     }
                 };
@@ -813,8 +816,11 @@ class AIAssistant {
                 // Add error handling to resume/cancel if it gets stuck
                 utterance.onerror = (event) => {
                     console.error('SpeechSynthesisUtterance error:', event.error);
-                    this.synth.cancel();
-                    this.updateUIState('idle');
+                    if (this.isSpeaking) {
+                        this.isSpeaking = false;
+                        this.synth.cancel();
+                        this.updateUIState('idle');
+                    }
                 };
 
                 // Find voice corresponding to the selected language
