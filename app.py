@@ -136,6 +136,50 @@ def save_file_locally(file_bytes, filename, folder='bills'):
         f.write(file_bytes)
     return f"uploads/{folder}/{filename}"
 
+def delete_file_from_storage(file_url):
+    """Deletes a file from Cloudinary storage or local storage depending on its path/URL to save space"""
+    if not file_url:
+        return
+        
+    if "cloudinary" not in file_url:
+        try:
+            cleaned_path = file_url.lstrip('/')
+            if not cleaned_path.startswith('static/'):
+                cleaned_path = os.path.join('static', cleaned_path)
+            local_path = os.path.join(app.root_path, cleaned_path)
+            if os.path.exists(local_path):
+                print(f"Deleting local file from storage: {local_path}")
+                os.remove(local_path)
+        except Exception as le:
+            print(f"Failed to delete local file: {le}")
+        return
+
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        
+        if '/upload/' in file_url:
+            parts = file_url.split('/upload/')
+            after_upload = parts[1]
+            sub_parts = after_upload.split('/')
+            if len(sub_parts) > 1 and sub_parts[0].startswith('v') and sub_parts[0][1:].isdigit():
+                public_id_with_ext = "/".join(sub_parts[1:])
+            else:
+                public_id_with_ext = after_upload
+                
+            public_id = os.path.splitext(public_id_with_ext)[0]
+            ext = os.path.splitext(file_url)[1].lower()
+            
+            print(f"Deleting public_id '{public_id}' from Cloudinary...")
+            res = cloudinary.uploader.destroy(public_id, resource_type="image")
+            print(f"Cloudinary destroy (image) result: {res}")
+            
+            if ext == '.pdf' or res.get('result') == 'not found':
+                res_raw = cloudinary.uploader.destroy(public_id, resource_type="raw")
+                print(f"Cloudinary destroy (raw) result: {res_raw}")
+    except Exception as e:
+        print(f"Error deleting file from Cloudinary: {e}")
+
 # Helper utilities
 
 
@@ -2528,8 +2572,18 @@ def delete_invoice(invoice_id):
                     product.p_stock = product.p_stock + item.item_quantity
         
         # Delete invoice (invoice_items will be cascade deleted due to relationship/DB constraints)
+        original_file = invoice.original_file
+        processed_file = invoice.processed_file
+        
         db.session.delete(invoice)
         db.session.commit()
+        
+        # Clean up files from storage to save space
+        if original_file:
+            delete_file_from_storage(original_file)
+        if processed_file:
+            delete_file_from_storage(processed_file)
+            
         if is_bill:
             flash('Bill deleted successfully!', 'success')
         else:
@@ -2895,8 +2949,19 @@ def process_ai_command():
                             # Restore stock if deleting an active (non-cancelled) invoice
                             if invoice.status != 'cancelled':
                                 restore_stock_on_cancellation(invoice)
+                                
+                            original_file = invoice.original_file
+                            processed_file = invoice.processed_file
+                             
                             db.session.delete(invoice)
                             db.session.commit()
+                             
+                            # Clean up files from storage to save space
+                            if original_file:
+                                delete_file_from_storage(original_file)
+                            if processed_file:
+                                delete_file_from_storage(processed_file)
+                                
                             log_activity('invoice_deleted', f'Deleted invoice "{inv_no}" via AI')
                             result['success'] = True
                             
