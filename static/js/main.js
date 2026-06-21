@@ -167,6 +167,8 @@ function shouldHandleLink(link) {
 
 // Globally accessible navigation function
 window.navigateToPage = async function(url, pushState = true) {
+    // Reset navbar intro active flag during SPA transitions to prevent animation delays
+    window.navbarIntroActive = false;
     showProgressBar();
     
     // Check if we are navigating to the seller dashboard

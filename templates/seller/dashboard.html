@@ -3,6 +3,104 @@
 {% block title %}KHATA | Fintech Dashboard{% endblock %}
 
 {% block content %}
+<style>
+  /* Premium interactive hover effects for Recent Activity table rows */
+  .activity-row {
+      transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      border-left: 6px solid var(--outline-variant, #c4c7c7) !important;
+      position: relative;
+      overflow: hidden;
+      --action-color: #4648d4;
+      --spotlight-color: rgba(70, 72, 212, 0.05);
+  }
+  
+  /* Mouse spotlight glow overlay */
+  .activity-row::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(
+          250px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
+          var(--spotlight-color),
+          transparent 85%
+      );
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 1;
+  }
+  
+  .activity-row:hover::before {
+      opacity: 1;
+  }
+  
+  .activity-row:hover {
+      background-color: rgba(248, 250, 252, 0.95) !important;
+      transform: translateX(6px);
+      border-left-color: var(--action-color) !important;
+      box-shadow: -4px 0 0px 0px var(--action-color);
+  }
+  
+  /* Define Action Colors & Spotlight Tint Colors */
+  .activity-row[data-action="bill_digitized"] {
+      --action-color: #a855f7;
+      --spotlight-color: rgba(168, 85, 247, 0.08);
+  }
+  .activity-row[data-action="product_added"],
+  .activity-row[data-action="customer_created"] {
+      --action-color: #10b981;
+      --spotlight-color: rgba(16, 185, 129, 0.08);
+  }
+  .activity-row[data-action="invoice_created"],
+  .activity-row[data-action="invoice_updated"],
+  .activity-row[data-action="invoice_notes_updated"] {
+      --action-color: #3b82f6;
+      --spotlight-color: rgba(59, 130, 246, 0.08);
+  }
+  .activity-row[data-action="invoice_paid"] {
+      --action-color: #22c55e;
+      --spotlight-color: rgba(34, 197, 94, 0.08);
+  }
+  .activity-row[data-action="product_updated"] {
+      --action-color: #f59e0b;
+      --spotlight-color: rgba(245, 158, 11, 0.08);
+  }
+  .activity-row[data-action="customer_updated"] {
+      --action-color: #6366f1;
+      --spotlight-color: rgba(99, 102, 241, 0.08);
+  }
+  .activity-row[data-action="product_deleted"],
+  .activity-row[data-action="customer_deleted"],
+  .activity-row[data-action="invoice_deleted"] {
+      --action-color: #ef4444;
+      --spotlight-color: rgba(239, 68, 68, 0.08);
+  }
+  .activity-row[data-action="profile_update"] {
+      --action-color: #64748b;
+      --spotlight-color: rgba(100, 116, 139, 0.08);
+  }
+  
+  .comic-sticker-badge, .toggle-details-btn {
+      transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+      position: relative;
+      z-index: 2; /* Keep above spotlight canvas */
+  }
+  
+  .activity-row:hover .comic-sticker-badge {
+      transform: scale(1.12) rotate(-4deg);
+      box-shadow: 4px 4px 0px #000000 !important;
+  }
+  
+  .activity-row:hover .toggle-details-btn {
+      transform: scale(1.12);
+      background-color: #ffffff !important;
+      box-shadow: 3px 3px 0px #000000 !important;
+      border: 2px solid #000000 !important;
+  }
+</style>
 <!-- Tailwind CDN & Config (Isolated to dashboard content block) -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
@@ -112,7 +210,7 @@
     .metric-card, .activity-card {
         background-color: #ffffff !important;
         border: 2.5px solid #000000 !important;
-        box-shadow: 4px 4px 0px 0px #000000;
+        box-shadow: 4px 4px 0px #000000;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         border-radius: 16px !important;
     }
@@ -179,6 +277,22 @@
         animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
 
+    /* GSAP/JS Animation Initial State overrides */
+    .js-enabled .animate-fade-in-up {
+        animation: none !important;
+        opacity: 0;
+    }
+    .js-enabled section.mb-12.comic-card,
+    .js-enabled .grid.mb-12 .metric-card,
+    .js-enabled .activity-card,
+    .js-enabled .ocr-promo-card,
+    .js-enabled .lg\\:col-span-4 .metric-card,
+    .js-enabled .conversion-promo-banner,
+    .js-enabled .conversion-promo-banner-container {
+        opacity: 0;
+        animation: none !important;
+    }
+
     @keyframes ambientFloat {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-5px); }
@@ -193,7 +307,7 @@
         overflow: hidden !important;
         background: rgba(70, 72, 212, 0.04) !important;
         border: 2.5px solid #000000 !important;
-        box-shadow: 4px 4px 0px 0px #000000;
+        box-shadow: 4px 4px 0px #000000;
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
@@ -332,7 +446,7 @@
 <span class="material-symbols-outlined notranslate text-[120px] text-secondary" translate="no">payments</span>
 </div>
 <span class="text-black font-label-bold text-label-bold uppercase tracking-widest mb-4">Revenue Collected</span>
-<span class="font-display-lg text-[48px] text-on-surface mb-2">₹{{ "%.2f"|format(stats.revenue_collected or 0) }}</span>
+<span class="font-display-lg text-[48px] text-on-surface font-bold mb-2" style="font-weight: 850;">₹{{ stats.revenue_collected|indian_format }}</span>
 <div class="flex items-center gap-2 px-3 py-1 {% if stats.revenue_growth_pct >= 0 %}bg-emerald-50 text-emerald-600{% else %}bg-rose-50 text-rose-600{% endif %} rounded-full text-label-sm font-label-bold">
 <span class="material-symbols-outlined notranslate text-[16px]" translate="no">{% if stats.revenue_growth_pct >= 0 %}trending_up{% else %}trending_down{% endif %}</span>
                     {% if stats.revenue_growth_pct >= 0 %}+{% endif %}{{ "%.1f"|format(stats.revenue_growth_pct) }}% vs last month
@@ -342,7 +456,7 @@
 <!-- Revenue Due - Muted Card -->
 <div class="metric-card bg-surface-bright bg-opacity-90 border p-10 rounded-2xl md:col-span-3 lg:col-span-6 flex flex-col items-start shadow-md animate-fade-in-up border-outline border-primary" style="animation-delay: 0.6s;">
 <span class="text-black font-label-bold text-label-bold uppercase tracking-widest mb-4">Revenue Due</span>
-<span class="font-display-lg text-[48px] text-on-surface mb-2">₹{{ "%.2f"|format(stats.revenue_due or 0) }}</span>
+<span class="font-display-lg text-[48px] text-on-surface font-bold mb-2" style="font-weight: 850;">₹{{ stats.revenue_due|indian_format }}</span>
 <div class="flex items-center gap-2 text-on-surface-variant text-label-sm font-label-sm bg-slate-100 px-3 py-1 rounded-full">
 <span class="material-symbols-outlined notranslate text-[16px]" translate="no">schedule</span>
                     {{ stats.revenue_due_note }}
@@ -364,8 +478,8 @@
       {% set parts = activity.description.split('|') %}
       {% set main_desc = parts[0] %}
       {% set metadata_str = parts[1] if parts|length > 1 else '' %}
-      <div class="flex flex-col border-b border-outline-variant hover:bg-slate-50/50 transition-colors">
-          <div class="flex items-center gap-6 px-12 py-8 group">
+      <div class="activity-row flex flex-col border-b border-outline-variant" data-action="{{ activity.action_type }}">
+          <div class="flex items-center gap-6 px-12 py-8 group relative z-10">
               {% if activity.action_type == 'bill_digitized' %}
                   <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors">
                       <span class="material-symbols-outlined notranslate text-[22px]" translate="no">psychology</span>
@@ -377,6 +491,10 @@
               {% elif activity.action_type == 'invoice_created' %}
                   <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
                       <span class="material-symbols-outlined notranslate text-[22px]" translate="no">receipt_long</span>
+                  </div>
+              {% elif activity.action_type == 'invoice_paid' %}
+                  <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+                      <span class="material-symbols-outlined notranslate text-[22px]" translate="no">price_check</span>
                   </div>
               {% elif activity.action_type == 'product_updated' %}
                   <div class="comic-sticker-badge w-12 h-12 flex items-center justify-center text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">
@@ -404,21 +522,49 @@
                   </div>
               {% endif %}
               <div class="flex-grow">
-                  <p class="font-body-lg text-on-surface">{{ main_desc }}</p>
-                  <p class="text-label-sm font-label-sm text-on-surface-variant/70 mt-0.5">{{ activity.action_type|replace('_', ' ')|title }} • {{ activity.get_time_ago() }}</p>
+                  <div class="flex flex-wrap items-center gap-2">
+                      <p class="font-body-lg text-on-surface font-bold">{{ main_desc }}</p>
+                      {% if activity.action_type == 'bill_digitized' %}
+                          <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000]">
+                              <span class="material-symbols-outlined notranslate text-[10px]" translate="no">auto_awesome</span>
+                              AI Digitized
+                          </span>
+                      {% elif activity.action_type in ['invoice_created', 'invoice_paid', 'invoice_deleted', 'invoice_updated', 'invoice_notes_updated'] %}
+                          <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000]">
+                              <span class="material-symbols-outlined notranslate text-[10px]" translate="no">receipt_long</span>
+                              Billing
+                          </span>
+                      {% elif activity.action_type in ['product_added', 'product_updated', 'product_deleted'] %}
+                          <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000]">
+                              <span class="material-symbols-outlined notranslate text-[10px]" translate="no">inventory_2</span>
+                              Stock
+                          </span>
+                      {% elif activity.action_type in ['customer_created', 'customer_updated', 'customer_deleted'] %}
+                          <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000]">
+                              <span class="material-symbols-outlined notranslate text-[10px]" translate="no">groups</span>
+                              CRM
+                          </span>
+                      {% elif activity.action_type == 'profile_update' %}
+                          <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-black shadow-[1px_1px_0px_#000000]">
+                              <span class="material-symbols-outlined notranslate text-[10px]" translate="no">settings</span>
+                              System
+                          </span>
+                      {% endif %}
+                  </div>
+                  <p class="text-label-sm font-label-sm text-on-surface-variant/70 mt-1">{{ activity.action_type|replace('_', ' ')|title }} • {{ activity.get_time_ago() }}</p>
               </div>
               {% if metadata_str %}
-              <button class="p-2 hover:bg-slate-100 rounded-full transition-colors toggle-details-btn" data-activity-id="{{ loop.index }}" data-metadata='{{ metadata_str | safe }}' title="View Details">
-                  <span class="material-symbols-outlined notranslate text-outline" translate="no">more_horiz</span>
+              <button class="p-2 hover:bg-slate-100 rounded-full transition-all toggle-details-btn flex items-center justify-center border border-transparent" data-activity-id="{{ loop.index }}" data-metadata='{{ metadata_str | safe }}' title="View Details">
+                  <span class="material-symbols-outlined notranslate text-outline text-[20px]" translate="no" style="transition: transform 0.3s ease;">expand_more</span>
               </button>
               {% else %}
               <button class="p-2 hover:bg-slate-100 rounded-full transition-colors opacity-40 cursor-default" disabled>
-                  <span class="material-symbols-outlined notranslate text-outline" translate="no">more_horiz</span>
+                  <span class="material-symbols-outlined notranslate text-outline text-[20px]" translate="no">remove</span>
               </button>
               {% endif %}
           </div>
           {% if metadata_str %}
-          <div id="details-{{ loop.index }}" class="activity-details-panel" style="display: none; padding: 0 48px 16px 72px; font-size: 13px; color: #475569; font-family: 'Inter', sans-serif;">
+          <div id="details-{{ loop.index }}" class="activity-details-panel relative z-10" style="display: none; padding: 0 48px 16px 72px; font-size: 13px; color: #475569; font-family: 'Inter', sans-serif;">
               <!-- Details populated by JavaScript -->
           </div>
           {% endif %}
@@ -515,6 +661,7 @@ Voice Guidelines
 </div>
 
 <script>
+document.documentElement.classList.add('js-enabled');
 (function() {
     // Shader implementation for background
     const canvas = document.getElementById('bg-canvas');
@@ -635,98 +782,192 @@ Voice Guidelines
             const panel = document.getElementById(`details-${actId}`);
             if (!panel) return;
             
-            if (panel.style.display === 'none') {
+            const icon = btn.querySelector('.material-symbols-outlined');
+            
+            if (panel.style.display === 'none' || !panel.style.display) {
                 // Populate details if not done yet
                 if (panel.innerHTML.trim() === '') {
                     const metadata = JSON.parse(btn.getAttribute('data-metadata'));
-                    let html = '<div style="background: #f8fafc; border: 1.5px solid #000000; padding: 12px; border-radius: 8px; box-shadow: 2px 2px 0px #000000; margin-top: 4px;">';
+                    let html = '<div class="my-2 p-5 bg-[#f8fafc] border-[2.5px] border-black rounded-xl shadow-[4px_4px_0px_#000000] flex flex-col gap-3">';
                     
+                    // Header band
+                    html += '<div class="flex items-center justify-between border-b-2 border-dashed border-black pb-2">';
+                    html += '  <span class="text-xs font-black uppercase tracking-wider text-purple-700 flex items-center gap-1"><span class="material-symbols-outlined notranslate text-xs" translate="no">auto_awesome</span> AI Extraction Log</span>';
+                    html += `  <span class="text-[10px] font-mono bg-black text-white px-2 py-0.5 rounded">ID: ${metadata.vendor_name ? metadata.vendor_name.substring(0, 3).toUpperCase() : 'OCR'}-${Math.floor(Math.random() * 900 + 100)}</span>`;
+                    html += '</div>';
+                    
+                    // Details
+                    html += '<div class="flex flex-col gap-2">';
                     if (metadata.created_customer) {
-                        html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user-plus" style="color: #a855f7; margin-right: 6px;"></i> Automatically registered new vendor/customer: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
+                        html += '  <div class="flex items-center gap-2 text-sm font-bold text-black">';
+                        html += '    <span class="material-symbols-outlined notranslate text-purple-600 text-lg" translate="no">person_add</span>';
+                        html += `    <span>Automatically registered new customer: <span class="underline text-purple-700 font-bold">${metadata.vendor_name || 'Vendor'}</span></span>`;
+                        html += '  </div>';
                     } else {
-                        html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user" style="color: #64748b; margin-right: 6px;"></i> Matched with existing customer record: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
+                        html += '  <div class="flex items-center gap-2 text-sm font-bold text-black">';
+                        html += '    <span class="material-symbols-outlined notranslate text-slate-500 text-lg" translate="no">person</span>';
+                        html += `    <span>Mapped to existing customer: <span class="underline font-bold">${metadata.vendor_name || 'Vendor'}</span></span>`;
+                        html += '  </div>';
                     }
                     
                     if (metadata.added_products && metadata.added_products.length > 0) {
-                        html += '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1);">';
-                        html += '<div style="font-weight: 600; margin-bottom: 4px;"><i class="fas fa-boxes" style="color: #10b981; margin-right: 6px;"></i> Products auto-added to inventory:</div>';
-                        html += '<ul style="margin: 0; padding-left: 20px; list-style-type: disc;">';
+                        html += '  <div class="mt-2 pt-2 border-t border-slate-200">';
+                        html += '    <span class="text-xs font-black text-emerald-600 uppercase flex items-center gap-1 mb-2">';
+                        html += '      <span class="material-symbols-outlined notranslate text-sm" translate="no">inventory_2</span> Auto-added products to inventory:';
+                        html += '    </span>';
+                        html += '    <div class="grid grid-cols-1 gap-2 pl-6">';
                         metadata.added_products.forEach(p => {
-                            html += `<li style="font-weight: 500; font-family: monospace; font-size: 12px; color: #1e293b;">${p}</li>`;
+                            html += '      <div class="flex items-center gap-2 text-xs font-mono font-bold text-slate-700">';
+                            html += '        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>';
+                            html += `        <span>${p}</span>`;
+                            html += '      </div>';
                         });
-                        html += '</ul>';
-                        html += '</div>';
+                        html += '    </div>';
+                        html += '  </div>';
                     } else {
-                        html += `<div style="margin-top: 8px; color: #64748b; font-weight: 500;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i> All items mapped to existing products.</div>`;
+                        html += '  <div class="mt-2 pt-2 border-t border-slate-200 flex items-center gap-2 text-xs font-bold text-emerald-600">';
+                        html += '    <span class="material-symbols-outlined notranslate text-emerald-500" translate="no">check_circle</span>';
+                        html += '    <span>All invoice items successfully mapped to catalog products.</span>';
+                        html += '  </div>';
                     }
-                    
+                    html += '</div>';
                     html += '</div>';
                     panel.innerHTML = html;
                 }
                 
+                // Animate opening using GSAP
                 panel.style.display = 'block';
-                btn.querySelector('.material-symbols-outlined').textContent = 'keyboard_arrow_up';
+                gsap.set(panel, { height: 'auto', opacity: 0 });
+                const targetHeight = panel.offsetHeight;
+                gsap.set(panel, { height: 0 });
+                
+                gsap.to(panel, {
+                    height: targetHeight,
+                    opacity: 1,
+                    duration: 0.35,
+                    ease: 'power2.out',
+                    clearProps: 'height'
+                });
+                
+                // Rotate icon 180 degrees
+                if (icon) {
+                    gsap.to(icon, { rotate: 180, duration: 0.3, ease: 'power2.out' });
+                }
+                
+                // Extra elastic wiggle on details content box
+                const detailsBox = panel.querySelector('div');
+                if (detailsBox) {
+                    gsap.fromTo(detailsBox, 
+                        { x: -6 }, 
+                        { x: 0, duration: 0.55, ease: 'elastic.out(1.5, 0.3)' }
+                    );
+                }
             } else {
-                panel.style.display = 'none';
-                btn.querySelector('.material-symbols-outlined').textContent = 'more_horiz';
+                // Animate closing using GSAP
+                gsap.to(panel, {
+                    height: 0,
+                    opacity: 0,
+                    duration: 0.28,
+                    ease: 'power2.in',
+                    onComplete: () => {
+                        panel.style.display = 'none';
+                    }
+                });
+                
+                if (icon) {
+                    gsap.to(icon, { rotate: 0, duration: 0.3, ease: 'power2.out' });
+                }
             }
         });
     });
 
-    // Staggered springy GSAP entrance animations for Dashboard cards
-    (function initGSAPAnimations() {
-        function runAnimations() {
-            // Disable CSS transitions on cards to let GSAP handle smooth 3D tilt & spring hovers
-            const targetCards = document.querySelectorAll('.metric-card, .ocr-promo-card, .conversion-promo-banner');
-            targetCards.forEach(card => {
-                card.style.transition = 'none';
-            });
+    // Spotlight cursor tracking for activity rows
+    document.querySelectorAll('.activity-row').forEach(row => {
+        row.addEventListener('mousemove', (e) => {
+            const rect = row.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            row.style.setProperty('--mouse-x', `${x}px`);
+            row.style.setProperty('--mouse-y', `${y}px`);
+        });
+    });
+ 
+     // Staggered springy GSAP entrance animations for Dashboard cards
+     (function initGSAPAnimations() {
+         function runAnimations() {
+             // Restore scroll settings
+             document.documentElement.style.overflow = '';
+             document.body.style.overflow = '';
 
-            // Set animated elements to opacity: 0 initially so they don't flash when their parent containers are revealed
-            gsap.set([
-                'section.mb-12.comic-card',
-                '.grid.mb-12 .metric-card',
-                '.activity-card',
-                '.ocr-promo-card',
-                '.lg\\:col-span-4 .metric-card',
-                '.conversion-promo-banner-container'
-            ], { opacity: 0 });
-
-            // Clear default CSS keyframe animation classes so GSAP can handle from a clean slate
-            document.querySelectorAll('.animate-fade-in-up').forEach(el => {
-                el.style.animation = 'none';
-                el.style.animationDelay = '0s';
-                el.style.opacity = '1'; // Ensure elements not managed by GSAP (like layout containers) remain visible
-            });
-
-            const tl = gsap.timeline();
-
-            // 1. Welcome Greeting Header Card: Slide/Snap in from top
-            tl.fromTo('section.mb-12.comic-card', 
-                { opacity: 0, y: -35, scale: 0.96 }, 
-                { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'back.out(1.5)' }
-            );
-
-            // 2. Metric Cards (Top Grid): Stagger-reveal from left-to-right (top row then second row)
-            tl.fromTo('.grid.mb-12 .metric-card', 
-                { opacity: 0, scale: 0.75, y: 30 }, 
-                { opacity: 1, scale: 1, y: 0, duration: 0.6, stagger: 0.08, ease: 'back.out(1.5)' },
-                '-=0.42'
-            );
-
-            // 3. Bottom Row Cards (Activity Feed, OCR Card, then Academy Cards)
-            tl.fromTo(['.activity-card', '.ocr-promo-card', '.lg\\:col-span-4 .metric-card'], 
-                { opacity: 0, scale: 0.9, y: 40 }, 
-                { opacity: 1, scale: 1, y: 0, duration: 0.6, stagger: 0.08, ease: 'back.out(1.4)' },
-                '-=0.42'
-            );
-
-            // 4. Promo Banner (Absolute bottom)
-            tl.fromTo('.conversion-promo-banner-container', 
-                { opacity: 0, scale: 0.9, y: 40 }, 
-                { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: 'back.out(1.3)' },
-                '-=0.42'
-            );
+             // Disable CSS transitions on cards to let GSAP handle smooth 3D tilt & spring hovers
+             const targetCards = document.querySelectorAll('.metric-card, .ocr-promo-card, .conversion-promo-banner');
+             targetCards.forEach(card => {
+                 card.style.transition = 'none';
+             });
+ 
+             // Set animated elements to opacity: 0 initially so they don't flash when their parent containers are revealed
+             gsap.set([
+                 'section.mb-12.comic-card',
+                 '.grid.mb-12 .metric-card',
+                 '.activity-card',
+                 '.activity-row',
+                 '.ocr-promo-card',
+                 '.lg\\:col-span-4 .metric-card',
+                 '.conversion-promo-banner-container'
+             ], { opacity: 0 });
+ 
+             // Clear default CSS keyframe animation classes so GSAP can handle from a clean slate
+             document.querySelectorAll('.animate-fade-in-up').forEach(el => {
+                 el.style.animation = 'none';
+                 el.style.animationDelay = '0s';
+                 el.style.opacity = '1'; // Ensure elements not managed by GSAP (like layout containers) remain visible
+             });
+ 
+             const tl = gsap.timeline();
+ 
+             // 1. Welcome Greeting Header Card: Slide/Snap in from top
+             tl.fromTo('section.mb-12.comic-card', 
+                 { opacity: 0, y: -30, scale: 0.97 }, 
+                 { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.1)' }
+             );
+ 
+             // 2. Metric Cards (Top Grid): Stagger-reveal from left-to-right immediately cascading from Header
+             tl.fromTo('.grid.mb-12 .metric-card', 
+                 { opacity: 0, scale: 0.9, y: 25 }, 
+                 { opacity: 1, scale: 1, y: 0, duration: 0.4, stagger: 0.03, ease: 'back.out(1.1)' },
+                 '-=0.38'
+             );
+ 
+             // 3. Recent Activity Table: Slide in right after/during Metric Grid
+             tl.fromTo('.activity-card', 
+                 { opacity: 0, scale: 0.97, y: 25 }, 
+                 { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: 'back.out(1.1)' },
+                 '-=0.38'
+             );
+             
+             // Stagger reveal the activity rows inside the card
+             const rows = document.querySelectorAll('.activity-row');
+             if (rows.length > 0) {
+                 tl.fromTo(rows,
+                     { opacity: 0, x: -15 },
+                     { opacity: 1, x: 0, duration: 0.3, stagger: 0.02, ease: 'power2.out', clearProps: 'transform,opacity' },
+                     '-=0.35'
+                 );
+             }
+ 
+             // 4. Bottom Row Cards (OCR Card, then Academy Cards)
+             tl.fromTo(['.ocr-promo-card', '.lg\\:col-span-4 .metric-card'], 
+                 { opacity: 0, scale: 0.93, y: 25 }, 
+                 { opacity: 1, scale: 1, y: 0, duration: 0.4, stagger: 0.03, ease: 'back.out(1.1)' },
+                 '-=0.35'
+             );
+ 
+             // 5. Promo Banner (Absolute bottom)
+             tl.fromTo('.conversion-promo-banner-container', 
+                 { opacity: 0, scale: 0.95, y: 25 }, 
+                 { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: 'back.out(1.0)' },
+                 '-=0.35'
+             );
 
             // 4. Premium 3D Tilt & Spring Scale Hover Interactions
             targetCards.forEach(card => {
@@ -759,7 +1000,7 @@ Voice Guidelines
                         scale: 1,
                         rotateX: 0,
                         rotateY: 0,
-                        boxShadow: card.classList.contains('conversion-promo-banner') ? '4px 4px 0px #000000' : '4px 4px 0px 0px #000000',
+                        boxShadow: '4px 4px 0px #000000',
                         duration: 0.5,
                         ease: 'back.out(2)' // Springy return
                     });
@@ -767,16 +1008,46 @@ Voice Guidelines
             });
         }
 
+        let animationsStarted = false;
         function startEntranceFlow() {
-            const loader = document.getElementById('page-loader');
-            const isLoaderVisible = loader && !loader.classList.contains('fade-out');
+            if (animationsStarted) return;
             
-            if (isLoaderVisible) {
-                window.addEventListener('page-loader-hidden', () => {
+            if (window.navbarIntroActive) {
+                window.addEventListener('navbar-intro-complete', () => {
+                    if (animationsStarted) return;
+                    animationsStarted = true;
                     runAnimations();
                 }, { once: true });
+                
+                // Safety fallback timeout
+                setTimeout(() => {
+                    if (!animationsStarted) {
+                        animationsStarted = true;
+                        runAnimations();
+                    }
+                }, 2500);
             } else {
-                runAnimations();
+                const loader = document.getElementById('page-loader');
+                const isLoaderVisible = loader && !loader.classList.contains('fade-out');
+                
+                if (isLoaderVisible) {
+                    window.addEventListener('page-loader-hidden', () => {
+                        if (animationsStarted) return;
+                        animationsStarted = true;
+                        runAnimations();
+                    }, { once: true });
+                    
+                    // Safety fallback timeout
+                    setTimeout(() => {
+                        if (!animationsStarted) {
+                            animationsStarted = true;
+                            runAnimations();
+                        }
+                    }, 1500);
+                } else {
+                    animationsStarted = true;
+                    runAnimations();
+                }
             }
         }
 

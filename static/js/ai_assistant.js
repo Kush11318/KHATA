@@ -277,10 +277,42 @@ class AIAssistant {
         // Welcome entry animation sequence & hover effects with GSAP
         const mainBtn = container.querySelector('#ai-assistant-btn');
         if (mainBtn && typeof gsap !== 'undefined') {
-            gsap.fromTo(mainBtn, 
-                { scale: 0, opacity: 0 }, 
-                { scale: 1, opacity: 1, duration: 0.8, ease: 'back.out(2)', clearProps: 'opacity' }
-            );
+            // Set starting hidden state
+            gsap.set(mainBtn, { scale: 0, opacity: 0 });
+
+            let entryPlayed = false;
+            const playEntry = () => {
+                if (entryPlayed) return;
+                entryPlayed = true;
+                
+                gsap.fromTo(mainBtn, 
+                    { scale: 0, opacity: 0 }, 
+                    { 
+                        scale: 1, 
+                        opacity: 1, 
+                        duration: 0.8, 
+                        ease: 'back.out(2)', 
+                        clearProps: 'opacity',
+                        delay: 0.45 // Pop up shortly after dashboard elements reveal
+                    }
+                );
+            };
+
+            // Coordinate with page intro animations
+            if (window.navbarIntroActive) {
+                window.addEventListener('navbar-intro-complete', playEntry, { once: true });
+                setTimeout(playEntry, 3000); // Safety fallback
+            } else {
+                const loader = document.getElementById('page-loader');
+                const isLoaderActive = loader && !loader.classList.contains('fade-out');
+
+                if (isLoaderActive) {
+                    window.addEventListener('page-loader-hidden', playEntry, { once: true });
+                    setTimeout(playEntry, 1800); // Safety fallback
+                } else {
+                    playEntry();
+                }
+            }
 
             mainBtn.addEventListener('mouseenter', () => {
                 const icon = mainBtn.querySelector('.ai-btn-content i');

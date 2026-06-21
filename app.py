@@ -740,6 +740,34 @@ def get_git_commit_info():
 def inject_git_commit():
     return {'git_commit': get_git_commit_info()}
 
+@app.template_filter('indian_format')
+def indian_format(value):
+    try:
+        # Format a number to Indian currency system (e.g. 159676.42 -> 1,59,676.42)
+        val_str = f"{float(value):.2f}"
+        parts = val_str.split('.')
+        integer_part = parts[0]
+        decimal_part = parts[1]
+        
+        if len(integer_part) <= 3:
+            return f"{integer_part}.{decimal_part}"
+            
+        last_three = integer_part[-3:]
+        remaining = integer_part[:-3]
+        
+        pairs = []
+        while remaining:
+            if len(remaining) >= 2:
+                pairs.insert(0, remaining[-2:])
+                remaining = remaining[:-2]
+            else:
+                pairs.insert(0, remaining)
+                remaining = ''
+        
+        return ",".join(pairs) + "," + last_three + "." + decimal_part
+    except Exception:
+        return value
+
 @app.route('/')
 def index():
     if 'user_id' in session:

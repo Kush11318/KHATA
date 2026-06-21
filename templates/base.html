@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script>document.documentElement.classList.add('js-enabled');</script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,12 +13,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <style>
+        /* GSAP Initial State overrides to prevent FOUC */
+        .js-enabled .animate-fade-in-up {
+            animation: none !important;
+            opacity: 0;
+        }
+        .js-enabled section.mb-12.comic-card,
+        .js-enabled .grid.mb-12 .metric-card,
+        .js-enabled .activity-card,
+        .js-enabled .ocr-promo-card,
+        .js-enabled .lg\\:col-span-4 .metric-card,
+        .js-enabled .conversion-promo-banner,
+        .js-enabled .conversion-promo-banner-container {
+            opacity: 0;
+            animation: none !important;
+        }
+
         /* Premium Header Vanilla Styles */
         .premium-header {
-            background-color: rgba(236, 238, 250, 0.85) !important;
-            backdrop-filter: blur(24px) !important;
-            -webkit-backdrop-filter: blur(24px) !important;
-            border: 2.5px solid #000000 !important;
+            background-color: rgba(236, 238, 250, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 2.5px solid #000000;
             border-radius: 16px !important;
             margin: 24px auto 16px auto !important;
             width: 95% !important;
@@ -26,7 +43,7 @@
             position: sticky !important;
             top: 24px !important;
             z-index: 1000 !important;
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15) !important;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
             
             /* GPU Hardware Acceleration & Composite Layer Promotion */
             will-change: transform, width, max-width, border-radius, box-shadow;
@@ -39,19 +56,38 @@
                         max-width 0.25s cubic-bezier(0.25, 1, 0.5, 1),
                         border-radius 0.25s cubic-bezier(0.25, 1, 0.5, 1),
                         box-shadow 0.25s cubic-bezier(0.25, 1, 0.5, 1),
-                        border-color 0.25s cubic-bezier(0.25, 1, 0.5, 1) !important;
+                        border-color 0.25s cubic-bezier(0.25, 1, 0.5, 1);
             box-sizing: border-box !important;
         }
 
         .premium-header.scrolled {
             transform: translateY(-24px) translateZ(0) !important;
-            border-top-color: transparent !important;
-            border-left-color: transparent !important;
-            border-right-color: transparent !important;
+            border-top-color: transparent;
+            border-left-color: transparent;
+            border-right-color: transparent;
             border-radius: 0px 0px 16px 16px !important;
             width: 100% !important;
             max-width: 100% !important;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Cinematic Navbar Intro Active Utility Styles */
+        body.navbar-intro-active .premium-header {
+            background-color: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.navbar-intro-active .premium-nav-separator,
+        body.navbar-intro-active .premium-nav-link,
+        body.navbar-intro-active .premium-nav .premium-btn-secondary,
+        body.navbar-intro-active .premium-header-right > * {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        body.navbar-intro-active main {
+            opacity: 0 !important;
         }
 
         .premium-header-container {
@@ -192,13 +228,6 @@
         .premium-btn-primary:hover {
             background-color: #eceef0 !important;
             color: #000000 !important;
-            transform: translate(-1px, -1px) !important;
-            box-shadow: 3px 3px 0px #000000 !important;
-        }
-
-        .premium-btn-primary:active {
-            transform: translate(1px, 1px) !important;
-            box-shadow: 1px 1px 0px #000000 !important;
         }
 
         .premium-btn-secondary {
@@ -223,13 +252,6 @@
         .premium-btn-secondary:hover {
             background-color: #4648d4 !important;
             opacity: 0.95 !important;
-            transform: translate(-1px, -1px) !important;
-            box-shadow: 3px 3px 0px #000000 !important;
-        }
-
-        .premium-btn-secondary:active {
-            transform: translate(1px, 1px) !important;
-            box-shadow: 1px 1px 0px #000000 !important;
         }
 
         .premium-profile-dropdown {
@@ -253,13 +275,6 @@
 
         .premium-profile-trigger:hover {
             background-color: #eceef0 !important;
-            transform: translate(-1px, -1px) !important;
-            box-shadow: 3px 3px 0px #000000 !important;
-        }
-
-        .premium-profile-trigger:active {
-            transform: translate(1px, 1px) !important;
-            box-shadow: 1px 1px 0px #000000 !important;
         }
 
         .premium-profile-trigger .material-symbols-outlined {
@@ -322,16 +337,25 @@
             background-color: #ffffff !important;
             border: 2.5px solid #000000 !important;
             border-radius: 12px !important;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+            box-shadow: 4px 4px 0px #000000 !important;
             padding: 8px 0 !important;
             width: 180px !important;
-            display: none !important;
+            display: flex !important;
             flex-direction: column !important;
             z-index: 1000 !important;
+            
+            /* Smooth Bouncy Transitions */
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(-8px) scale(0.95) !important;
+            transform-origin: top right !important;
+            transition: opacity 0.22s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
         }
 
         .premium-dropdown-menu.show {
-            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: translateY(0) scale(1) !important;
         }
 
         .premium-dropdown-item {
@@ -386,13 +410,6 @@
 
         .custom-lang-trigger:hover {
             background-color: #eceef0 !important;
-            transform: translate(-1px, -1px) !important;
-            box-shadow: 3px 3px 0px #000000 !important;
-        }
-
-        .custom-lang-trigger:active {
-            transform: translate(1px, 1px) !important;
-            box-shadow: 1px 1px 0px #000000 !important;
         }
 
         .custom-lang-menu {
@@ -405,14 +422,23 @@
             box-shadow: 4px 4px 0px #000000 !important;
             padding: 8px 0 !important;
             width: 170px !important;
-            display: none !important;
+            display: flex !important;
             flex-direction: column !important;
             z-index: 1001 !important;
             overflow: hidden !important;
+            
+            /* Smooth Bouncy Transitions */
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(-8px) scale(0.95) !important;
+            transform-origin: top right !important;
+            transition: opacity 0.22s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
         }
 
         .custom-lang-menu.show {
-            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: translateY(0) scale(1) !important;
         }
 
         .custom-lang-item {
@@ -876,6 +902,12 @@
             if (isDashboard) {
                 // Show loader immediately on dashboard load
                 loader.classList.remove('fade-out');
+                document.documentElement.style.overflow = 'hidden';
+                document.body.style.overflow = 'hidden';
+                
+                // Add class and global flag for custom cinematic logo slide entrance
+                document.body.classList.add('navbar-intro-active');
+                window.navbarIntroActive = true;
                 
                 // Hide it after a short delay
                 const hide = () => {
@@ -1073,9 +1105,9 @@
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                        <div class="flash-message flash-{{ category }}" style="position: relative; padding-right: 36px; max-height: 200px; overflow: hidden; border: 2.5px solid #000000; box-shadow: 4px 4px 0px #000000; border-radius: 8px; font-weight: 700; margin-bottom: 12px; transition: all 0.5s ease;">
+                        <div class="flash-message flash-{{ category }}" style="position: relative; padding-right: 36px; max-height: 200px; overflow: hidden; border: 2.5px solid #000000; box-shadow: 4px 4px 0px #000000; border-radius: 8px; font-weight: 700; margin-bottom: 12px; transition: none;">
                             {{ message }}
-                            <span onclick="const m = this.parentElement; m.style.opacity = '0'; m.style.transform = 'translateX(50px)'; setTimeout(() => m.remove(), 500);" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px; font-weight: 900; line-height: 1; padding: 4px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">&times;</span>
+                            <span onclick="window.dismissFlash(this.parentElement)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px; font-weight: 900; line-height: 1; padding: 4px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">&times;</span>
                         </div>
                         {% endfor %}
                     {% endif %}
@@ -1650,29 +1682,86 @@
     <!-- Auto-dismiss Flash Messages after 4.5 seconds -->
     <script>
         (function() {
+            function animateEntrance(msg) {
+                if (msg.dataset.hasEntrance === 'true') return;
+                msg.dataset.hasEntrance = 'true';
+                if (window.gsap) {
+                    gsap.set(msg, { opacity: 0, scale: 0.7, x: 100, y: -30 });
+                    
+                    const tl = gsap.timeline();
+                    tl.to(msg, {
+                        opacity: 1,
+                        scale: 1,
+                        x: 0,
+                        y: 0,
+                        duration: 0.6,
+                        ease: 'back.out(1.5)'
+                    });
+                    
+                    if (msg.classList.contains('flash-error') || msg.classList.contains('flash-danger')) {
+                        tl.to(msg, {
+                            x: -6,
+                            duration: 0.05,
+                            ease: 'power1.inOut',
+                            repeat: 5,
+                            yoyo: true
+                        }).to(msg, { x: 0, duration: 0.05 });
+                    }
+                }
+            }
+
+            window.dismissFlash = function(element) {
+                if (!element || !element.isConnected) return;
+                if (element.dataset.isDismissing === 'true') return;
+                element.dataset.isDismissing = 'true';
+                
+                if (window.gsap) {
+                    gsap.killTweensOf(element);
+                    gsap.to(element, {
+                        x: 150,
+                        opacity: 0,
+                        duration: 0.4,
+                        ease: 'power2.in',
+                        onComplete: () => {
+                            gsap.to(element, {
+                                height: 0,
+                                maxHeight: 0,
+                                paddingTop: 0,
+                                paddingBottom: 0,
+                                marginTop: 0,
+                                marginBottom: 0,
+                                borderWidth: 0,
+                                duration: 0.3,
+                                ease: 'power2.out',
+                                onComplete: () => {
+                                    element.remove();
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    element.style.opacity = '0';
+                    element.style.transform = 'translateX(50px)';
+                    setTimeout(() => {
+                        element.style.maxHeight = '0px';
+                        element.style.paddingTop = '0px';
+                        element.style.paddingBottom = '0px';
+                        element.style.marginBottom = '0px';
+                        element.style.borderWidth = '0px';
+                        setTimeout(() => element.remove(), 350);
+                    }, 150);
+                }
+            };
+
             function initFlashDismissal() {
                 const flashMessages = document.querySelectorAll('.flash-message');
                 flashMessages.forEach(msg => {
+                    animateEntrance(msg);
                     if (msg.dataset.hasTimer === 'true') return;
                     msg.dataset.hasTimer = 'true';
                     setTimeout(() => {
                         if (!msg.isConnected) return;
-                        msg.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 0.6s ease, max-height 0.6s ease, padding-top 0.6s ease, padding-bottom 0.6s ease, border-width 0.6s ease';
-                        msg.style.opacity = '0';
-                        msg.style.transform = 'translateX(50px)';
-                        
-                        setTimeout(() => {
-                            if (!msg.isConnected) return;
-                            msg.style.maxHeight = '0px';
-                            msg.style.paddingTop = '0px';
-                            msg.style.paddingBottom = '0px';
-                            msg.style.marginBottom = '0px';
-                            msg.style.borderWidth = '0px';
-                        }, 150);
-
-                        setTimeout(() => {
-                            msg.remove();
-                        }, 750);
+                        window.dismissFlash(msg);
                     }, 4500);
                 });
             }
@@ -1692,23 +1781,262 @@
                 msg.style.borderRadius = '8px';
                 msg.style.fontWeight = '700';
                 msg.style.marginBottom = '12px';
-                msg.style.transition = 'all 0.5s ease';
+                msg.style.transition = 'none';
                 
-                msg.innerHTML = `${message} <span onclick="const m = this.parentElement; m.style.opacity = '0'; m.style.transform = 'translateX(50px)'; setTimeout(() => m.remove(), 500);" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px; font-weight: 900; line-height: 1; padding: 4px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">&times;</span>`;
+                msg.innerHTML = `${message} <span onclick="window.dismissFlash(this.parentElement)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px; font-weight: 900; line-height: 1; padding: 4px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">&times;</span>`;
                 
                 container.appendChild(msg);
-                initFlashDismissal();
+                animateEntrance(msg);
+                
+                msg.dataset.hasTimer = 'true';
+                setTimeout(() => {
+                    if (!msg.isConnected) return;
+                    window.dismissFlash(msg);
+                }, 4500);
             };
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initFlashDismissal);
-            } else {
+            // Dynamically wrap logo letters in spans for wave animation
+            const brandTextEl = document.querySelector('.premium-brand-text');
+            if (brandTextEl) {
+                const text = brandTextEl.textContent.trim();
+                brandTextEl.innerHTML = text.split('').map(char => 
+                    `<span class="logo-char" style="display: inline-block; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);">${char}</span>`
+                ).join('');
+            }
+
+             function initNavbarAnimations() {
+                const brand = document.querySelector('.premium-brand');
+                const headerContainer = document.querySelector('.premium-header-container');
+                let introCompleted = !window.navbarIntroActive;
+
+                if (brand) {
+                    brand.addEventListener('mouseenter', () => {
+                        if (!introCompleted) return;
+                        if (window.gsap) {
+                            gsap.killTweensOf('.logo-char');
+                            gsap.fromTo('.logo-char', 
+                                { rotateX: 0, scale: 1, y: 0 },
+                                {
+                                    rotateX: 360,
+                                    scale: 1.15,
+                                    y: -2,
+                                    duration: 0.5,
+                                    stagger: 0.04,
+                                    transformPerspective: 400,
+                                    ease: 'power2.out',
+                                    clearProps: 'transform,y'
+                                }
+                            );
+                        }
+                    });
+                }
+
+                if (!window.navbarIntroActive) {
+                    initInteractiveHeaderItems();
+                    return;
+                }
+
+                if (!brand || !headerContainer || !window.gsap) {
+                    document.body.classList.remove('navbar-intro-active');
+                    window.navbarIntroActive = false; // Reset the flag
+                    window.dispatchEvent(new CustomEvent('navbar-intro-complete'));
+                    initInteractiveHeaderItems();
+                    return;
+                }
+
+                // Dynamic Centering Math
+                const getCenteredOffset = () => {
+                    const headerRect = headerContainer.getBoundingClientRect();
+                    const brandRect = brand.getBoundingClientRect();
+                    const headerCenter = headerRect.left + headerRect.width / 2;
+                    const brandCenter = brandRect.left + brandRect.width / 2;
+                    return headerCenter - brandCenter;
+                };
+
+                let currentOffset = getCenteredOffset();
+                gsap.set(brand, { x: currentOffset });
+
+                const handleResize = () => {
+                    if (introCompleted) return;
+                    currentOffset = getCenteredOffset();
+                    gsap.set(brand, { x: currentOffset });
+                };
+                window.addEventListener('resize', handleResize);
+
+                let navbarIntroStarted = false;
+                const runNavbarIntro = () => {
+                    if (navbarIntroStarted) return;
+                    navbarIntroStarted = true;
+
+                    const tl = gsap.timeline({
+                        onComplete: () => {
+                            introCompleted = true;
+                            window.navbarIntroActive = false; // Reset the flag so future SPA loads don't think intro is active!
+                            window.removeEventListener('resize', handleResize);
+                            window.dispatchEvent(new CustomEvent('navbar-intro-complete'));
+                        }
+                    });
+
+                    // 1. Slide logo back to normal position (left)
+                    tl.to(brand, {
+                        x: 0,
+                        duration: 0.85,
+                        ease: 'power3.inOut'
+                    });
+
+                    // 2. Remove utility classes & set starting hidden states in inline styles so there's no layout snap
+                    tl.add(() => {
+                        document.body.classList.remove('navbar-intro-active');
+                        gsap.set('.premium-header', {
+                            backgroundColor: 'transparent',
+                            borderColor: 'transparent',
+                            boxShadow: 'none',
+                            backdropFilter: 'none',
+                            webkitBackdropFilter: 'none'
+                        });
+                        gsap.set('.premium-nav-separator', {
+                            opacity: 0
+                        });
+                        gsap.set('main', { opacity: 0 });
+                    });
+
+                    // 3. Fade in header background container visual boxes
+                    tl.to('.premium-header', {
+                        backgroundColor: 'rgba(236, 238, 250, 0.85)',
+                        borderColor: '#000000',
+                        boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.15)',
+                        backdropFilter: 'blur(24px)',
+                        webkitBackdropFilter: 'blur(24px)',
+                        duration: 0.45,
+                        ease: 'power2.out'
+                    }, '+=0.02');
+
+                    // 4. Stagger reveal separator, nav links, and right controls
+                    const navLinks = document.querySelectorAll('.premium-nav-link, .premium-nav .premium-btn-secondary');
+                    const rightControls = document.querySelectorAll('.premium-header-right > *');
+
+                    tl.fromTo('.premium-nav-separator', 
+                        { opacity: 0, scaleY: 0 },
+                        { opacity: 0.15, scaleY: 1, duration: 0.25, ease: 'power2.out' },
+                        '-=0.35'
+                    );
+
+                    if (navLinks.length > 0) {
+                        tl.fromTo(navLinks,
+                            { opacity: 0, x: -15 },
+                            { opacity: 1, x: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out' },
+                            '-=0.3'
+                        );
+                    }
+
+                    if (rightControls.length > 0) {
+                        tl.fromTo(rightControls,
+                            { opacity: 0, x: 15 },
+                            { opacity: 1, x: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out' },
+                            '-=0.3'
+                        );
+                    }
+
+                    // 5. Fade/reveal main page content container
+                    tl.fromTo('main',
+                        { opacity: 0, y: 12 },
+                        { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out', clearProps: 'opacity,transform' },
+                        '-=0.2'
+                    );
+                };
+
+                // Check page-loader state
+                const loader = document.getElementById('page-loader');
+                const isLoaderActive = loader && !loader.classList.contains('fade-out');
+
+                if (!isLoaderActive) {
+                    runNavbarIntro();
+                } else {
+                    window.addEventListener('page-loader-hidden', runNavbarIntro, { once: true });
+                    // Safety fallback: run animation anyway if event isn't received within 1.5 seconds
+                    setTimeout(runNavbarIntro, 1500);
+                }
+
+                initInteractiveHeaderItems();
+            }
+
+            function initInteractiveHeaderItems() {
+                const interactiveItems = document.querySelectorAll(
+                    '.premium-btn-primary, .premium-btn-secondary, .custom-lang-trigger, .premium-profile-trigger'
+                );
+                
+                interactiveItems.forEach(el => {
+                    el.style.transition = 'none';
+                    
+                    el.addEventListener('mouseenter', () => {
+                        if (window.gsap) {
+                            gsap.to(el, {
+                                x: -3,
+                                y: -3,
+                                scale: 1.02,
+                                boxShadow: '4px 4px 0px #000000',
+                                duration: 0.2,
+                                ease: 'power2.out'
+                            });
+                        }
+                    });
+                    
+                    el.addEventListener('mouseleave', () => {
+                        if (window.gsap) {
+                            gsap.to(el, {
+                                x: 0,
+                                y: 0,
+                                scale: 1,
+                                boxShadow: '2px 2px 0px #000000',
+                                duration: 0.45,
+                                ease: 'back.out(2.5)'
+                            });
+                        }
+                    });
+                    
+                    el.addEventListener('mousedown', () => {
+                        if (window.gsap) {
+                            gsap.to(el, {
+                                x: 1,
+                                y: 1,
+                                scale: 0.98,
+                                boxShadow: '1px 1px 0px #000000',
+                                duration: 0.1,
+                                ease: 'power1.out'
+                            });
+                        }
+                    });
+
+                    el.addEventListener('mouseup', () => {
+                        if (window.gsap) {
+                            gsap.to(el, {
+                                x: -3,
+                                y: -3,
+                                scale: 1.02,
+                                boxShadow: '4px 4px 0px #000000',
+                                duration: 0.2,
+                                ease: 'power2.out'
+                            });
+                        }
+                    });
+                });
+            }
+
+            function initializeAll() {
                 initFlashDismissal();
+                initNavbarAnimations();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeAll);
+            } else {
+                initializeAll();
             }
 
             window.dismissFlashMessages = initFlashDismissal;
         })();
     </script>
+
 </body>
 
 </html>
