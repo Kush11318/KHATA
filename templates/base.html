@@ -1084,18 +1084,26 @@
                 {% endif %}
     </main>
 
+    {% if session.user_id and session.user_role == 'seller' %}
+    <!-- Sleek comic-styled promotional banner for free file conversions -->
+    <div class="conversion-promo-banner-container">
+        <div class="conversion-promo-banner">
+            <span class="promo-badge"><i class="fas fa-bolt"></i> 100% FREE</span>
+            <span class="promo-text">ALL FILE CONVERSIONS ARE FREE ON KHATA AI</span>
+            <button onclick="window.navigateToPage('/seller/invoices?tab=bills')" class="promo-link-btn">
+                TRY IT <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
     <footer class="app-footer">
         <div class="footer-container">
             <div class="footer-left">
                 &copy; 2026 <span class="brand-footer">KHATA</span>. All rights reserved.
             </div>
-            <div class="footer-middle">
-                <span class="conversion-promo-badge">
-                    <i class="fas fa-bolt"></i> ALL FILE CONVERSIONS ARE 100% FREE ON KHATA
-                </span>
-            </div>
+            {% if git_commit and git_commit.hash != 'Unknown' %}
             <div class="footer-right">
-                {% if git_commit and git_commit.hash != 'Unknown' %}
                 <a href="{{ git_commit.url }}" target="_blank" class="git-commit-badge" title="View latest commit on GitHub">
                     <i class="fab fa-github"></i>
                     <span class="commit-hash">#{{ git_commit.hash }}</span>
@@ -1103,8 +1111,8 @@
                     <span class="commit-message" title="{{ git_commit.message }}">{{ git_commit.message }}</span>
                     <span class="commit-date">({{ git_commit.date }})</span>
                 </a>
-                {% endif %}
             </div>
+            {% endif %}
         </div>
     </footer>
 

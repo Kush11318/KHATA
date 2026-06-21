@@ -2154,54 +2154,91 @@ select.form-input {
     gap: 16px;
 }
 
-.footer-left {
-    flex: 1;
-    display: flex;
-    justify-content: flex-start;
+.conversion-promo-banner-container {
+    max-width: 1200px;
+    margin: 48px auto 0 auto;
+    padding: 0 24px;
 }
 
-.footer-middle {
-    flex: 1;
+.conversion-promo-banner {
     display: flex;
-    justify-content: center;
-}
-
-.footer-right {
-    flex: 1;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.conversion-promo-badge {
-    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background-color: #ecfdf5; /* emerald-50 background */
-    color: #065f46; /* emerald-800 text */
-    padding: 8px 16px;
-    border-radius: 8px;
+    justify-content: space-between;
+    background-color: #ffffff;
+    border: 2.5px solid #000000;
+    border-radius: 16px;
+    padding: 14px 28px;
+    box-shadow: 4px 4px 0px #000000;
+    gap: 20px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.conversion-promo-banner:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px #000000;
+}
+
+.promo-badge {
+    background-color: #fde047; /* Comic yellow sticker */
+    color: #000000;
     font-family: 'Inter', sans-serif;
-    font-size: 11.5px;
-    font-weight: 800;
+    font-size: 11px;
+    font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.75px;
-    border: 1.5px solid #10b981; /* emerald-500 border */
-    box-shadow: 1.5px 1.5px 0px #000000; /* Neo-brutalist shadow */
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: default;
-    user-select: none;
+    padding: 6px 14px;
+    border: 2px solid #000000;
+    border-radius: 6px;
+    box-shadow: 2px 2px 0px #000000;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
-.conversion-promo-badge:hover {
-    transform: translateY(-1.5px);
-    box-shadow: 2.5px 2.5px 0px #000000;
-    background-color: #d1fae5; /* emerald-100 */
+.promo-badge i {
+    animation: pulse-glow 1.5s infinite ease-in-out;
 }
 
-.conversion-promo-badge i {
-    color: #059669; /* emerald-600 */
+.promo-text {
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    animation: pulse-glow 2s infinite ease-in-out;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    flex: 1;
+}
+
+.promo-link-btn {
+    background-color: #000000;
+    color: #ffffff !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 18px;
+    border: 2px solid #000000;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.promo-link-btn:hover {
+    background-color: #fde047;
+    color: #000000 !important;
+    transform: translate(-2px, -2px);
+    box-shadow: 3px 3px 0px #000000;
+}
+
+.promo-link-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 0.5px 0.5px 0px #000000;
 }
 
 @keyframes pulse-glow {
@@ -2276,16 +2313,24 @@ select.form-input {
     font-size: 11px;
 }
 
+@media (max-width: 768px) {
+    .conversion-promo-banner {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+        padding: 16px;
+        gap: 12px;
+    }
+    .promo-text {
+        text-align: center;
+    }
+}
+
 @media (max-width: 640px) {
     .footer-container {
         flex-direction: column;
         text-align: center;
         gap: 12px;
-    }
-    .footer-left, .footer-middle, .footer-right {
-        flex: none;
-        width: 100%;
-        justify-content: center;
     }
     .commit-message {
         max-width: 180px;
