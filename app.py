@@ -1898,7 +1898,7 @@ def upload_bill():
         
     filename = file.filename.lower()
     cc_api_key = os.environ.get("CLOUDCONVERT_API_KEY")
-    allowed_extensions = {'.png', '.jpg', '.jpeg', '.pdf'}
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.jfif', '.pdf'}
     image_convertible = {'.heic', '.webp', '.tiff', '.gif'}
     doc_convertible = {'.docx', '.doc', '.xlsx', '.xls', '.txt'}
     
@@ -1938,7 +1938,7 @@ def upload_bill():
             return redirect(url_for('seller_bills'))
             
     mime_type = 'application/pdf' if ext == '.pdf' else f'image/{ext.lstrip(".")}'
-    if mime_type == 'image/jpg':
+    if mime_type in ('image/jpg', 'image/jfif'):
         mime_type = 'image/jpeg'
         
     gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
