@@ -704,30 +704,36 @@
         /* Responsive Navigation spacing for premium layout */
         @media (max-width: 1400px) {
             .premium-header {
-                padding: 12px clamp(12px, 2vw, 24px) !important;
+                padding: 12px clamp(12px, 1.8vw, 24px) !important;
             }
             .premium-header-left {
-                gap: clamp(10px, 1.2vw, 16px) !important;
+                gap: clamp(8px, 1vw, 16px) !important;
             }
             .premium-nav {
-                gap: clamp(10px, 1.5vw, 16px) !important;
+                gap: clamp(8px, 1.2vw, 16px) !important;
             }
             .premium-header-right {
-                gap: clamp(8px, 1.2vw, 12px) !important;
+                gap: clamp(6px, 1vw, 12px) !important;
             }
             .premium-nav-separator {
-                margin: 0 clamp(6px, 0.8vw, 10px) !important;
+                margin: 0 clamp(4px, 0.6vw, 10px) !important;
             }
             .premium-btn-primary, .premium-btn-secondary, .custom-lang-trigger, .premium-profile-trigger {
-                padding: 0 clamp(8px, 1vw, 16px) !important;
-                font-size: clamp(11px, 0.9vw, 12px) !important;
+                padding: 0 clamp(6px, 0.8vw, 16px) !important;
+                font-size: clamp(10.5px, 0.85vw, 12px) !important;
             }
             .premium-profile-text-container {
-                width: clamp(100px, 9vw, 140px) !important;
+                width: clamp(80px, 8vw, 140px) !important;
+            }
+            .premium-nav-link {
+                font-size: clamp(11.5px, 1vw, 14px) !important;
+            }
+            .premium-brand-text {
+                font-size: clamp(18px, 1.8vw, 26px) !important;
             }
         }
 
-        @media (max-width: 1380px) {
+        @media (max-width: 1150px) {
             .premium-header-container {
                 flex-wrap: wrap !important;
                 gap: 16px !important;
