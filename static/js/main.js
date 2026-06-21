@@ -11,21 +11,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Smooth entrance transition for initial page load
     const currentMain = document.querySelector('main');
     if (currentMain && typeof gsap !== 'undefined') {
-        gsap.fromTo(currentMain, 
-            { opacity: 0, y: 15 },
-            { 
-                opacity: 1, 
-                y: 0, 
-                duration: 0.5, 
-                ease: 'power2.out',
-                clearProps: 'transform,opacity'
-            }
-        );
-        
-        // Stagger key child elements if NOT dashboard (dashboard has its own staggers)
         const path = window.location.pathname;
         const isDashboard = path === '/seller' || path === '/seller/';
-        if (!isDashboard) {
+        
+        if (isDashboard) {
+            // Let the dashboard's own timeline handle the card entrance animations.
+            // We only do a quick fade-in of the outer container to avoid double-offset conflict.
+            gsap.fromTo(currentMain, 
+                { opacity: 0 },
+                { 
+                    opacity: 1, 
+                    duration: 0.25, 
+                    ease: 'power1.out',
+                    clearProps: 'opacity'
+                }
+            );
+        } else {
+            gsap.fromTo(currentMain, 
+                { opacity: 0, y: 15 },
+                { 
+                    opacity: 1, 
+                    y: 0, 
+                    duration: 0.5, 
+                    ease: 'power2.out',
+                    clearProps: 'transform,opacity'
+                }
+            );
+            
+            // Stagger key child elements if NOT dashboard (dashboard has its own staggers)
             const animTargets = currentMain.querySelectorAll(
                 '.comic-card, .form-section-header, .grid > div, form > div, table tbody tr, .card, h1, h2'
             );
@@ -193,16 +206,28 @@ window.navigateToPage = async function(url, pushState = true) {
         const newMain = doc.querySelector('main');
         if (currentMain && newMain) {
             if (typeof gsap !== 'undefined') {
-                // Fade out current main content before swapping
-                await new Promise(resolve => {
-                    gsap.to(currentMain, {
-                        opacity: 0,
-                        y: 10,
-                        duration: 0.15,
-                        ease: 'power2.in',
-                        onComplete: resolve
+                if (isDashboard) {
+                    // For dashboard, do not translate the main container, just do a fast fade-out
+                    await new Promise(resolve => {
+                        gsap.to(currentMain, {
+                            opacity: 0,
+                            duration: 0.15,
+                            ease: 'power1.in',
+                            onComplete: resolve
+                        });
                     });
-                });
+                } else {
+                    // Fade out current main content before swapping
+                    await new Promise(resolve => {
+                        gsap.to(currentMain, {
+                            opacity: 0,
+                            y: 10,
+                            duration: 0.15,
+                            ease: 'power2.in',
+                            onComplete: resolve
+                        });
+                    });
+                }
             }
 
             currentMain.innerHTML = newMain.innerHTML;
@@ -211,20 +236,31 @@ window.navigateToPage = async function(url, pushState = true) {
             executeScripts(currentMain);
 
             if (typeof gsap !== 'undefined') {
-                // Set starting state for new content
-                gsap.set(currentMain, { opacity: 0, y: 15 });
-                
-                // Fade in container smoothly
-                gsap.to(currentMain, {
-                    opacity: 1,
-                    y: 0,
-                    duration: 0.35,
-                    ease: 'power2.out',
-                    clearProps: 'transform,opacity'
-                });
+                if (isDashboard) {
+                    // Set starting state for new content (only opacity)
+                    gsap.set(currentMain, { opacity: 0 });
+                    
+                    // Fade in container smoothly
+                    gsap.to(currentMain, {
+                        opacity: 1,
+                        duration: 0.25,
+                        ease: 'power1.out',
+                        clearProps: 'opacity'
+                    });
+                } else {
+                    // Set starting state for new content
+                    gsap.set(currentMain, { opacity: 0, y: 15 });
+                    
+                    // Fade in container smoothly
+                    gsap.to(currentMain, {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.35,
+                        ease: 'power2.out',
+                        clearProps: 'transform,opacity'
+                    });
 
-                // Stagger key child elements if NOT dashboard (dashboard handles its own beautiful staggers)
-                if (!isDashboard) {
+                    // Stagger key child elements if NOT dashboard (dashboard handles its own beautiful staggers)
                     const animTargets = currentMain.querySelectorAll(
                         '.comic-card, .form-section-header, .grid > div, form > div, table tbody tr, .card, h1, h2'
                     );
