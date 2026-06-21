@@ -1942,8 +1942,8 @@ def upload_bill():
         
     filename = file.filename.lower()
     cc_api_key = os.environ.get("CLOUDCONVERT_API_KEY")
-    allowed_extensions = {'.png', '.jpg', '.jpeg', '.jfif', '.pdf'}
-    image_convertible = {'.heic', '.webp', '.tiff', '.gif'}
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.jfif', '.webp', '.gif', '.pdf'}
+    image_convertible = {'.heic', '.tiff'}
     doc_convertible = {'.docx', '.doc', '.xlsx', '.xls', '.txt'}
     
     if cc_api_key:
@@ -1953,9 +1953,9 @@ def upload_bill():
     ext = os.path.splitext(filename)[1]
     if ext not in allowed_extensions:
         if cc_api_key:
-            flash('Invalid file type. Allowed: PDF, PNG, JPG, JPEG, and convertible formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).', 'error')
+            flash('Invalid file type. Allowed: PDF, PNG, JPG, JPEG, WEBP, GIF, and convertible formats (DOCX, XLSX, TXT, HEIC, TIFF).', 'error')
         else:
-            flash('Invalid file type. Only PDF and images (PNG, JPG) are allowed.', 'error')
+            flash('Invalid file type. Only PDF and standard images (PNG, JPG, JFIF, WEBP, GIF) are allowed.', 'error')
         return redirect(url_for('seller_bills'))
         
     file_bytes = file.read()

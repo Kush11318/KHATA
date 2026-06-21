@@ -526,22 +526,37 @@ function submitDigitizeForm() {
         
         console.log("Uploaded File:", filename, "Detected Extension:", ext);
         
-        const nativeExtensions = ['png', 'jpg', 'jpeg', 'jfif', 'pdf'];
-        const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'heic', 'webp', 'tiff', 'gif'];
+        // Check if CloudConvert is configured (passed from Flask context)
+        const cloudconvertAvailable = {{ 'true' if cloudconvert_available else 'false' }};
+        
+        const nativeExtensions = ['png', 'jpg', 'jpeg', 'jfif', 'webp', 'gif', 'pdf'];
+        const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'heic', 'tiff'];
         
         if (nativeExtensions.includes(ext)) {
             // Natively supported format, direct submission without modal popup
             document.getElementById('convert-file-input').value = 'false';
             startDigitizeLoading(false);
         } else if (convertibleExtensions.includes(ext)) {
-            // Unsupported natively, but convertible format: show conversion modal
-            document.getElementById('conversion-confirm-modal').style.display = 'flex';
+            if (cloudconvertAvailable) {
+                // Unsupported natively, but convertible format: show conversion modal
+                document.getElementById('conversion-confirm-modal').style.display = 'flex';
+            } else {
+                // CloudConvert is not configured in the environment
+                const msg = `Conversion is required for .${ext} files, but KHATA AI conversion is not configured. Please add CLOUDCONVERT_API_KEY to your .env file.`;
+                if (window.showFlashMessage) {
+                    window.showFlashMessage(msg, 'error');
+                } else {
+                    alert(msg);
+                }
+                fileInput.value = '';
+            }
         } else {
             // Totally unsupported format: show an in-app error flash message
+            const msg = 'Unsupported file format. Please upload PDF, images (PNG, JPG, JFIF, WEBP, GIF), or document formats (DOCX, XLSX, TXT, HEIC, TIFF).';
             if (window.showFlashMessage) {
-                window.showFlashMessage('Unsupported file format. Please upload PDF, images (PNG, JPG), or document formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).', 'error');
+                window.showFlashMessage(msg, 'error');
             } else {
-                alert('Unsupported file format. Please upload PDF, images (PNG, JPG), or document formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).');
+                alert(msg);
             }
             fileInput.value = '';
         }
