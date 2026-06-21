@@ -1768,22 +1768,40 @@ def upload_bill():
 
         client = genai.Client(api_key=gemini_key)
         
-        print("Calling Gemini 2.0 Flash to digitalize bill...")
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=[
-                types.Part.from_bytes(
-                    data=file_bytes,
-                    mime_type=mime_type
-                ),
-                "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=BillData,
-                temperature=0.1
+        try:
+            print("Calling Gemini 2.0 Flash to digitalize bill...")
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=[
+                    types.Part.from_bytes(
+                        data=file_bytes,
+                        mime_type=mime_type
+                    ),
+                    "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BillData,
+                    temperature=0.1
+                )
             )
-        )
+        except Exception as primary_err:
+            print(f"Primary model gemini-2.0-flash failed: {primary_err}. Retrying with fallback model gemini-1.5-flash...")
+            response = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=[
+                    types.Part.from_bytes(
+                        data=file_bytes,
+                        mime_type=mime_type
+                    ),
+                    "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BillData,
+                    temperature=0.1
+                )
+            )
         
         bill_info = json.loads(response.text)
         print(f"Gemini response: {bill_info}")
@@ -1962,8 +1980,12 @@ def upload_bill():
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error digitalizing bill: {e}")
-        flash(f"Error digitalizing bill: {str(e)}", 'error')
+        err_msg = str(e)
+        print(f"Error digitalizing bill: {err_msg}")
+        if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
+            flash("AI Service is temporarily busy (Rate Limit/Quota exceeded). Please wait a few seconds and try uploading again.", "error")
+        else:
+            flash(f"Error digitalizing bill: {err_msg}", 'error')
         return redirect(request.referrer or url_for('seller_bills'))
 
 

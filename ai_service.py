@@ -695,7 +695,6 @@ def parse_command_groq(user_text, context, history, api_key, language):
 
 def parse_command_gemini(user_text, context, history, api_key, language):
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash')
     
     context_str = get_context_str(context)
     
@@ -723,10 +722,19 @@ def parse_command_gemini(user_text, context, history, api_key, language):
     system_prompt = get_system_prompt(lang_name)
     prompt = f"{system_prompt}\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
     
-    response = model.generate_content(
-        prompt,
-        generation_config={"response_mime_type": "application/json"}
-    )
+    try:
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
+    except Exception as primary_err:
+        print(f"Gemini gemini-2.0-flash failed: {primary_err}. Falling back to gemini-1.5-flash...")
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
     
     content = response.text
     if content.startswith("```json"):
