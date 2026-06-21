@@ -2558,6 +2558,118 @@ def process_ai_command():
                 print(f"Customer addition error: {e}")
                 import traceback
                 traceback.print_exc()
+        # Handle db_operation intent - perform updates or deletes
+        elif result.get('intent') == 'db_operation':
+            op_data = result.get('data', {})
+            operation = op_data.get('operation')
+            s_id = session['user_id']
+            
+            try:
+                if operation == 'update_invoice_status':
+                    inv_no = op_data.get('invoice_no')
+                    new_status = op_data.get('status')
+                    if not inv_no or not new_status:
+                        result['response_text'] = "❌ Missing invoice number or status for update."
+                        result['success'] = False
+                    else:
+                        invoice = Invoice.query.filter_by(invoice_no=inv_no, s_id=s_id).first()
+                        if not invoice:
+                            result['response_text'] = f"❌ Invoice/Bill '{inv_no}' not found."
+                            result['success'] = False
+                        else:
+                            old_status = invoice.status
+                            # If marking as cancelled, restore stock
+                            if new_status == 'cancelled' and old_status != 'cancelled':
+                                restore_stock_on_cancellation(invoice)
+                            invoice.status = new_status.lower()
+                            db.session.commit()
+                            log_activity('invoice_updated', f'Updated status of invoice "{inv_no}" to {new_status} via AI')
+                            result['success'] = True
+                            
+                elif operation == 'update_invoice_due_date':
+                    inv_no = op_data.get('invoice_no')
+                    due_date_str = op_data.get('due_date')
+                    if not inv_no or not due_date_str:
+                        result['response_text'] = "❌ Missing invoice number or due date."
+                        result['success'] = False
+                    else:
+                        invoice = Invoice.query.filter_by(invoice_no=inv_no, s_id=s_id).first()
+                        if not invoice:
+                            result['response_text'] = f"❌ Invoice/Bill '{inv_no}' not found."
+                            result['success'] = False
+                        else:
+                            try:
+                                parsed_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+                                invoice.due_date = parsed_date
+                                db.session.commit()
+                                log_activity('invoice_updated', f'Updated due date of invoice "{inv_no}" to {due_date_str} via AI')
+                                result['success'] = True
+                            except ValueError:
+                                result['response_text'] = "❌ Invalid date format. Use YYYY-MM-DD."
+                                result['success'] = False
+                                
+                elif operation == 'delete_invoice':
+                    inv_no = op_data.get('invoice_no')
+                    if not inv_no:
+                        result['response_text'] = "❌ Missing invoice number to delete."
+                        result['success'] = False
+                    else:
+                        invoice = Invoice.query.filter_by(invoice_no=inv_no, s_id=s_id).first()
+                        if not invoice:
+                            result['response_text'] = f"❌ Invoice/Bill '{inv_no}' not found."
+                            result['success'] = False
+                        else:
+                            # Restore stock if deleting an active (non-cancelled) invoice
+                            if invoice.status != 'cancelled':
+                                restore_stock_on_cancellation(invoice)
+                            db.session.delete(invoice)
+                            db.session.commit()
+                            log_activity('invoice_deleted', f'Deleted invoice "{inv_no}" via AI')
+                            result['success'] = True
+                            
+                elif operation == 'delete_product':
+                    prod_name = op_data.get('product_name')
+                    if not prod_name:
+                        result['response_text'] = "❌ Missing product name to delete."
+                        result['success'] = False
+                    else:
+                        product = Product.query.filter(Product.s_id == s_id, Product.p_name.like(f"%{prod_name}%")).first()
+                        if not product:
+                            result['response_text'] = f"❌ Product '{prod_name}' not found."
+                            result['success'] = False
+                        else:
+                            p_name = product.p_name
+                            db.session.delete(product)
+                            db.session.commit()
+                            log_activity('product_deleted', f'Deleted product "{p_name}" via AI')
+                            result['success'] = True
+                            
+                elif operation == 'delete_customer':
+                    cust_name = op_data.get('customer_name')
+                    if not cust_name:
+                        result['response_text'] = "❌ Missing customer name to delete."
+                        result['success'] = False
+                    else:
+                        customer = Customer.query.filter(Customer.s_id == s_id, Customer.c_name.like(f"%{cust_name}%")).first()
+                        if not customer:
+                            result['response_text'] = f"❌ Customer '{cust_name}' not found."
+                            result['success'] = False
+                        else:
+                            c_name = customer.c_name
+                            db.session.delete(customer)
+                            db.session.commit()
+                            log_activity('customer_deleted', f'Deleted customer "{c_name}" via AI')
+                            result['success'] = True
+                            
+                else:
+                    result['response_text'] = "❌ Unknown database operation requested."
+                    result['success'] = False
+                    
+            except Exception as op_err:
+                db.session.rollback()
+                print(f"Error executing db_operation: {op_err}")
+                result['response_text'] = f"❌ Failed to execute action: {str(op_err)}"
+                result['success'] = False
         
         return jsonify(result)
     except Exception as e:

@@ -96,11 +96,22 @@ About Scanned Bills (is_bill = True):
 
 Output JSON format:
 {{
-    "intent": "create_invoice" | "add_customer" | "add_product" | "navigation" | "business_insights" | "business_education" | "unknown",
+    "intent": "create_invoice" | "add_customer" | "add_product" | "navigation" | "business_insights" | "business_education" | "db_operation" | "unknown",
     "data": {{ ... }},
     "missing_info": "Question to ask user if info is missing (written in {lang_name})" or null,
     "response_text": "Natural language response to speak back to the user (MUST be written in {lang_name})"
 }}
+
+For 'db_operation':
+- Triggered when the user wants to update or delete existing records (e.g., delete an invoice, mark an invoice as paid/pending/cancelled, update the due date of an invoice, delete a product, or delete a customer).
+- "data" should contain:
+    - "operation": one of "update_invoice_status" | "update_invoice_due_date" | "delete_invoice" | "delete_product" | "delete_customer"
+    - "invoice_no": string (e.g. "INV-001" or "INV-2025-001") or null if not applicable
+    - "status": string (e.g. "paid", "pending", "cancelled", "overdue") or null
+    - "due_date": string (YYYY-MM-DD format) or null
+    - "product_name": string (the exact or similar product name to delete) or null
+    - "customer_name": string (the exact or similar customer name to delete) or null
+- "response_text": A clear, natural language confirmation in {lang_name} indicating what data will be updated or deleted.
 
 For 'navigation':
 - Triggered when the user asks to go to a specific page or dashboard.

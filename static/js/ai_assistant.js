@@ -599,6 +599,12 @@ class AIAssistant {
                     // Show preview if addition failed or needs confirmation
                     this.showCustomerPreview(data.data);
                 }
+            } else if (data.intent === 'db_operation') {
+                if (data.success) {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1800);
+                }
             }
 
         } catch (error) {
