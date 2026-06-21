@@ -1,4 +1,19 @@
 import os
+import sys
+import io
+
+# Force stdout/stderr to UTF-8 on Windows to prevent charmap codec errors with unicode characters
+if sys.stdout is not None:
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except AttributeError:
+        pass
+if sys.stderr is not None:
+    try:
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except AttributeError:
+        pass
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from datetime import datetime, date, timedelta
 from config import Config

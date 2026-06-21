@@ -704,45 +704,30 @@
         /* Responsive Navigation spacing for premium layout */
         @media (max-width: 1400px) {
             .premium-header {
-                padding: 12px 24px !important;
+                padding: 12px clamp(12px, 2vw, 24px) !important;
             }
             .premium-header-left {
-                gap: 16px !important;
+                gap: clamp(10px, 1.2vw, 16px) !important;
             }
             .premium-nav {
-                gap: 16px !important;
+                gap: clamp(10px, 1.5vw, 16px) !important;
             }
             .premium-header-right {
-                gap: 12px !important;
+                gap: clamp(8px, 1.2vw, 12px) !important;
             }
             .premium-nav-separator {
-                margin: 0 10px !important;
+                margin: 0 clamp(6px, 0.8vw, 10px) !important;
+            }
+            .premium-btn-primary, .premium-btn-secondary, .custom-lang-trigger, .premium-profile-trigger {
+                padding: 0 clamp(8px, 1vw, 16px) !important;
+                font-size: clamp(11px, 0.9vw, 12px) !important;
+            }
+            .premium-profile-text-container {
+                width: clamp(100px, 9vw, 140px) !important;
             }
         }
 
-        @media (max-width: 1200px) {
-            .premium-header {
-                padding: 12px 20px !important;
-            }
-            .premium-nav-link {
-                font-size: 13px !important;
-            }
-            .premium-nav {
-                gap: 12px !important;
-            }
-            .premium-header-right {
-                gap: 10px !important;
-            }
-            .premium-btn-primary, .premium-btn-secondary, .custom-lang-trigger, .premium-profile-trigger {
-                padding: 0 12px !important;
-                font-size: 11px !important;
-            }
-            .premium-profile-text-container {
-                width: 110px !important;
-            }
-        }
-        
-        @media (max-width: 1240px) {
+        @media (max-width: 1380px) {
             .premium-header-container {
                 flex-wrap: wrap !important;
                 gap: 16px !important;
@@ -756,6 +741,13 @@
                 justify-content: flex-end !important;
                 border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
                 padding-top: 12px !important;
+            }
+            .premium-btn-primary, .premium-btn-secondary, .custom-lang-trigger, .premium-profile-trigger {
+                padding: 0 16px !important;
+                font-size: 12px !important;
+            }
+            .premium-profile-text-container {
+                width: 140px !important;
             }
         }
         
@@ -1332,275 +1324,287 @@
     </div>
 
     <script>
-        let currentZoom = 1.0;
-        let currentRotation = 0;
-        let currentTool = 'pan'; 
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-        let canvas, ctx, img;
-        let isPanning = false;
-        let startX = 0, startY = 0;
-        let scrollLeft = 0, scrollTop = 0;
-        let currentInvoiceId = "";
+        (function() {
+            let currentZoom = 1.0;
+            let currentRotation = 0;
+            let currentTool = 'pan'; 
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            let canvas, ctx, img;
+            let isPanning = false;
+            let startX = 0, startY = 0;
+            let scrollLeft = 0, scrollTop = 0;
+            let currentInvoiceId = "";
 
-        function openDocumentViewer(url, invoiceId, existingNotes) {
-            currentInvoiceId = invoiceId;
-            const modal = document.getElementById('doc-viewer-modal');
-            modal.style.display = 'flex';
-            
-            document.getElementById('invoice-notes-area').value = existingNotes ? existingNotes : "";
-            
-            const isPdf = url.toLowerCase().endsWith('.pdf');
-            const pdfFrame = document.getElementById('pdf-frame');
-            const canvasWrapper = document.getElementById('canvas-wrapper');
-            const imageTools = document.getElementById('image-drawing-tools');
-            
-            currentZoom = 1.0;
-            currentRotation = 0;
-            
-            if (isPdf) {
-                pdfFrame.src = url;
-                pdfFrame.style.display = 'block';
-                canvasWrapper.style.display = 'none';
-                if (imageTools) imageTools.style.setProperty('display', 'none', 'important');
-            } else {
-                pdfFrame.style.display = 'none';
-                canvasWrapper.style.display = 'block';
-                if (imageTools) imageTools.style.setProperty('display', 'flex', 'important');
+            function openDocumentViewer(url, invoiceId, existingNotes) {
+                currentInvoiceId = invoiceId;
+                const modal = document.getElementById('doc-viewer-modal');
+                modal.style.display = 'flex';
                 
-                initCanvas(url);
-            }
-        }
-
-        function closeDocumentViewer() {
-            document.getElementById('doc-viewer-modal').style.display = 'none';
-            document.getElementById('pdf-frame').src = '';
-            removeCanvasEvents();
-        }
-
-        function initCanvas(url) {
-            canvas = document.getElementById('annotation-canvas');
-            ctx = canvas.getContext('2d');
-            
-            img = new Image();
-            img.crossOrigin = "anonymous"; 
-            img.onload = function() {
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                ctx.drawImage(img, 0, 0);
+                document.getElementById('invoice-notes-area').value = existingNotes ? existingNotes : "";
                 
-                setupCanvasEvents();
-                updateCanvasTransform();
-            };
-            img.src = url;
-        }
-
-        function updateCanvasTransform() {
-            const wrapper = document.getElementById('canvas-wrapper');
-            if (wrapper) {
-                wrapper.style.transform = `scale(${currentZoom}) rotate(${currentRotation}deg)`;
-            }
-        }
-
-        function zoomDoc(factor) {
-            currentZoom = Math.min(Math.max(currentZoom * factor, 0.2), 5.0);
-            updateCanvasTransform();
-        }
-
-        function resetZoom() {
-            currentZoom = 1.0;
-            currentRotation = 0;
-            updateCanvasTransform();
-        }
-
-        function rotateDoc(angle) {
-            currentRotation = (currentRotation + angle) % 360;
-            updateCanvasTransform();
-        }
-
-        function setTool(tool) {
-            currentTool = tool;
-            document.getElementById('tool-pan-btn').classList.toggle('active-tool', tool === 'pan');
-            document.getElementById('tool-pen-btn').classList.toggle('active-tool', tool === 'pen');
-            
-            const viewport = document.getElementById('viewer-viewport');
-            if (tool === 'pan') {
-                viewport.style.cursor = 'grab';
-            } else {
-                viewport.style.cursor = 'crosshair';
-            }
-        }
-
-        function setupCanvasEvents() {
-            const viewport = document.getElementById('viewer-viewport');
-            
-            viewport.addEventListener('mousedown', startPan);
-            viewport.addEventListener('mousemove', pan);
-            viewport.addEventListener('mouseup', endPan);
-            viewport.addEventListener('mouseleave', endPan);
-            
-            canvas.addEventListener('mousedown', startDraw);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stopDraw);
-            canvas.addEventListener('mouseout', stopDraw);
-            
-            canvas.addEventListener('touchstart', startDrawTouch);
-            canvas.addEventListener('touchmove', drawTouch);
-            canvas.addEventListener('touchend', stopDraw);
-        }
-
-        function removeCanvasEvents() {
-            const viewport = document.getElementById('viewer-viewport');
-            if (viewport) {
-                viewport.removeEventListener('mousedown', startPan);
-                viewport.removeEventListener('mousemove', pan);
-                viewport.removeEventListener('mouseup', endPan);
-                viewport.removeEventListener('mouseleave', endPan);
-            }
-            if (canvas) {
-                canvas.removeEventListener('mousedown', startDraw);
-                canvas.removeEventListener('mousemove', draw);
-                canvas.removeEventListener('mouseup', stopDraw);
-                canvas.removeEventListener('mouseout', stopDraw);
-                canvas.removeEventListener('touchstart', startDrawTouch);
-                canvas.removeEventListener('touchmove', drawTouch);
-                canvas.removeEventListener('touchend', stopDraw);
-            }
-        }
-
-        function startPan(e) {
-            if (currentTool !== 'pan') return;
-            isPanning = true;
-            const viewport = document.getElementById('viewer-viewport');
-            viewport.style.cursor = 'grabbing';
-            startX = e.pageX - viewport.offsetLeft;
-            startY = e.pageY - viewport.offsetTop;
-            scrollLeft = viewport.scrollLeft;
-            scrollTop = viewport.scrollTop;
-        }
-
-        function pan(e) {
-            if (!isPanning || currentTool !== 'pan') return;
-            e.preventDefault();
-            const viewport = document.getElementById('viewer-viewport');
-            const x = e.pageX - viewport.offsetLeft;
-            const y = e.pageY - viewport.offsetTop;
-            const walkX = (x - startX) * 1.5;
-            const walkY = (y - startY) * 1.5;
-            viewport.scrollLeft = scrollLeft - walkX;
-            viewport.scrollTop = scrollTop - walkY;
-        }
-
-        function endPan() {
-            isPanning = false;
-            const viewport = document.getElementById('viewer-viewport');
-            if (viewport && currentTool === 'pan') {
-                viewport.style.cursor = 'grab';
-            }
-        }
-
-        function startDraw(e) {
-            if (currentTool !== 'pen') return;
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            lastX = (e.clientX - rect.left) * (canvas.width / rect.width);
-            lastY = (e.clientY - rect.top) * (canvas.height / rect.height);
-        }
-
-        function startDrawTouch(e) {
-            if (currentTool !== 'pen') return;
-            isDrawing = true;
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            lastX = (touch.clientX - rect.left) * (canvas.width / rect.width);
-            lastY = (touch.clientY - rect.top) * (canvas.height / rect.height);
-            e.preventDefault();
-        }
-
-        function draw(e) {
-            if (!isDrawing || currentTool !== 'pen') return;
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-            
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            
-            ctx.strokeStyle = document.getElementById('pen-color').value;
-            ctx.lineWidth = parseInt(document.getElementById('pen-size').value, 10);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.stroke();
-            
-            lastX = x;
-            lastY = y;
-        }
-
-        function drawTouch(e) {
-            if (!isDrawing || currentTool !== 'pen') return;
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
-            const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
-            
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            
-            ctx.strokeStyle = document.getElementById('pen-color').value;
-            ctx.lineWidth = parseInt(document.getElementById('pen-size').value, 10);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.stroke();
-            
-            lastX = x;
-            lastY = y;
-            e.preventDefault();
-        }
-
-        function stopDraw() {
-            isDrawing = false;
-        }
-
-        function clearAnnotations() {
-            if (confirm("Are you sure you want to clear all drawing annotations?")) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0);
-            }
-        }
-
-        function downloadAnnotatedImage() {
-            const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
-            const link = document.createElement('a');
-            link.download = `annotated_${currentInvoiceId}.jpg`;
-            link.href = dataUrl;
-            link.click();
-        }
-
-        async function saveInvoiceNotes() {
-            const notes = document.getElementById('invoice-notes-area').value;
-            try {
-                const response = await fetch(`/seller/invoices/update_notes/${currentInvoiceId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ notes: notes })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    alert('Notes saved successfully!');
-                    window.location.reload(); 
+                const isPdf = url.toLowerCase().endsWith('.pdf');
+                const pdfFrame = document.getElementById('pdf-frame');
+                const canvasWrapper = document.getElementById('canvas-wrapper');
+                const imageTools = document.getElementById('image-drawing-tools');
+                
+                currentZoom = 1.0;
+                currentRotation = 0;
+                
+                if (isPdf) {
+                    pdfFrame.src = url;
+                    pdfFrame.style.display = 'block';
+                    canvasWrapper.style.display = 'none';
+                    if (imageTools) imageTools.style.setProperty('display', 'none', 'important');
                 } else {
-                    alert('Failed to save notes: ' + result.message);
+                    pdfFrame.style.display = 'none';
+                    canvasWrapper.style.display = 'block';
+                    if (imageTools) imageTools.style.setProperty('display', 'flex', 'important');
+                    
+                    initCanvas(url);
                 }
-            } catch (e) {
-                console.error('Error saving notes:', e);
-                alert('An error occurred. Please try again.');
             }
-        }
+
+            function closeDocumentViewer() {
+                document.getElementById('doc-viewer-modal').style.display = 'none';
+                document.getElementById('pdf-frame').src = '';
+                removeCanvasEvents();
+            }
+
+            function initCanvas(url) {
+                canvas = document.getElementById('annotation-canvas');
+                ctx = canvas.getContext('2d');
+                
+                img = new Image();
+                img.crossOrigin = "anonymous"; 
+                img.onload = function() {
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    setupCanvasEvents();
+                    updateCanvasTransform();
+                };
+                img.src = url;
+            }
+
+            function updateCanvasTransform() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                if (wrapper) {
+                    wrapper.style.transform = `scale(${currentZoom}) rotate(${currentRotation}deg)`;
+                }
+            }
+
+            function zoomDoc(factor) {
+                currentZoom = Math.min(Math.max(currentZoom * factor, 0.2), 5.0);
+                updateCanvasTransform();
+            }
+
+            function resetZoom() {
+                currentZoom = 1.0;
+                currentRotation = 0;
+                updateCanvasTransform();
+            }
+
+            function rotateDoc(angle) {
+                currentRotation = (currentRotation + angle) % 360;
+                updateCanvasTransform();
+            }
+
+            function setTool(tool) {
+                currentTool = tool;
+                document.getElementById('tool-pan-btn').classList.toggle('active-tool', tool === 'pan');
+                document.getElementById('tool-pen-btn').classList.toggle('active-tool', tool === 'pen');
+                
+                const viewport = document.getElementById('viewer-viewport');
+                if (tool === 'pan') {
+                    viewport.style.cursor = 'grab';
+                } else {
+                    viewport.style.cursor = 'crosshair';
+                }
+            }
+
+            function setupCanvasEvents() {
+                const viewport = document.getElementById('viewer-viewport');
+                
+                viewport.addEventListener('mousedown', startPan);
+                viewport.addEventListener('mousemove', pan);
+                viewport.addEventListener('mouseup', endPan);
+                viewport.addEventListener('mouseleave', endPan);
+                
+                canvas.addEventListener('mousedown', startDraw);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDraw);
+                canvas.addEventListener('mouseout', stopDraw);
+                
+                canvas.addEventListener('touchstart', startDrawTouch);
+                canvas.addEventListener('touchmove', drawTouch);
+                canvas.addEventListener('touchend', stopDraw);
+            }
+
+            function removeCanvasEvents() {
+                const viewport = document.getElementById('viewer-viewport');
+                if (viewport) {
+                    viewport.removeEventListener('mousedown', startPan);
+                    viewport.removeEventListener('mousemove', pan);
+                    viewport.removeEventListener('mouseup', endPan);
+                    viewport.removeEventListener('mouseleave', endPan);
+                }
+                if (canvas) {
+                    canvas.removeEventListener('mousedown', startDraw);
+                    canvas.removeEventListener('mousemove', draw);
+                    canvas.removeEventListener('mouseup', stopDraw);
+                    canvas.removeEventListener('mouseout', stopDraw);
+                    canvas.removeEventListener('touchstart', startDrawTouch);
+                    canvas.removeEventListener('touchmove', drawTouch);
+                    canvas.removeEventListener('touchend', stopDraw);
+                }
+            }
+
+            function startPan(e) {
+                if (currentTool !== 'pan') return;
+                isPanning = true;
+                const viewport = document.getElementById('viewer-viewport');
+                viewport.style.cursor = 'grabbing';
+                startX = e.pageX - viewport.offsetLeft;
+                startY = e.pageY - viewport.offsetTop;
+                scrollLeft = viewport.scrollLeft;
+                scrollTop = viewport.scrollTop;
+            }
+
+            function pan(e) {
+                if (!isPanning || currentTool !== 'pan') return;
+                e.preventDefault();
+                const viewport = document.getElementById('viewer-viewport');
+                const x = e.pageX - viewport.offsetLeft;
+                const y = e.pageY - viewport.offsetTop;
+                const walkX = (x - startX) * 1.5;
+                const walkY = (y - startY) * 1.5;
+                viewport.scrollLeft = scrollLeft - walkX;
+                viewport.scrollTop = scrollTop - walkY;
+            }
+
+            function endPan() {
+                isPanning = false;
+                const viewport = document.getElementById('viewer-viewport');
+                if (viewport && currentTool === 'pan') {
+                    viewport.style.cursor = 'grab';
+                }
+            }
+
+            function startDraw(e) {
+                if (currentTool !== 'pen') return;
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                lastX = (e.clientX - rect.left) * (canvas.width / rect.width);
+                lastY = (e.clientY - rect.top) * (canvas.height / rect.height);
+            }
+
+            function startDrawTouch(e) {
+                if (currentTool !== 'pen') return;
+                isDrawing = true;
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                lastX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+                lastY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+                e.preventDefault();
+            }
+
+            function draw(e) {
+                if (!isDrawing || currentTool !== 'pen') return;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                
+                ctx.strokeStyle = document.getElementById('pen-color').value;
+                ctx.lineWidth = parseInt(document.getElementById('pen-size').value, 10);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+                
+                lastX = x;
+                lastY = y;
+            }
+
+            function drawTouch(e) {
+                if (!isDrawing || currentTool !== 'pen') return;
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
+                
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                
+                ctx.strokeStyle = document.getElementById('pen-color').value;
+                ctx.lineWidth = parseInt(document.getElementById('pen-size').value, 10);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+                
+                lastX = x;
+                lastY = y;
+                e.preventDefault();
+            }
+
+            function stopDraw() {
+                isDrawing = false;
+            }
+
+            function clearAnnotations() {
+                if (confirm("Are you sure you want to clear all drawing annotations?")) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                }
+            }
+
+            function downloadAnnotatedImage() {
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+                const link = document.createElement('a');
+                link.download = `annotated_${currentInvoiceId}.jpg`;
+                link.href = dataUrl;
+                link.click();
+            }
+
+            async function saveInvoiceNotes() {
+                const notes = document.getElementById('invoice-notes-area').value;
+                try {
+                    const response = await fetch(`/seller/invoices/update_notes/${currentInvoiceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ notes: notes })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Notes saved successfully!');
+                        window.location.reload(); 
+                    } else {
+                        alert('Failed to save notes: ' + result.message);
+                    }
+                } catch (e) {
+                    console.error('Error saving notes:', e);
+                    alert('An error occurred. Please try again.');
+                }
+            }
+
+            window.openDocumentViewer = openDocumentViewer;
+            window.closeDocumentViewer = closeDocumentViewer;
+            window.zoomDoc = zoomDoc;
+            window.resetZoom = resetZoom;
+            window.rotateDoc = rotateDoc;
+            window.setTool = setTool;
+            window.clearAnnotations = clearAnnotations;
+            window.downloadAnnotatedImage = downloadAnnotatedImage;
+            window.saveInvoiceNotes = saveInvoiceNotes;
+        })();
     </script>
 </body>
 
