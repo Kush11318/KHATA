@@ -790,6 +790,61 @@
                 display: none !important;
             }
         }
+
+        /* Document Viewer Modal Styles */
+        .doc-viewer-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 999999;
+            justify-content: center;
+            align-items: center;
+        }
+        .doc-viewer-modal-card {
+            width: 90%;
+            max-width: 1100px;
+            height: 85vh;
+            background: #ffffff;
+            border: 3px solid #000000;
+            border-radius: 16px;
+            box-shadow: 8px 8px 0px #000000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .tool-btn {
+            border: 2px solid #000000 !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border-radius: 8px !important;
+            width: 36px !important;
+            height: 36px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            box-shadow: 2px 2px 0px #000000 !important;
+            transition: all 0.15s ease !important;
+            font-size: 14px !important;
+        }
+        .tool-btn:hover {
+            transform: translate(-1px, -1px) !important;
+            box-shadow: 3px 3px 0px #000000 !important;
+            background-color: #f8fafc !important;
+        }
+        .tool-btn:active, .tool-btn.active-tool {
+            transform: translate(1px, 1px) !important;
+            box-shadow: 1px 1px 0px #000000 !important;
+            background-color: #eff6ff !important;
+            border-color: #000000 !important;
+        }
     </style>
     {% endif %}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -1208,6 +1263,345 @@
     </script>
     <script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=12.0"></script>
     {% endif %}
+
+    <!-- Interactive Document Viewer Modal -->
+    <div id="doc-viewer-modal" class="doc-viewer-modal-overlay" style="display: none;">
+        <div class="doc-viewer-modal-card">
+            <!-- Modal Header -->
+            <div style="padding: 16px 24px; border-bottom: 3px solid #000000; background: #fafafa; display: flex; justify-content: space-between; align-items: center; z-index: 100;">
+                <h3 style="margin: 0; font-family: 'Manrope', sans-serif; font-weight: 850; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; color: #000000;">
+                    <span class="material-symbols-outlined notranslate" translate="no">image</span> Original Document Viewer & Editor
+                </h3>
+                <button onclick="closeDocumentViewer()" style="background: none; border: none; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 2.5px solid #000000; border-radius: 8px; box-shadow: 2px 2px 0px #000000; transition: all 0.2s; color: #000000;"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div style="flex: 1; display: flex; overflow: hidden; background: #f1f5f9;">
+                <!-- Left: Canvas Area -->
+                <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 3px solid #000000; position: relative;">
+                    <!-- Toolbar -->
+                    <div id="editor-toolbar" style="padding: 12px 16px; border-bottom: 2.5px solid #000000; background: #ffffff; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; z-index: 10;">
+                        <button onclick="zoomDoc(1.2)" class="tool-btn" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+                        <button onclick="zoomDoc(0.8)" class="tool-btn" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+                        <button onclick="resetZoom()" class="tool-btn" title="Reset"><i class="fas fa-expand"></i></button>
+                        <div style="width: 2.5px; height: 24px; background: #000000; opacity: 0.15; margin: 0 4px;"></div>
+                        
+                        <button onclick="rotateDoc(90)" class="tool-btn" title="Rotate Clockwise"><i class="fas fa-redo"></i></button>
+                        <button onclick="rotateDoc(-90)" class="tool-btn" title="Rotate Counterclockwise"><i class="fas fa-undo"></i></button>
+                        
+                        <div id="image-drawing-tools" style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+                            <button onclick="setTool('pan')" id="tool-pan-btn" class="tool-btn active-tool" title="Pan / Move"><i class="fas fa-arrows-alt"></i></button>
+                            <button onclick="setTool('pen')" id="tool-pen-btn" class="tool-btn" title="Pen Tool"><i class="fas fa-pen"></i></button>
+                            <input type="color" id="pen-color" value="#ff0000" style="border: 2px solid #000000; border-radius: 6px; width: 32px; height: 32px; padding: 0; cursor: pointer; background: none;" title="Pen Color">
+                            <select id="pen-size" style="border: 2px solid #000000; border-radius: 6px; height: 32px; font-weight: 700; padding: 0 4px; background: #ffffff; font-family: 'Inter', sans-serif;" title="Pen Thickness">
+                                <option value="2">2px</option>
+                                <option value="4" selected>4px</option>
+                                <option value="8">8px</option>
+                                <option value="12">12px</option>
+                            </select>
+                            <button onclick="clearAnnotations()" class="tool-btn" style="color: #ef4444 !important;" title="Clear Markup"><i class="fas fa-eraser"></i></button>
+                            <button onclick="downloadAnnotatedImage()" class="tool-btn" style="color: #10b981 !important;" title="Download Edited Image"><i class="fas fa-download"></i></button>
+                        </div>
+                    </div>
+                    
+                    <!-- Viewer Viewport -->
+                    <div id="viewer-viewport" style="flex: 1; overflow: auto; display: flex; justify-content: center; align-items: center; padding: 24px; cursor: grab; position: relative;">
+                        <div id="canvas-wrapper" style="position: relative; display: block; transform-origin: center center; transition: transform 0.1s ease-out;">
+                            <canvas id="annotation-canvas" style="display: block; border: 1px dashed rgba(0,0,0,0.15); background: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.15);"></canvas>
+                        </div>
+                        <iframe id="pdf-frame" style="display: none; width: 100%; height: 100%; border: none;" src=""></iframe>
+                    </div>
+                </div>
+                
+                <!-- Right: Notes Sidebar -->
+                <div style="width: 320px; display: flex; flex-direction: column; background: #ffffff; overflow: hidden; padding: 24px; flex-shrink: 0;">
+                    <h4 style="margin: 0 0 12px 0; font-family: 'Manrope', sans-serif; font-weight: 850; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2.5px solid #000000; padding-bottom: 8px; color: #000000;">
+                        Additional Notes
+                    </h4>
+                    <p style="font-size: 13px; color: #64748b; margin: 0 0 16px 0; font-family: 'Inter', sans-serif; line-height: 1.5;">
+                        Add notes or remarks about this bill. These notes are saved securely in the database.
+                    </p>
+                    <textarea id="invoice-notes-area" placeholder="Write additional notes here..." style="flex: 1; border: 2.5px solid #000000; border-radius: 12px; padding: 12px; font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.5; resize: none; outline: none; margin-bottom: 16px; box-shadow: inset 2px 2px 0px rgba(0,0,0,0.05); color: #000000; background-color: #ffffff;"></textarea>
+                    <button onclick="saveInvoiceNotes()" class="comic-btn-primary py-3 w-full font-bold text-sm tracking-wider uppercase flex items-center justify-center gap-2 rounded-xl" style="height: 42px; background-color: #4648d4 !important; color: #ffffff !important;">
+                        <span class="material-symbols-outlined notranslate text-[18px]" translate="no">save</span>
+                        Save Notes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentZoom = 1.0;
+        let currentRotation = 0;
+        let currentTool = 'pan'; 
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let canvas, ctx, img;
+        let isPanning = false;
+        let startX = 0, startY = 0;
+        let scrollLeft = 0, scrollTop = 0;
+        let currentInvoiceId = "";
+
+        function openDocumentViewer(url, invoiceId, existingNotes) {
+            currentInvoiceId = invoiceId;
+            const modal = document.getElementById('doc-viewer-modal');
+            modal.style.display = 'flex';
+            
+            document.getElementById('invoice-notes-area').value = existingNotes ? existingNotes : "";
+            
+            const isPdf = url.toLowerCase().endsWith('.pdf');
+            const pdfFrame = document.getElementById('pdf-frame');
+            const canvasWrapper = document.getElementById('canvas-wrapper');
+            const imageTools = document.getElementById('image-drawing-tools');
+            
+            currentZoom = 1.0;
+            currentRotation = 0;
+            
+            if (isPdf) {
+                pdfFrame.src = url;
+                pdfFrame.style.display = 'block';
+                canvasWrapper.style.display = 'none';
+                if (imageTools) imageTools.style.setProperty('display', 'none', 'important');
+            } else {
+                pdfFrame.style.display = 'none';
+                canvasWrapper.style.display = 'block';
+                if (imageTools) imageTools.style.setProperty('display', 'flex', 'important');
+                
+                initCanvas(url);
+            }
+        }
+
+        function closeDocumentViewer() {
+            document.getElementById('doc-viewer-modal').style.display = 'none';
+            document.getElementById('pdf-frame').src = '';
+            removeCanvasEvents();
+        }
+
+        function initCanvas(url) {
+            canvas = document.getElementById('annotation-canvas');
+            ctx = canvas.getContext('2d');
+            
+            img = new Image();
+            img.crossOrigin = "anonymous"; 
+            img.onload = function() {
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                ctx.drawImage(img, 0, 0);
+                
+                setupCanvasEvents();
+                updateCanvasTransform();
+            };
+            img.src = url;
+        }
+
+        function updateCanvasTransform() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            if (wrapper) {
+                wrapper.style.transform = `scale(${currentZoom}) rotate(${currentRotation}deg)`;
+            }
+        }
+
+        function zoomDoc(factor) {
+            currentZoom = Math.min(Math.max(currentZoom * factor, 0.2), 5.0);
+            updateCanvasTransform();
+        }
+
+        function resetZoom() {
+            currentZoom = 1.0;
+            currentRotation = 0;
+            updateCanvasTransform();
+        }
+
+        function rotateDoc(angle) {
+            currentRotation = (currentRotation + angle) % 360;
+            updateCanvasTransform();
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.getElementById('tool-pan-btn').classList.toggle('active-tool', tool === 'pan');
+            document.getElementById('tool-pen-btn').classList.toggle('active-tool', tool === 'pen');
+            
+            const viewport = document.getElementById('viewer-viewport');
+            if (tool === 'pan') {
+                viewport.style.cursor = 'grab';
+            } else {
+                viewport.style.cursor = 'crosshair';
+            }
+        }
+
+        function setupCanvasEvents() {
+            const viewport = document.getElementById('viewer-viewport');
+            
+            viewport.addEventListener('mousedown', startPan);
+            viewport.addEventListener('mousemove', pan);
+            viewport.addEventListener('mouseup', endPan);
+            viewport.addEventListener('mouseleave', endPan);
+            
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDraw);
+            canvas.addEventListener('mouseout', stopDraw);
+            
+            canvas.addEventListener('touchstart', startDrawTouch);
+            canvas.addEventListener('touchmove', drawTouch);
+            canvas.addEventListener('touchend', stopDraw);
+        }
+
+        function removeCanvasEvents() {
+            const viewport = document.getElementById('viewer-viewport');
+            if (viewport) {
+                viewport.removeEventListener('mousedown', startPan);
+                viewport.removeEventListener('mousemove', pan);
+                viewport.removeEventListener('mouseup', endPan);
+                viewport.removeEventListener('mouseleave', endPan);
+            }
+            if (canvas) {
+                canvas.removeEventListener('mousedown', startDraw);
+                canvas.removeEventListener('mousemove', draw);
+                canvas.removeEventListener('mouseup', stopDraw);
+                canvas.removeEventListener('mouseout', stopDraw);
+                canvas.removeEventListener('touchstart', startDrawTouch);
+                canvas.removeEventListener('touchmove', drawTouch);
+                canvas.removeEventListener('touchend', stopDraw);
+            }
+        }
+
+        function startPan(e) {
+            if (currentTool !== 'pan') return;
+            isPanning = true;
+            const viewport = document.getElementById('viewer-viewport');
+            viewport.style.cursor = 'grabbing';
+            startX = e.pageX - viewport.offsetLeft;
+            startY = e.pageY - viewport.offsetTop;
+            scrollLeft = viewport.scrollLeft;
+            scrollTop = viewport.scrollTop;
+        }
+
+        function pan(e) {
+            if (!isPanning || currentTool !== 'pan') return;
+            e.preventDefault();
+            const viewport = document.getElementById('viewer-viewport');
+            const x = e.pageX - viewport.offsetLeft;
+            const y = e.pageY - viewport.offsetTop;
+            const walkX = (x - startX) * 1.5;
+            const walkY = (y - startY) * 1.5;
+            viewport.scrollLeft = scrollLeft - walkX;
+            viewport.scrollTop = scrollTop - walkY;
+        }
+
+        function endPan() {
+            isPanning = false;
+            const viewport = document.getElementById('viewer-viewport');
+            if (viewport && currentTool === 'pan') {
+                viewport.style.cursor = 'grab';
+            }
+        }
+
+        function startDraw(e) {
+            if (currentTool !== 'pen') return;
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            lastY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        }
+
+        function startDrawTouch(e) {
+            if (currentTool !== 'pen') return;
+            isDrawing = true;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            lastX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+            lastY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+            e.preventDefault();
+        }
+
+        function draw(e) {
+            if (!isDrawing || currentTool !== 'pen') return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            
+            ctx.strokeStyle = document.getElementById('pen-color').value;
+            ctx.lineWidth = parseInt(document.getElementById('pen-size').value, 10);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            
+            lastX = x;
+            lastY = y;
+        }
+
+        function drawTouch(e) {
+            if (!isDrawing || currentTool !== 'pen') return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            
+            ctx.strokeStyle = document.getElementById('pen-color').value;
+            ctx.lineWidth = parseInt(document.getElementById('pen-size').value, 10);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            
+            lastX = x;
+            lastY = y;
+            e.preventDefault();
+        }
+
+        function stopDraw() {
+            isDrawing = false;
+        }
+
+        function clearAnnotations() {
+            if (confirm("Are you sure you want to clear all drawing annotations?")) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            }
+        }
+
+        function downloadAnnotatedImage() {
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+            const link = document.createElement('a');
+            link.download = `annotated_${currentInvoiceId}.jpg`;
+            link.href = dataUrl;
+            link.click();
+        }
+
+        async function saveInvoiceNotes() {
+            const notes = document.getElementById('invoice-notes-area').value;
+            try {
+                const response = await fetch(`/seller/invoices/update_notes/${currentInvoiceId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes: notes })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Notes saved successfully!');
+                    window.location.reload(); 
+                } else {
+                    alert('Failed to save notes: ' + result.message);
+                }
+            } catch (e) {
+                console.error('Error saving notes:', e);
+                alert('An error occurred. Please try again.');
+            }
+        }
+    </script>
 </body>
 
 </html>

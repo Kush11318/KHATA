@@ -240,6 +240,23 @@ def migrate_database():
                             db.session.rollback()
                 else:
                     print("bill_buyer_name column already exists, no migration needed.")
+                
+                # Add notes column if it doesn't exist
+                if 'notes' not in columns:
+                    print(f"Adding notes column to {invoice_table} table...")
+                    try:
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN notes TEXT NULL"))
+                        db.session.commit()
+                        print("Migration completed: notes column added successfully!")
+                    except (OperationalError, ProgrammingError) as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate column name' in error_msg or 'already exists' in error_msg:
+                            print("notes column already exists, skipping migration.")
+                        else:
+                            print(f"Error adding notes column: {e}")
+                            db.session.rollback()
+                else:
+                    print("notes column already exists, no migration needed.")
 
 
             else:
@@ -2175,6 +2192,30 @@ def delete_invoice(invoice_id):
     if is_bill:
         return redirect(url_for('seller_bills'))
     return redirect(url_for('seller_invoices'))
+
+@app.route('/seller/invoices/update_notes/<invoice_id>', methods=['POST'])
+@login_required
+@role_required('seller')
+def update_invoice_notes(invoice_id):
+    try:
+        # Verify invoice belongs to this seller
+        invoice = Invoice.query.filter_by(invoice_no=invoice_id, s_id=session['user_id']).first()
+        if not invoice:
+            return jsonify({'success': False, 'message': 'Invoice not found or access denied'}), 404
+        
+        data = request.get_json()
+        notes = data.get('notes', '').strip()
+        
+        invoice.notes = notes
+        db.session.commit()
+        
+        # Log activity
+        log_activity('invoice_notes_updated', f'Updated notes for invoice {invoice_id}')
+        
+        return jsonify({'success': True, 'message': 'Notes updated successfully!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Failed to update notes: {str(e)}'}), 500
 
 
 

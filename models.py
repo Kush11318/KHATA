@@ -206,8 +206,9 @@ class Invoice(db.Model):
     original_file = db.Column(db.String(255), nullable=True)
     processed_file = db.Column(db.String(255), nullable=True)
     bill_buyer_name = db.Column(db.String(100), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
 
-    def __init__(self, invoice_no=None, invoice_datetime=None, due_date=None, status='pending', tax=0, amount=0, s_id=None, c_id=None, is_bill=False, accommodate_in_metrics=True, original_file=None, processed_file=None, bill_buyer_name=None, **kwargs):
+    def __init__(self, invoice_no=None, invoice_datetime=None, due_date=None, status='pending', tax=0, amount=0, s_id=None, c_id=None, is_bill=False, accommodate_in_metrics=True, original_file=None, processed_file=None, bill_buyer_name=None, notes=None, **kwargs):
         super().__init__(**kwargs)
         self.invoice_no = invoice_no
         if invoice_datetime is not None:
@@ -223,6 +224,7 @@ class Invoice(db.Model):
         self.original_file = original_file
         self.processed_file = processed_file
         self.bill_buyer_name = bill_buyer_name
+        self.notes = notes
     
     # Relationships
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True)
@@ -262,6 +264,7 @@ class Invoice(db.Model):
             'original_file': self.original_file,
             'processed_file': self.processed_file,
             'bill_buyer_name': self.bill_buyer_name,
+            'notes': self.notes,
             'items': [item.to_dict() for item in self.items]
         }
 

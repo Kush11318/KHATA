@@ -274,10 +274,26 @@
                 </thead>
                 <tbody>
                     {% for bill in bills %}
+                    {% if bill.original_file %}
+                        {% if bill.original_file.startswith('http') %}
+                            {% set orig_url = bill.original_file %}
+                        {% else %}
+                            {% set orig_url = url_for('static', filename=bill.original_file) %}
+                        {% endif %}
+                    {% else %}
+                        {% set orig_url = '' %}
+                    {% endif %}
                     <tr>
                         <td>
                             <div class="invoice-id">
                                 <strong>{{ bill.id }}</strong>
+                                {% if bill.notes %}
+                                <span class="material-symbols-outlined notranslate" translate="no" title="Has Notes" style="font-size: 16px; color: #4648d4; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; vertical-align: middle;" 
+                                      onclick="openDocumentViewer(this.getAttribute('data-url'), this.getAttribute('data-id'), this.getAttribute('data-notes'))"
+                                      data-url="{{ orig_url }}"
+                                      data-id="{{ bill.id }}"
+                                      data-notes="{{ bill.notes|default('', true) }}">description</span>
+                                {% endif %}
                             </div>
                         </td>
                         <td>
@@ -329,16 +345,18 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 {% if bill.original_file %}
-                                    {% if bill.original_file.startswith('http') %}
-                                        {% set orig_url = bill.original_file %}
-                                    {% else %}
-                                        {% set orig_url = url_for('static', filename=bill.original_file) %}
-                                    {% endif %}
-                                    <a href="{{ orig_url }}" target="_blank" class="btn btn-outline btn-sm" title="View Original Document" style="border-color: #10b981; color: #10b981;">
+                                    <button type="button" 
+                                            onclick="openDocumentViewer(this.getAttribute('data-url'), this.getAttribute('data-id'), this.getAttribute('data-notes'))"
+                                            data-url="{{ orig_url }}"
+                                            data-id="{{ bill.id }}"
+                                            data-notes="{{ bill.notes|default('', true) }}"
+                                            class="btn btn-outline btn-sm" 
+                                            title="View Original Document" 
+                                            style="border-color: #10b981; color: #10b981;">
                                         <i class="fas fa-file-image"></i>
-                                    </a>
+                                    </button>
                                 {% else %}
-                                    <button class="btn btn-outline btn-sm" title="No Original Document Available" style="border-color: #94a3b8 !important; color: #94a3b8 !important; cursor: not-allowed; opacity: 0.5; box-shadow: none !important; transform: none !important;" disabled>
+                                    <button type="button" class="btn btn-outline btn-sm" title="No Original Document Available" style="border-color: #94a3b8 !important; color: #94a3b8 !important; cursor: not-allowed; opacity: 0.5; box-shadow: none !important; transform: none !important;" disabled>
                                         <i class="fas fa-file-image"></i>
                                     </button>
                                 {% endif %}
