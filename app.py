@@ -1652,6 +1652,7 @@ def seller_invoices():
         end_date=end_date_str,
         min_amount=min_amount_str,
         max_amount=max_amount_str,
+        cloudconvert_available=bool(os.environ.get("CLOUDCONVERT_API_KEY"))
     )
 
 

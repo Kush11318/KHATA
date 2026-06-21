@@ -519,17 +519,25 @@ function submitDigitizeForm() {
     if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const filename = file.name.toLowerCase();
-        const ext = filename.slice(((filename.lastIndexOf(".") - 1) >>> 0) + 2);
+        
+        // Robust and simple extension extraction
+        const parts = filename.split('.');
+        const ext = parts.length > 1 ? parts.pop() : '';
+        
+        console.log("Uploaded File:", filename, "Detected Extension:", ext);
         
         const nativeExtensions = ['png', 'jpg', 'jpeg', 'pdf'];
         const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'heic', 'webp', 'tiff', 'gif'];
         
         if (nativeExtensions.includes(ext)) {
+            // Natively supported format, direct submission without modal popup
             document.getElementById('convert-file-input').value = 'false';
             startDigitizeLoading(false);
         } else if (convertibleExtensions.includes(ext)) {
+            // Unsupported natively, but convertible format: show conversion modal
             document.getElementById('conversion-confirm-modal').style.display = 'flex';
         } else {
+            // Totally unsupported format: show an in-app error flash message
             if (window.showFlashMessage) {
                 window.showFlashMessage('Unsupported file format. Please upload PDF, images (PNG, JPG), or document formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).', 'error');
             } else {
