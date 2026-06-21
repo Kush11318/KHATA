@@ -780,20 +780,28 @@ Voice Guidelines
             }
         }
 
-        if (typeof gsap === 'undefined') {
-            console.log('GSAP not loaded. Dynamically loading from CDN...');
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
-            script.onload = () => {
-                console.log('GSAP loaded dynamically successfully.');
+        function init() {
+            if (typeof gsap === 'undefined') {
+                console.log('GSAP not loaded. Dynamically loading from CDN...');
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
+                script.onload = () => {
+                    console.log('GSAP loaded dynamically successfully.');
+                    startEntranceFlow();
+                };
+                script.onerror = () => {
+                    console.error('Failed to dynamically load GSAP.');
+                };
+                document.head.appendChild(script);
+            } else {
                 startEntranceFlow();
-            };
-            script.onerror = () => {
-                console.error('Failed to dynamically load GSAP.');
-            };
-            document.head.appendChild(script);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
         } else {
-            startEntranceFlow();
+            init();
         }
     })();
 })();
