@@ -160,7 +160,7 @@ def migrate_database():
                 if 'is_bill' not in columns:
                     print(f"Adding is_bill column to {invoice_table} table...")
                     try:
-                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN is_bill BOOLEAN NOT NULL DEFAULT 0"))
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN is_bill BOOLEAN NOT NULL DEFAULT FALSE"))
                         db.session.commit()
                         print("Migration completed: is_bill column added successfully!")
                     except (OperationalError, ProgrammingError) as e:
@@ -177,7 +177,7 @@ def migrate_database():
                 if 'accommodate_in_metrics' not in columns:
                     print(f"Adding accommodate_in_metrics column to {invoice_table} table...")
                     try:
-                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN accommodate_in_metrics BOOLEAN NOT NULL DEFAULT 1"))
+                        db.session.execute(text(f"ALTER TABLE {invoice_table} ADD COLUMN accommodate_in_metrics BOOLEAN NOT NULL DEFAULT TRUE"))
                         db.session.commit()
                         print("Migration completed: accommodate_in_metrics column added successfully!")
                     except (OperationalError, ProgrammingError) as e:
@@ -269,7 +269,7 @@ def migrate_database():
                 if 'is_synced' not in customer_columns:
                     print(f"Adding is_synced column to {customer_table} table...")
                     try:
-                        db.session.execute(text(f"ALTER TABLE {customer_table} ADD COLUMN is_synced BOOLEAN NOT NULL DEFAULT 1"))
+                        db.session.execute(text(f"ALTER TABLE {customer_table} ADD COLUMN is_synced BOOLEAN NOT NULL DEFAULT TRUE"))
                         db.session.commit()
                         print(f"Migration completed: is_synced column added to {customer_table} table successfully!")
                     except (OperationalError, ProgrammingError) as e:
@@ -289,7 +289,7 @@ def migrate_database():
                 if 'is_synced' not in product_columns:
                     print(f"Adding is_synced column to {product_table} table...")
                     try:
-                        db.session.execute(text(f"ALTER TABLE {product_table} ADD COLUMN is_synced BOOLEAN NOT NULL DEFAULT 1"))
+                        db.session.execute(text(f"ALTER TABLE {product_table} ADD COLUMN is_synced BOOLEAN NOT NULL DEFAULT TRUE"))
                         db.session.commit()
                         print(f"Migration completed: is_synced column added to {product_table} table successfully!")
                     except (OperationalError, ProgrammingError) as e:
