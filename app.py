@@ -937,13 +937,15 @@ def refresh_demo_data_dates():
         invoices = Invoice.query.filter_by(s_id="DEMO01").all()
         for inv in invoices:
             if inv.invoice_no in offsets:
-                days_ago, status = offsets[inv.invoice_no]
-                inv.status = status
+                days_ago, default_status = offsets[inv.invoice_no]
+                
+                # Preserve any user status updates in the demo account
+                current_status = inv.status.lower() if inv.status else default_status
                 inv.invoice_datetime = now - timedelta(days=days_ago)
                 
-                if status == 'overdue':
+                if current_status == 'overdue':
                     inv.due_date = today - timedelta(days=days_ago - 30) if days_ago > 30 else today - timedelta(days=5)
-                elif status == 'pending':
+                elif current_status == 'pending':
                     inv.due_date = today + timedelta(days=30 - days_ago) if days_ago < 30 else today + timedelta(days=5)
                 else:
                     inv.due_date = today - timedelta(days=inv_date_diff if (inv_date_diff := days_ago - 15) > 0 else 5)
