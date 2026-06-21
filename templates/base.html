@@ -1082,18 +1082,6 @@
         </div>
                     {% endif %}
                 {% endif %}
-                {% if session.user_id and session.user_role == 'seller' %}
-                <!-- Sleek comic-styled promotional banner for free file conversions -->
-                <div class="conversion-promo-banner-container">
-                    <div class="conversion-promo-banner">
-                        <span class="promo-badge"><i class="fas fa-bolt"></i> 100% FREE</span>
-                        <span class="promo-text">ALL FILE CONVERSIONS ARE 100% FREE ON KHATA AI — UPLOAD ANY FORMAT (HEIC, WEBP, DOCX, XLSX, TXT) FOR INSTANT CONVERSION &amp; DIGITIZATION!</span>
-                        <button onclick="window.navigateToPage('/seller/invoices?tab=bills')" class="promo-link-btn">
-                            TRY IT <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-                {% endif %}
     </main>
 
     <footer class="app-footer">
