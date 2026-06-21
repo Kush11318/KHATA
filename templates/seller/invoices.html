@@ -530,7 +530,11 @@ function submitDigitizeForm() {
         } else if (convertibleExtensions.includes(ext)) {
             document.getElementById('conversion-confirm-modal').style.display = 'flex';
         } else {
-            alert('Unsupported file format. Please upload PDF, images (PNG, JPG), or document formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).');
+            if (window.showFlashMessage) {
+                window.showFlashMessage('Unsupported file format. Please upload PDF, images (PNG, JPG), or document formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).', 'error');
+            } else {
+                alert('Unsupported file format. Please upload PDF, images (PNG, JPG), or document formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).');
+            }
             fileInput.value = '';
         }
     }

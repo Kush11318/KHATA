@@ -1063,18 +1063,18 @@
             {% else %}
             <main class="auth-main">
                 {% endif %}
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                    <div class="flash-message flash-{{ category }}" style="position: relative; padding-right: 36px; max-height: 200px; overflow: hidden; border: 2.5px solid #000000; box-shadow: 4px 4px 0px #000000; border-radius: 8px; font-weight: 700; margin-bottom: 12px; transition: all 0.5s ease;">
-                        {{ message }}
-                        <span onclick="const m = this.parentElement; m.style.opacity = '0'; m.style.transform = 'translateX(50px)'; setTimeout(() => m.remove(), 500);" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px; font-weight: 900; line-height: 1; padding: 4px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">&times;</span>
-                    </div>
-                    {% endfor %}
+                <div class="flash-messages" id="flash-messages-container">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}" style="position: relative; padding-right: 36px; max-height: 200px; overflow: hidden; border: 2.5px solid #000000; box-shadow: 4px 4px 0px #000000; border-radius: 8px; font-weight: 700; margin-bottom: 12px; transition: all 0.5s ease;">
+                            {{ message }}
+                            <span onclick="const m = this.parentElement; m.style.opacity = '0'; m.style.transform = 'translateX(50px)'; setTimeout(() => m.remove(), 500);" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px; font-weight: 900; line-height: 1; padding: 4px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">&times;</span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    {% endwith %}
                 </div>
-                {% endif %}
-                {% endwith %}
 
                 {% block content %}{% endblock %}
                 {% if session.user_id %}
@@ -1646,6 +1646,8 @@
             function initFlashDismissal() {
                 const flashMessages = document.querySelectorAll('.flash-message');
                 flashMessages.forEach(msg => {
+                    if (msg.dataset.hasTimer === 'true') return;
+                    msg.dataset.hasTimer = 'true';
                     setTimeout(() => {
                         if (!msg.isConnected) return;
                         msg.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 0.6s ease, max-height 0.6s ease, padding-top 0.6s ease, padding-bottom 0.6s ease, border-width 0.6s ease';
@@ -1667,6 +1669,29 @@
                     }, 4500);
                 });
             }
+
+            window.showFlashMessage = function(message, category = 'error') {
+                const container = document.getElementById('flash-messages-container');
+                if (!container) return;
+                
+                const msg = document.createElement('div');
+                msg.className = `flash-message flash-${category}`;
+                msg.style.position = 'relative';
+                msg.style.paddingRight = '36px';
+                msg.style.maxHeight = '200px';
+                msg.style.overflow = 'hidden';
+                msg.style.border = '2.5px solid #000000';
+                msg.style.boxShadow = '4px 4px 0px #000000';
+                msg.style.borderRadius = '8px';
+                msg.style.fontWeight = '700';
+                msg.style.marginBottom = '12px';
+                msg.style.transition = 'all 0.5s ease';
+                
+                msg.innerHTML = `${message} <span onclick="const m = this.parentElement; m.style.opacity = '0'; m.style.transform = 'translateX(50px)'; setTimeout(() => m.remove(), 500);" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.6; font-size: 18px; font-weight: 900; line-height: 1; padding: 4px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">&times;</span>`;
+                
+                container.appendChild(msg);
+                initFlashDismissal();
+            };
 
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', initFlashDismissal);
