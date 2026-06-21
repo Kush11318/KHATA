@@ -2661,6 +2661,71 @@ def update_invoice_notes(invoice_id):
         return jsonify({'success': False, 'message': f'Failed to update notes: {str(e)}'}), 500
 
 
+def find_invoice_by_no(inv_no, s_id, user_text=None):
+    """Finds an invoice for the given seller by invoice number, prioritizing unpaid/pending ones and resolving LLM ambiguities."""
+    if not inv_no:
+        return None
+        
+    # Gather potential search terms
+    search_terms = []
+    if inv_no:
+        search_terms.append(inv_no)
+    
+    # If raw user text is provided, extract numeric parts (e.g. "002" from "update invoice 002 to paid")
+    if user_text:
+        import re
+        # Find all numbers in the user text, prioritizing longer ones (e.g. 002 over 2)
+        numbers = re.findall(r'\d+', user_text)
+        for num in sorted(numbers, key=len, reverse=True):
+            if num not in search_terms:
+                search_terms.append(num)
+                
+    all_invoices = Invoice.query.filter_by(s_id=s_id).all()
+    
+    # We will try to match using the search terms in order of specificity
+    for term in search_terms:
+        clean_req = "".join(c for c in str(term) if c.isalnum()).lower()
+        if not clean_req:
+            continue
+            
+        unpaid_matches = []
+        paid_matches = []
+        
+        # 1. Exact clean match
+        for inv in all_invoices:
+            clean_db = "".join(c for c in inv.invoice_no if c.isalnum()).lower()
+            if clean_db == clean_req:
+                if inv.status.lower() != 'paid':
+                    unpaid_matches.append(inv)
+                else:
+                    paid_matches.append(inv)
+                    
+        if unpaid_matches:
+            return unpaid_matches[0]
+        if paid_matches and len(search_terms) == 1:
+            # Only return exact paid match if we don't have other search terms to check
+            return paid_matches[0]
+            
+        # 2. Suffix or partial match
+        for inv in all_invoices:
+            clean_db = "".join(c for c in inv.invoice_no if c.isalnum()).lower()
+            if clean_db.endswith(clean_req) or clean_req in clean_db:
+                if inv.status.lower() != 'paid':
+                    unpaid_matches.append(inv)
+                else:
+                    paid_matches.append(inv)
+                    
+        if unpaid_matches:
+            return unpaid_matches[0]
+            
+    # Fallback to the first exact match if nothing else worked
+    if inv_no:
+        invoice = Invoice.query.filter_by(invoice_no=inv_no, s_id=s_id).first()
+        if invoice:
+            return invoice
+            
+    return None
+
 
 @app.route('/api/ai/process', methods=['POST'])
 @login_required
@@ -2759,6 +2824,20 @@ def process_ai_command():
         }
         
         result = ai_service.parse_command(user_text, context, history, language=language)
+        
+        # Normalize intent if LLM returns specific database operation name directly as the intent
+        intent = result.get('intent')
+        db_operations = [
+            'update_invoice_status', 'update_invoice_due_date', 'delete_invoice', 
+            'delete_product', 'delete_customer', 'update_product_price', 
+            'update_product_stock', 'update_customer_details'
+        ]
+        if intent in db_operations:
+            result['intent'] = 'db_operation'
+            if 'data' not in result or not result['data']:
+                result['data'] = {}
+            if 'operation' not in result['data']:
+                result['data']['operation'] = intent
         
         # Inject live statistics context if the user requested business insights
         if result.get('intent') == 'business_insights':
@@ -2938,7 +3017,7 @@ def process_ai_command():
                         result['response_text'] = "❌ Missing invoice number or status for update."
                         result['success'] = False
                     else:
-                        invoice = Invoice.query.filter_by(invoice_no=inv_no, s_id=s_id).first()
+                        invoice = find_invoice_by_no(inv_no, s_id, user_text)
                         if not invoice:
                             result['response_text'] = f"❌ Invoice/Bill '{inv_no}' not found."
                             result['success'] = False
@@ -2949,7 +3028,8 @@ def process_ai_command():
                                 restore_stock_on_cancellation(invoice)
                             invoice.status = new_status.lower()
                             db.session.commit()
-                            log_activity('invoice_updated', f'Updated status of invoice "{inv_no}" to {new_status} via AI')
+                            log_activity('invoice_updated', f'Updated status of invoice "{invoice.invoice_no}" to {new_status} via AI')
+                            result['response_text'] = f"✅ Invoice {invoice.invoice_no} has been updated to {new_status} status."
                             result['success'] = True
                             
                 elif operation == 'update_invoice_due_date':
@@ -2959,7 +3039,7 @@ def process_ai_command():
                         result['response_text'] = "❌ Missing invoice number or due date."
                         result['success'] = False
                     else:
-                        invoice = Invoice.query.filter_by(invoice_no=inv_no, s_id=s_id).first()
+                        invoice = find_invoice_by_no(inv_no, s_id, user_text)
                         if not invoice:
                             result['response_text'] = f"❌ Invoice/Bill '{inv_no}' not found."
                             result['success'] = False
@@ -2968,7 +3048,8 @@ def process_ai_command():
                                 parsed_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
                                 invoice.due_date = parsed_date
                                 db.session.commit()
-                                log_activity('invoice_updated', f'Updated due date of invoice "{inv_no}" to {due_date_str} via AI')
+                                log_activity('invoice_updated', f'Updated due date of invoice "{invoice.invoice_no}" to {due_date_str} via AI')
+                                result['response_text'] = f"✅ Updated due date of invoice {invoice.invoice_no} to {due_date_str}."
                                 result['success'] = True
                             except ValueError:
                                 result['response_text'] = "❌ Invalid date format. Use YYYY-MM-DD."
@@ -2980,7 +3061,7 @@ def process_ai_command():
                         result['response_text'] = "❌ Missing invoice number to delete."
                         result['success'] = False
                     else:
-                        invoice = Invoice.query.filter_by(invoice_no=inv_no, s_id=s_id).first()
+                        invoice = find_invoice_by_no(inv_no, s_id, user_text)
                         if not invoice:
                             result['response_text'] = f"❌ Invoice/Bill '{inv_no}' not found."
                             result['success'] = False
@@ -2991,6 +3072,7 @@ def process_ai_command():
                                 
                             original_file = invoice.original_file
                             processed_file = invoice.processed_file
+                            actual_inv_no = invoice.invoice_no
                              
                             db.session.delete(invoice)
                             db.session.commit()
@@ -3001,7 +3083,8 @@ def process_ai_command():
                             if processed_file:
                                 delete_file_from_storage(processed_file)
                                 
-                            log_activity('invoice_deleted', f'Deleted invoice "{inv_no}" via AI')
+                            log_activity('invoice_deleted', f'Deleted invoice "{actual_inv_no}" via AI')
+                            result['response_text'] = f"✅ Deleted invoice {actual_inv_no} successfully."
                             result['success'] = True
                             
                 elif operation == 'delete_product':
