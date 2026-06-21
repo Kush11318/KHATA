@@ -770,9 +770,43 @@ def parse_command_gemini(user_text, context, history, api_key, language):
             last_err = err
             print(f"Key {key[:8]} failed for Assistant gemini-2.0-flash: {err}")
             
-    # Try gemini-1.5-flash fallback on all keys if 2.0-flash failed
+    # Try gemini-2.5-flash fallback on all keys if 2.0-flash failed
     if not response:
-        print("Assistant gemini-2.0-flash failed on all keys. Attempting gemini-1.5-flash fallback across keys...")
+        print("Assistant gemini-2.0-flash failed on all keys. Attempting gemini-2.5-flash fallback...")
+        for key in keys:
+            try:
+                print(f"Calling Gemini 2.5 Flash (Assistant) with key: {key[:8]}...")
+                genai.configure(api_key=key)
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                response = model.generate_content(
+                    prompt,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                break
+            except Exception as err:
+                last_err = err
+                print(f"Key {key[:8]} failed for Assistant gemini-2.5-flash: {err}")
+
+    # Try gemini-3.5-flash fallback on all keys if 2.5-flash failed
+    if not response:
+        print("Assistant gemini-2.5-flash failed on all keys. Attempting gemini-3.5-flash fallback...")
+        for key in keys:
+            try:
+                print(f"Calling Gemini 3.5 Flash (Assistant) with key: {key[:8]}...")
+                genai.configure(api_key=key)
+                model = genai.GenerativeModel('gemini-3.5-flash')
+                response = model.generate_content(
+                    prompt,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                break
+            except Exception as err:
+                last_err = err
+                print(f"Key {key[:8]} failed for Assistant gemini-3.5-flash: {err}")
+
+    # Try gemini-1.5-flash fallback on all keys if 3.5-flash failed
+    if not response:
+        print("Assistant gemini-3.5-flash failed on all keys. Attempting gemini-1.5-flash fallback...")
         for key in keys:
             try:
                 print(f"Calling Gemini 1.5 Flash (Assistant) with key: {key[:8]}...")
@@ -786,12 +820,25 @@ def parse_command_gemini(user_text, context, history, api_key, language):
             except Exception as err:
                 last_err = err
                 print(f"Key {key[:8]} failed for Assistant gemini-1.5-flash: {err}")
-                
+
+    # Try Groq fallback if ALL Gemini models failed
     if not response:
-        if isinstance(last_err, Exception):
-            raise last_err
+        print("All Gemini models failed for Assistant. Attempting Groq fallback...")
+        groq_api_key = os.environ.get("GROQ_API_KEY")
+        if groq_api_key:
+            try:
+                return parse_command_groq(user_text, context, history, groq_api_key, language)
+            except Exception as groq_err:
+                print(f"Groq fallback also failed for Assistant: {groq_err}")
+                if isinstance(last_err, Exception):
+                    raise last_err
+                else:
+                    raise Exception(f"Failed to parse command: Gemini failed and Groq failover also failed ({groq_err})")
         else:
-            raise Exception("Failed to parse command: No response received from Gemini.")
+            if isinstance(last_err, Exception):
+                raise last_err
+            else:
+                raise Exception("Failed to parse command: No response received from Gemini.")
     
     content = response.text
     if content.startswith("```json"):

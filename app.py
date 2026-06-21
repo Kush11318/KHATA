@@ -431,6 +431,84 @@ def get_gemini_api_keys():
             keys.append(k.strip())
     return keys
 
+def extract_text_from_pdf(file_bytes):
+    import io
+    import pypdf
+    text = ""
+    try:
+        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+    except Exception as e:
+        print(f"Error extracting text from PDF: {e}")
+    return text
+
+def digitalize_bill_with_groq(file_bytes, mime_type):
+    import requests
+    import json
+    
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if not groq_api_key:
+        raise Exception("GROQ_API_KEY is not configured in the environment.")
+        
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {groq_api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    system_prompt = (
+        "You are an expert OCR parser. Extract all details from this receipt or bill into a clean JSON structure.\n"
+        "Output must be a valid JSON object matching this schema:\n"
+        "{\n"
+        "  \"vendor_name\": \"Name of the vendor or merchant or shop (string)\",\n"
+        "  \"buyer_name\": \"Name of the buyer or customer/recipient if explicitly written on the bill, else null (string or null)\",\n"
+        "  \"invoice_no\": \"Invoice or bill number if present, else null (string or null)\",\n"
+        "  \"billing_date\": \"Billing date in YYYY-MM-DD format if present, else null (string or null)\",\n"
+        "  \"due_date\": \"Due date in YYYY-MM-DD format if present, else null (string or null)\",\n"
+        "  \"subtotal\": subtotal amount before tax (float),\n"
+        "  \"tax\": tax amount (float),\n"
+        "  \"total_amount\": total amount including tax (float),\n"
+        "  \"items\": [\n"
+        "    {\n"
+        "      \"product_name\": \"Name of the item/product (string)\",\n"
+        "      \"quantity\": quantity (integer),\n"
+        "      \"price\": unit price (float),\n"
+        "      \"discount\": discount amount for this item (float)\n"
+        "    }\n"
+        "  ],\n"
+        "  \"is_paid\": true if paid or zero balance due, else false (boolean)\n"
+        "}"
+    )
+    
+    if 'pdf' in mime_type.lower():
+        pdf_text = extract_text_from_pdf(file_bytes)
+        if not pdf_text.strip():
+            raise Exception("Failed to extract any text from the uploaded PDF for Groq.")
+            
+        payload = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Extract invoice details from this text:\n\n{pdf_text}"}
+            ],
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"}
+        }
+    else:
+        raise Exception("Image digitization is not supported on Groq fallback as no vision models are available on your Groq key. Please verify your Gemini API keys.")
+
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"Groq digitization failed: {e}")
+        raise e
+
 def login_required(f):
     from functools import wraps
     @wraps(f)
@@ -1812,10 +1890,64 @@ def upload_bill():
                 print(f"Key {key[:8]} failed for gemini-2.0-flash: {err}")
                 if "429" not in str(err) and "RESOURCE_EXHAUSTED" not in str(err):
                     continue
-                    
-        # If gemini-2.0-flash fails on all keys, try gemini-1.5-flash fallback on all keys
+
+        # Try gemini-2.5-flash fallback on all keys if 2.0-flash failed
         if not response:
-            print("gemini-2.0-flash failed across all API keys. Attempting gemini-1.5-flash fallback across keys...")
+            print("gemini-2.0-flash failed across all API keys. Attempting gemini-2.5-flash fallback...")
+            for key in keys:
+                try:
+                    print(f"Calling Gemini 2.5 Flash to digitalize bill using key: {key[:8]}...")
+                    client = genai.Client(api_key=key)
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[
+                            types.Part.from_bytes(
+                                data=file_bytes,
+                                mime_type=mime_type
+                            ),
+                            "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
+                        ],
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=BillData,
+                            temperature=0.1
+                        )
+                    )
+                    break
+                except Exception as err:
+                    last_err = err
+                    print(f"Key {key[:8]} failed for gemini-2.5-flash: {err}")
+
+        # Try gemini-3.5-flash fallback on all keys if 2.5-flash failed
+        if not response:
+            print("gemini-2.5-flash failed across all API keys. Attempting gemini-3.5-flash fallback...")
+            for key in keys:
+                try:
+                    print(f"Calling Gemini 3.5 Flash to digitalize bill using key: {key[:8]}...")
+                    client = genai.Client(api_key=key)
+                    response = client.models.generate_content(
+                        model='gemini-3.5-flash',
+                        contents=[
+                            types.Part.from_bytes(
+                                data=file_bytes,
+                                mime_type=mime_type
+                            ),
+                            "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
+                        ],
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=BillData,
+                            temperature=0.1
+                        )
+                    )
+                    break
+                except Exception as err:
+                    last_err = err
+                    print(f"Key {key[:8]} failed for gemini-3.5-flash: {err}")
+
+        # Try gemini-1.5-flash fallback on all keys if 3.5-flash failed
+        if not response:
+            print("gemini-3.5-flash failed across all API keys. Attempting gemini-1.5-flash fallback...")
             for key in keys:
                 try:
                     print(f"Calling Gemini 1.5 Flash to digitalize bill using key: {key[:8]}...")
@@ -1839,15 +1971,24 @@ def upload_bill():
                 except Exception as err:
                     last_err = err
                     print(f"Key {key[:8]} failed for gemini-1.5-flash: {err}")
-                    
+
+        # Try Groq fallback if ALL Gemini models failed
+        bill_info = None
         if not response:
-            if isinstance(last_err, Exception):
-                raise last_err
-            else:
-                raise Exception("Failed to digitalize bill: No response received from Gemini.")
-            
-        bill_info = json.loads(response.text)
-        print(f"Gemini response: {bill_info}")
+            print("All Gemini models failed across all API keys. Attempting Groq failover...")
+            try:
+                groq_response_text = digitalize_bill_with_groq(file_bytes, mime_type)
+                bill_info = json.loads(groq_response_text)
+                print(f"Groq OCR response: {bill_info}")
+            except Exception as groq_err:
+                print(f"Groq failover also failed: {groq_err}")
+                if isinstance(last_err, Exception):
+                    raise last_err
+                else:
+                    raise Exception(f"Failed to digitalize bill: Gemini failed and Groq failover also failed ({groq_err})")
+        else:
+            bill_info = json.loads(response.text)
+            print(f"Gemini response: {bill_info}")
         
         vendor_name = bill_info.get('vendor_name', 'Unknown Vendor').strip()
         buyer_name = bill_info.get('buyer_name')
