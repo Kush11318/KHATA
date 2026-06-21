@@ -430,9 +430,16 @@
     </div>
 </div>
 
-<script>
+<script id="invoices-page-data" type="application/json">
+    {
+        "cloudconvertAvailable": {{ 'true' if cloudconvert_available else 'false' }},
+        "activeTab": "{{ active_tab }}"
+    }
+</script>
+
 <script>
 (function() {
+    const pageData = JSON.parse(document.getElementById('invoices-page-data').textContent);
     function switchTab(tab) {
         const indicator = document.getElementById('tab-active-indicator');
         const btnInvoices = document.getElementById('btn-tab-invoices');
@@ -528,8 +535,8 @@
             
             console.log("Uploaded File:", filename, "Detected Extension:", ext);
             
-            // Check if CloudConvert is configured (passed from Flask context)
-            const cloudconvertAvailable = {{ 'true' if cloudconvert_available else 'false' }};
+            // Check if CloudConvert is configured
+            const cloudconvertAvailable = pageData.cloudconvertAvailable;
             
             const nativeExtensions = ['png', 'jpg', 'jpeg', 'jfif', 'webp', 'gif', 'heic', 'heif', 'pdf'];
             const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'tiff'];
@@ -658,7 +665,7 @@
 
     // Initialize tab based on server parameter
     (function() {
-        const activeTab = "{{ active_tab }}";
+        const activeTab = pageData.activeTab;
         if (activeTab === 'bills') {
             switchTab('bills');
         } else {
