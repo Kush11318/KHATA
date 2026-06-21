@@ -6,7 +6,8 @@
 <!-- Tailwind CDN & Config (Isolated to dashboard content block) -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
-  tailwind.config = {
+  window.tailwind = window.tailwind || {};
+  window.tailwind.config = {
     darkMode: "class",
     theme: {
       extend: {
@@ -628,126 +629,137 @@ Voice Guidelines
     setInterval(updateLiveTime, 1000);
 
     // Toggle Activity Details dropdown logic
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.toggle-details-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const actId = btn.getAttribute('data-activity-id');
-                const panel = document.getElementById(`details-${actId}`);
-                if (!panel) return;
-                
-                if (panel.style.display === 'none') {
-                    // Populate details if not done yet
-                    if (panel.innerHTML.trim() === '') {
-                        const metadata = JSON.parse(btn.getAttribute('data-metadata'));
-                        let html = '<div style="background: #f8fafc; border: 1.5px solid #000000; padding: 12px; border-radius: 8px; box-shadow: 2px 2px 0px #000000; margin-top: 4px;">';
-                        
-                        if (metadata.created_customer) {
-                            html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user-plus" style="color: #a855f7; margin-right: 6px;"></i> Automatically registered new vendor/customer: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
-                        } else {
-                            html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user" style="color: #64748b; margin-right: 6px;"></i> Matched with existing customer record: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
-                        }
-                        
-                        if (metadata.added_products && metadata.added_products.length > 0) {
-                            html += '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1);">';
-                            html += '<div style="font-weight: 600; margin-bottom: 4px;"><i class="fas fa-boxes" style="color: #10b981; margin-right: 6px;"></i> Products auto-added to inventory:</div>';
-                            html += '<ul style="margin: 0; padding-left: 20px; list-style-type: disc;">';
-                            metadata.added_products.forEach(p => {
-                                html += `<li style="font-weight: 500; font-family: monospace; font-size: 12px; color: #1e293b;">${p}</li>`;
-                            });
-                            html += '</ul>';
-                            html += '</div>';
-                        } else {
-                            html += `<div style="margin-top: 8px; color: #64748b; font-weight: 500;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i> All items mapped to existing products.</div>`;
-                        }
-                        
-                        html += '</div>';
-                        panel.innerHTML = html;
+    document.querySelectorAll('.toggle-details-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const actId = btn.getAttribute('data-activity-id');
+            const panel = document.getElementById(`details-${actId}`);
+            if (!panel) return;
+            
+            if (panel.style.display === 'none') {
+                // Populate details if not done yet
+                if (panel.innerHTML.trim() === '') {
+                    const metadata = JSON.parse(btn.getAttribute('data-metadata'));
+                    let html = '<div style="background: #f8fafc; border: 1.5px solid #000000; padding: 12px; border-radius: 8px; box-shadow: 2px 2px 0px #000000; margin-top: 4px;">';
+                    
+                    if (metadata.created_customer) {
+                        html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user-plus" style="color: #a855f7; margin-right: 6px;"></i> Automatically registered new vendor/customer: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
+                    } else {
+                        html += `<div style="margin-bottom: 6px; font-weight: 500;"><i class="fas fa-user" style="color: #64748b; margin-right: 6px;"></i> Matched with existing customer record: <span style="font-weight: 700;">${metadata.vendor_name || 'Vendor'}</span></div>`;
                     }
                     
-                    panel.style.display = 'block';
-                    btn.querySelector('.material-symbols-outlined').textContent = 'keyboard_arrow_up';
-                } else {
-                    panel.style.display = 'none';
-                    btn.querySelector('.material-symbols-outlined').textContent = 'more_horiz';
+                    if (metadata.added_products && metadata.added_products.length > 0) {
+                        html += '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1);">';
+                        html += '<div style="font-weight: 600; margin-bottom: 4px;"><i class="fas fa-boxes" style="color: #10b981; margin-right: 6px;"></i> Products auto-added to inventory:</div>';
+                        html += '<ul style="margin: 0; padding-left: 20px; list-style-type: disc;">';
+                        metadata.added_products.forEach(p => {
+                            html += `<li style="font-weight: 500; font-family: monospace; font-size: 12px; color: #1e293b;">${p}</li>`;
+                        });
+                        html += '</ul>';
+                        html += '</div>';
+                    } else {
+                        html += `<div style="margin-top: 8px; color: #64748b; font-weight: 500;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i> All items mapped to existing products.</div>`;
+                    }
+                    
+                    html += '</div>';
+                    panel.innerHTML = html;
                 }
-            });
+                
+                panel.style.display = 'block';
+                btn.querySelector('.material-symbols-outlined').textContent = 'keyboard_arrow_up';
+            } else {
+                panel.style.display = 'none';
+                btn.querySelector('.material-symbols-outlined').textContent = 'more_horiz';
+            }
         });
     });
 
     // Staggered springy GSAP entrance animations for Dashboard cards
     (function initGSAPAnimations() {
-        if (typeof gsap === 'undefined') {
-            console.warn('GSAP is not loaded. Skipping dashboard animations.');
-            return;
+        function runAnimations() {
+            // Disable CSS transitions on cards to let GSAP handle smooth 3D tilt & spring hovers
+            const targetCards = document.querySelectorAll('.metric-card, .activity-card, .ocr-promo-card, .conversion-promo-banner');
+            targetCards.forEach(card => {
+                card.style.transition = 'none';
+            });
+
+            // Clear default CSS keyframe animation classes so GSAP can handle from a clean slate
+            gsap.set('.animate-fade-in-up', { 
+                clearProps: 'animation,animationDelay' 
+            });
+
+            const tl = gsap.timeline();
+
+            // 1. Welcome Greeting Header Card: Snap in from top with a springy overshoot
+            tl.fromTo('section.mb-12.comic-card', 
+                { opacity: 0, y: -50, scale: 0.95 }, 
+                { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: 'back.out(2)' }
+            );
+
+            // 2. Metric Cards: Stagger-reveal with a fun elastic pop-in
+            tl.fromTo('.metric-card', 
+                { opacity: 0, scale: 0.7, y: 40 }, 
+                { opacity: 1, scale: 1, y: 0, duration: 0.7, stagger: 0.12, ease: 'back.out(1.8)' },
+                '-=0.5'
+            );
+
+            // 3. Bottom Row Cards (Activity, OCR Digitizer Promo, and Conversion Banner)
+            tl.fromTo('.activity-card, .ocr-promo-card, .conversion-promo-banner-container, .lg\\:col-span-4 > div', 
+                { opacity: 0, scale: 0.9, y: 50 }, 
+                { opacity: 1, scale: 1, y: 0, duration: 0.7, stagger: 0.15, ease: 'back.out(1.5)' },
+                '-=0.4'
+            );
+
+            // 4. Premium 3D Tilt & Spring Scale Hover Interactions
+            targetCards.forEach(card => {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    // Calculate tilt angles (max 6 degrees)
+                    const tiltX = ((y / rect.height) - 0.5) * 12;
+                    const tiltY = ((x / rect.width) - 0.5) * -12;
+                    
+                    gsap.to(card, {
+                        scale: 1.025,
+                        rotateX: tiltX,
+                        rotateY: tiltY,
+                        transformPerspective: 800,
+                        boxShadow: '10px 10px 0px #000000',
+                        duration: 0.25,
+                        ease: 'power2.out'
+                    });
+                });
+                
+                card.addEventListener('mouseleave', () => {
+                    gsap.to(card, {
+                        scale: 1,
+                        rotateX: 0,
+                        rotateY: 0,
+                        boxShadow: card.classList.contains('conversion-promo-banner') ? '4px 4px 0px #000000' : '4px 4px 0px 0px #000000',
+                        duration: 0.5,
+                        ease: 'back.out(2)' // Springy return
+                    });
+                });
+            });
         }
 
-        // Disable CSS transitions on cards to let GSAP handle smooth 3D tilt & spring hovers
-        const targetCards = document.querySelectorAll('.metric-card, .activity-card, .ocr-promo-card, .conversion-promo-banner');
-        targetCards.forEach(card => {
-            card.style.transition = 'none';
-        });
-
-        // Clear default CSS keyframe animation classes so GSAP can handle from a clean slate
-        gsap.set('.animate-fade-in-up', { 
-            clearProps: 'animation,animationDelay' 
-        });
-
-        const tl = gsap.timeline();
-
-        // 1. Welcome Greeting Header Card: Snap in from top with a springy overshoot
-        tl.fromTo('section.mb-12.comic-card', 
-            { opacity: 0, y: -50, scale: 0.95 }, 
-            { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: 'back.out(2)' }
-        );
-
-        // 2. Metric Cards: Stagger-reveal with a fun elastic pop-in
-        tl.fromTo('.metric-card', 
-            { opacity: 0, scale: 0.7, y: 40 }, 
-            { opacity: 1, scale: 1, y: 0, duration: 0.7, stagger: 0.12, ease: 'back.out(1.8)' },
-            '-=0.5'
-        );
-
-        // 3. Bottom Row Cards (Activity, OCR Digitizer Promo, and Conversion Banner)
-        tl.fromTo('.activity-card, .ocr-promo-card, .conversion-promo-banner-container, .lg\\:col-span-4 > div', 
-            { opacity: 0, scale: 0.9, y: 50 }, 
-            { opacity: 1, scale: 1, y: 0, duration: 0.7, stagger: 0.15, ease: 'back.out(1.5)' },
-            '-=0.4'
-        );
-
-        // 4. Premium 3D Tilt & Spring Scale Hover Interactions
-        targetCards.forEach(card => {
-            card.addEventListener('mousemove', (e) => {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                // Calculate tilt angles (max 6 degrees)
-                const tiltX = ((y / rect.height) - 0.5) * 12;
-                const tiltY = ((x / rect.width) - 0.5) * -12;
-                
-                gsap.to(card, {
-                    scale: 1.025,
-                    rotateX: tiltX,
-                    rotateY: tiltY,
-                    transformPerspective: 800,
-                    boxShadow: '10px 10px 0px #000000',
-                    duration: 0.25,
-                    ease: 'power2.out'
-                });
-            });
-            
-            card.addEventListener('mouseleave', () => {
-                gsap.to(card, {
-                    scale: 1,
-                    rotateX: 0,
-                    rotateY: 0,
-                    boxShadow: card.classList.contains('conversion-promo-banner') ? '4px 4px 0px #000000' : '4px 4px 0px 0px #000000',
-                    duration: 0.5,
-                    ease: 'back.out(2)' // Springy return
-                });
-            });
-        });
+        if (typeof gsap === 'undefined') {
+            console.log('GSAP not loaded. Dynamically loading from CDN...');
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
+            script.onload = () => {
+                console.log('GSAP loaded dynamically successfully.');
+                runAnimations();
+            };
+            script.onerror = () => {
+                console.error('Failed to dynamically load GSAP.');
+            };
+            document.head.appendChild(script);
+        } else {
+            runAnimations();
+        }
     })();
 </script>
 {% endblock %}
