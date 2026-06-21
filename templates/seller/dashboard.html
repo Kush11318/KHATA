@@ -682,6 +682,16 @@ Voice Guidelines
                 card.style.transition = 'none';
             });
 
+            // Set animated elements to opacity: 0 initially so they don't flash when their parent containers are revealed
+            gsap.set([
+                'section.mb-12.comic-card',
+                '.grid.mb-12 .metric-card',
+                '.activity-card',
+                '.ocr-promo-card',
+                '.lg\\:col-span-4 .metric-card',
+                '.conversion-promo-banner-container'
+            ], { opacity: 0 });
+
             // Clear default CSS keyframe animation classes so GSAP can handle from a clean slate
             document.querySelectorAll('.animate-fade-in-up').forEach(el => {
                 el.style.animation = 'none';
