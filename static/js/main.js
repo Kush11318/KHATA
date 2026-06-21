@@ -314,6 +314,11 @@ window.navigateToPage = async function(url, pushState = true) {
             const delay = Math.max(0, 750 - elapsed);
             setTimeout(() => {
                 loader.classList.add('fade-out');
+                
+                // Dispatch event so scripts on the new page know the loader has started to fade out
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('page-loader-hidden'));
+                }, 200);
             }, delay);
         }
     }

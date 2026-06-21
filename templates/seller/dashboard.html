@@ -767,20 +767,33 @@ Voice Guidelines
             });
         }
 
+        function startEntranceFlow() {
+            const loader = document.getElementById('page-loader');
+            const isLoaderVisible = loader && !loader.classList.contains('fade-out');
+            
+            if (isLoaderVisible) {
+                window.addEventListener('page-loader-hidden', () => {
+                    runAnimations();
+                }, { once: true });
+            } else {
+                runAnimations();
+            }
+        }
+
         if (typeof gsap === 'undefined') {
             console.log('GSAP not loaded. Dynamically loading from CDN...');
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
             script.onload = () => {
                 console.log('GSAP loaded dynamically successfully.');
-                runAnimations();
+                startEntranceFlow();
             };
             script.onerror = () => {
                 console.error('Failed to dynamically load GSAP.');
             };
             document.head.appendChild(script);
         } else {
-            runAnimations();
+            startEntranceFlow();
         }
     })();
 })();
