@@ -101,8 +101,7 @@
 </div>
 
 <script>
-
-
+(function() {
     function previewImage(input) {
         const file = input.files[0];
         if (file) {
@@ -144,5 +143,10 @@
         removeBtn.style.display = 'none';
         removeInput.value = 'true';
     }
+
+    // Expose functions globally for inline HTML event handlers
+    window.previewImage = previewImage;
+    window.handleRemoveLogo = handleRemoveLogo;
+})();
 </script>
 {% endblock %}

@@ -137,17 +137,23 @@
 </div>
 
 <script>
-function showAddCustomerForm() {
-    document.getElementById('add-customer-form').style.display = 'block';
-}
+(function() {
+    function showAddCustomerForm() {
+        document.getElementById('add-customer-form').style.display = 'block';
+    }
 
-function hideAddCustomerForm() {
-    document.getElementById('add-customer-form').style.display = 'none';
-    // Clear form fields
-    document.querySelector('input[name="name"]').value = '';
-    document.querySelector('input[name="email"]').value = '';
-    document.querySelector('input[name="phone"]').value = '';
-    document.querySelector('textarea[name="address"]').value = '';
-}
+    function hideAddCustomerForm() {
+        document.getElementById('add-customer-form').style.display = 'none';
+        // Clear form fields
+        document.querySelector('input[name="name"]').value = '';
+        document.querySelector('input[name="email"]').value = '';
+        document.querySelector('input[name="phone"]').value = '';
+        document.querySelector('textarea[name="address"]').value = '';
+    }
+
+    // Expose functions globally for inline HTML event handlers
+    window.showAddCustomerForm = showAddCustomerForm;
+    window.hideAddCustomerForm = hideAddCustomerForm;
+})();
 </script>
 {% endblock %}

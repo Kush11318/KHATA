@@ -167,6 +167,7 @@
 </script>
 
 <script>
+(function() {
     const availableProducts = JSON.parse(document.getElementById('products-data').textContent);
     let newItemCounter = 0;
 
@@ -211,7 +212,8 @@
             }
         });
 
-        const tax = parseFloat(document.querySelector('input[name="tax"]').value) || 0;
+        const taxInput = document.querySelector('input[name="tax"]');
+        const tax = parseFloat(taxInput ? taxInput.value : 0) || 0;
         const total = subtotal + tax;
 
         const subtotalSpan = document.querySelector('.summary-row:nth-child(1) span:last-child');
@@ -231,7 +233,6 @@
         if (!itemDiv) return;
         const itemId = itemDiv.dataset.itemId || itemDiv.getAttribute('data-item-id');
         if (itemDiv && confirm('Are you sure you want to delete this item?')) {
-            // Add hidden input to mark item for deletion
             const deleteInput = document.createElement('input');
             deleteInput.type = 'hidden';
             deleteInput.name = `delete_${itemId}`;
@@ -246,6 +247,7 @@
     function addNewItem() {
         newItemCounter++;
         const container = document.getElementById('invoice-items-container');
+        if (!container) return;
         const newItemDiv = document.createElement('div');
         newItemDiv.className = 'invoice-item';
         newItemDiv.innerHTML = `
@@ -279,12 +281,12 @@
                 </button>
             </div>
         </div>
-    `;
+        `;
         container.appendChild(newItemDiv);
     }
 
     function updateNewItemTotal(counter) {
-        const itemDiv = document.querySelector(`select[name="new_product_${counter}_id"]`).closest('.invoice-item');
+        const itemDiv = document.querySelector(`select[name="new_product_${counter}_id"]`)?.closest('.invoice-item');
         if (!itemDiv) return;
 
         const productSelect = itemDiv.querySelector('select.product-select');
@@ -299,9 +301,9 @@
             const quantity = parseInt(quantityInput.value) || 0;
             const discount = parseFloat(discountInput.value) || 0;
 
-            priceDisplay.value = `₹${price.toFixed(2)}`;
+            if (priceDisplay) priceDisplay.value = `₹${price.toFixed(2)}`;
             const total = (price * quantity) - discount;
-            totalDisplay.textContent = `₹${total.toFixed(2)}`;
+            if (totalDisplay) totalDisplay.textContent = `₹${total.toFixed(2)}`;
         }
 
         updateTotals();
@@ -315,18 +317,14 @@
         }
     }
 
-    // Initialize totals for existing items
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.invoice-item[data-item-id]').forEach(item => {
-            const itemId = item.dataset.itemId;
-            if (itemId) {
-                updateItemTotal(itemId);
-            }
-        });
-        updateTotals();
+    document.querySelectorAll('.invoice-item[data-item-id]').forEach(item => {
+        const itemId = item.dataset.itemId;
+        if (itemId) {
+            updateItemTotal(itemId);
+        }
     });
+    updateTotals();
 
-    // Add event listeners
     document.querySelector('input[name="tax"]')?.addEventListener('input', updateTotals);
     document.querySelectorAll('input.discount-input').forEach(input => {
         input.addEventListener('input', function () {
@@ -336,5 +334,13 @@
             }
         });
     });
+
+    window.updateItemTotal = updateItemTotal;
+    window.updateTotals = updateTotals;
+    window.deleteItem = deleteItem;
+    window.addNewItem = addNewItem;
+    window.updateNewItemTotal = updateNewItemTotal;
+    window.removeNewItem = removeNewItem;
+})();
 </script>
 {% endblock %}

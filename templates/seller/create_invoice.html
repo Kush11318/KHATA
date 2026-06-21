@@ -244,6 +244,7 @@ System{% endblock %} {% block back_button %}
 </script>
 
 <script>
+(function() {
     let itemCount = 0;
     const availableProducts = JSON.parse(document.getElementById('products-data').textContent);
 
@@ -363,6 +364,7 @@ System{% endblock %} {% block back_button %}
         document.getElementById('new-customer-form').style.display = 'block';
     }
 
+    // Handle close forms
     function hideNewCustomerForm() {
         document.getElementById('new-customer-form').style.display = 'none';
         // Clear form fields
@@ -432,45 +434,59 @@ System{% endblock %} {% block back_button %}
         document.getElementById('np_desc').value = '';
     }
 
-  function addNewProduct() {
-      const name = document.getElementById('np_name').value;
-      const price = parseFloat(document.getElementById('np_price').value);
-      const stock = parseInt(document.getElementById('np_stock').value) || 0;
-      const description = document.getElementById('np_desc').value;
-      if (!name || isNaN(price)) {
-          alert('Please provide at least a name and price for the product');
-          return;
-      }
-
-      // Save the product to the database via API
-      fetch('/api/products/add', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ name, price, stock, description })
-      })
-      .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Add the new product to the products array
-            availableProducts.push(data.product);
-            // Add it as an invoice item - no need for temp product handling
-            addItem();
-            const select = document.querySelector(`select[name="product_${itemCount}_id"]`);
-            if (select) {
-                select.value = data.product.id;
-                updateItemTotal(itemCount);
-            }
-            hideNewProductForm();
-        } else {
-            alert('Failed to add product: ' + (data.error || 'Unknown error'));
+    function addNewProduct() {
+        const name = document.getElementById('np_name').value;
+        const price = parseFloat(document.getElementById('np_price').value);
+        const stock = parseInt(document.getElementById('np_stock').value) || 0;
+        const description = document.getElementById('np_desc').value;
+        if (!name || isNaN(price)) {
+            alert('Please provide at least a name and price for the product');
+            return;
         }
-    })
-      .catch(error => {
-          console.error('Error adding product:', error);
-          alert('Failed to add product. Please try again.');
-      });
-  }
+
+        // Save the product to the database via API
+        fetch('/api/products/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, price, stock, description })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add the new product to the products array
+                availableProducts.push(data.product);
+                // Add it as an invoice item - no need for temp product handling
+                addItem();
+                const select = document.querySelector(`select[name="product_${itemCount}_id"]`);
+                if (select) {
+                    select.value = data.product.id;
+                    updateItemTotal(itemCount);
+                }
+                hideNewProductForm();
+            } else {
+                alert('Failed to add product: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error adding product:', error);
+            alert('Failed to add product. Please try again.');
+        });
+    }
+
+    // Expose functions to the window object for HTML inline handler access
+    window.addItem = addItem;
+    window.addItemWithPreselected = addItemWithPreselected;
+    window.removeItem = removeItem;
+    window.updateItemTotal = updateItemTotal;
+    window.updateTotals = updateTotals;
+    window.showNewCustomerForm = showNewCustomerForm;
+    window.hideNewCustomerForm = hideNewCustomerForm;
+    window.addNewCustomer = addNewCustomer;
+    window.showNewProductForm = showNewProductForm;
+    window.hideNewProductForm = hideNewProductForm;
+    window.addNewProduct = addNewProduct;
+})();
 </script>
 {% endblock %}

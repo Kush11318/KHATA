@@ -396,6 +396,7 @@
 </div>
 
 <script>
+(function() {
     function runSimulatorCommand(cmd) {
         if (!window.aiAssistant) {
             alert("The AI Assistant is still loading. Please wait 1-2 seconds and try again!");
@@ -460,5 +461,11 @@
             askCustomQuestion();
         }
     }
+
+    // Expose functions globally for inline HTML event handlers
+    window.runSimulatorCommand = runSimulatorCommand;
+    window.askCustomQuestion = askCustomQuestion;
+    window.handleSearchPress = handleSearchPress;
+})();
 </script>
 {% endblock %}

@@ -431,118 +431,130 @@
 </div>
 
 <script>
-function switchTab(tab) {
-    const indicator = document.getElementById('tab-active-indicator');
-    const btnInvoices = document.getElementById('btn-tab-invoices');
-    const btnBills = document.getElementById('btn-tab-bills');
-    const invoicesSection = document.getElementById('invoices-section');
-    const billsSection = document.getElementById('bills-section');
-    const invoiceActions = document.getElementById('invoice-header-actions');
-    const billActions = document.getElementById('bill-header-actions');
-    const tabInput = document.getElementById('active-tab-input');
-    
-    if (tab === 'bills') {
-        // Move indicator
-        indicator.style.transform = 'translateX(100%)';
-        btnBills.style.color = '#000000';
-        btnInvoices.style.color = '#475569';
+<script>
+(function() {
+    function switchTab(tab) {
+        const indicator = document.getElementById('tab-active-indicator');
+        const btnInvoices = document.getElementById('btn-tab-invoices');
+        const btnBills = document.getElementById('btn-tab-bills');
+        const invoicesSection = document.getElementById('invoices-section');
+        const billsSection = document.getElementById('bills-section');
+        const invoiceActions = document.getElementById('invoice-header-actions');
+        const billActions = document.getElementById('bill-header-actions');
+        const tabInput = document.getElementById('active-tab-input');
         
-        // Show/Hide sections
-        invoicesSection.style.display = 'none';
-        billsSection.style.display = 'block';
-        
-        // Show/Hide actions
-        invoiceActions.style.display = 'none';
-        billActions.style.display = 'block';
-        
-        // Update input
-        tabInput.value = 'bills';
-        
-        // Update URL
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('tab', 'bills');
-        window.history.replaceState(null, '', newUrl.toString());
-        
-        // Swap Filter Labels
-        const numberLabel = document.querySelector('label[for="q"]');
-        const clientLabel = document.querySelector('label[for="customer"]');
-        if (numberLabel) numberLabel.textContent = 'Bill No';
-        if (clientLabel) clientLabel.textContent = 'Vendor';
-        
-        const qInput = document.getElementById('q');
-        if (qInput) qInput.placeholder = 'Search bill number (e.g. INV-001)';
-        const clientInput = document.getElementById('customer');
-        if (clientInput) clientInput.placeholder = 'Search vendor name or email';
-        
-        const resetBtn = document.querySelector('.filter-actions a.btn-outline');
-        if (resetBtn) resetBtn.setAttribute('href', '/seller/invoices?tab=bills');
-    } else {
-        // Move indicator
-        indicator.style.transform = 'none';
-        btnInvoices.style.color = '#000000';
-        btnBills.style.color = '#475569';
-        
-        // Show/Hide sections
-        invoicesSection.style.display = 'block';
-        billsSection.style.display = 'none';
-        
-        // Show/Hide actions
-        invoiceActions.style.display = 'block';
-        billActions.style.display = 'none';
-        
-        // Update input
-        tabInput.value = 'invoices';
-        
-        // Update URL
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('tab', 'invoices');
-        window.history.replaceState(null, '', newUrl.toString());
-        
-        // Swap Filter Labels
-        const numberLabel = document.querySelector('label[for="q"]');
-        const clientLabel = document.querySelector('label[for="customer"]');
-        if (numberLabel) numberLabel.textContent = 'Invoice No';
-        if (clientLabel) clientLabel.textContent = 'Customer';
-        
-        const qInput = document.getElementById('q');
-        if (qInput) qInput.placeholder = 'Search by number (e.g. INV-001)';
-        const clientInput = document.getElementById('customer');
-        if (clientInput) clientInput.placeholder = 'Search name or email';
-        
-        const resetBtn = document.querySelector('.filter-actions a.btn-outline');
-        if (resetBtn) resetBtn.setAttribute('href', '/seller/invoices');
+        if (tab === 'bills') {
+            // Move indicator
+            indicator.style.transform = 'translateX(100%)';
+            btnBills.style.color = '#000000';
+            btnInvoices.style.color = '#475569';
+            
+            // Show/Hide sections
+            invoicesSection.style.display = 'none';
+            billsSection.style.display = 'block';
+            
+            // Show/Hide actions
+            invoiceActions.style.display = 'none';
+            billActions.style.display = 'block';
+            
+            // Update input
+            tabInput.value = 'bills';
+            
+            // Update URL
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('tab', 'bills');
+            window.history.replaceState(null, '', newUrl.toString());
+            
+            // Swap Filter Labels
+            const numberLabel = document.querySelector('label[for="q"]');
+            const clientLabel = document.querySelector('label[for="customer"]');
+            if (numberLabel) numberLabel.textContent = 'Bill No';
+            if (clientLabel) clientLabel.textContent = 'Vendor';
+            
+            const qInput = document.getElementById('q');
+            if (qInput) qInput.placeholder = 'Search bill number (e.g. INV-001)';
+            const clientInput = document.getElementById('customer');
+            if (clientInput) clientInput.placeholder = 'Search vendor name or email';
+            
+            const resetBtn = document.querySelector('.filter-actions a.btn-outline');
+            if (resetBtn) resetBtn.setAttribute('href', '/seller/invoices?tab=bills');
+        } else {
+            // Move indicator
+            indicator.style.transform = 'none';
+            btnInvoices.style.color = '#000000';
+            btnBills.style.color = '#475569';
+            
+            // Show/Hide sections
+            invoicesSection.style.display = 'block';
+            billsSection.style.display = 'none';
+            
+            // Show/Hide actions
+            invoiceActions.style.display = 'block';
+            billActions.style.display = 'none';
+            
+            // Update input
+            tabInput.value = 'invoices';
+            
+            // Update URL
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('tab', 'invoices');
+            window.history.replaceState(null, '', newUrl.toString());
+            
+            // Swap Filter Labels
+            const numberLabel = document.querySelector('label[for="q"]');
+            const clientLabel = document.querySelector('label[for="customer"]');
+            if (numberLabel) numberLabel.textContent = 'Invoice No';
+            if (clientLabel) clientLabel.textContent = 'Customer';
+            
+            const qInput = document.getElementById('q');
+            if (qInput) qInput.placeholder = 'Search by number (e.g. INV-001)';
+            const clientInput = document.getElementById('customer');
+            if (clientInput) clientInput.placeholder = 'Search name or email';
+            
+            const resetBtn = document.querySelector('.filter-actions a.btn-outline');
+            if (resetBtn) resetBtn.setAttribute('href', '/seller/invoices');
+        }
     }
-}
 
-function submitDigitizeForm() {
-    const fileInput = document.getElementById('bill-file');
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const filename = file.name.toLowerCase();
-        
-        // Robust and simple extension extraction
-        const parts = filename.split('.');
-        const ext = parts.length > 1 ? parts.pop() : '';
-        
-        console.log("Uploaded File:", filename, "Detected Extension:", ext);
-        
-        // Check if CloudConvert is configured (passed from Flask context)
-        const cloudconvertAvailable = {{ 'true' if cloudconvert_available else 'false' }};
-        
-        const nativeExtensions = ['png', 'jpg', 'jpeg', 'jfif', 'webp', 'gif', 'heic', 'heif', 'pdf'];
-        const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'tiff'];
-        
-        if (nativeExtensions.includes(ext)) {
-            // Natively supported format, direct submission without modal popup
-            document.getElementById('convert-file-input').value = 'false';
-            startDigitizeLoading(false);
-        } else if (convertibleExtensions.includes(ext)) {
-            if (cloudconvertAvailable) {
-                // Unsupported natively, but convertible format: show conversion modal
-                document.getElementById('conversion-confirm-modal').style.display = 'flex';
+    function submitDigitizeForm() {
+        const fileInput = document.getElementById('bill-file');
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const filename = file.name.toLowerCase();
+            
+            // Robust and simple extension extraction
+            const parts = filename.split('.');
+            const ext = parts.length > 1 ? parts.pop() : '';
+            
+            console.log("Uploaded File:", filename, "Detected Extension:", ext);
+            
+            // Check if CloudConvert is configured (passed from Flask context)
+            const cloudconvertAvailable = {{ 'true' if cloudconvert_available else 'false' }};
+            
+            const nativeExtensions = ['png', 'jpg', 'jpeg', 'jfif', 'webp', 'gif', 'heic', 'heif', 'pdf'];
+            const convertibleExtensions = ['docx', 'doc', 'xlsx', 'xls', 'txt', 'tiff'];
+            
+            if (nativeExtensions.includes(ext)) {
+                // Natively supported format, direct submission without modal popup
+                document.getElementById('convert-file-input').value = 'false';
+                startDigitizeLoading(false);
+            } else if (convertibleExtensions.includes(ext)) {
+                if (cloudconvertAvailable) {
+                    // Unsupported natively, but convertible format: show conversion modal
+                    document.getElementById('conversion-confirm-modal').style.display = 'flex';
+                } else {
+                    // CloudConvert is not configured in the environment
+                    const msg = `Conversion is required for .${ext} files, but KHATA AI conversion is not configured. Please add CLOUDCONVERT_API_KEY to your .env file.`;
+                    if (window.showFlashMessage) {
+                        window.showFlashMessage(msg, 'error');
+                    } else {
+                        alert(msg);
+                    }
+                    fileInput.value = '';
+                }
             } else {
-                // CloudConvert is not configured in the environment
-                const msg = `Conversion is required for .${ext} files, but KHATA AI conversion is not configured. Please add CLOUDCONVERT_API_KEY to your .env file.`;
+                // Totally unsupported format: show an in-app error flash message
+                const msg = 'Unsupported file format. Please upload PDF, images (PNG, JPG, JFIF, WEBP, GIF, HEIC, HEIF), or document formats (DOCX, XLSX, TXT, TIFF).';
                 if (window.showFlashMessage) {
                     window.showFlashMessage(msg, 'error');
                 } else {
@@ -550,161 +562,159 @@ function submitDigitizeForm() {
                 }
                 fileInput.value = '';
             }
-        } else {
-            // Totally unsupported format: show an in-app error flash message
-            const msg = 'Unsupported file format. Please upload PDF, images (PNG, JPG, JFIF, WEBP, GIF, HEIC, HEIF), or document formats (DOCX, XLSX, TXT, TIFF).';
-            if (window.showFlashMessage) {
-                window.showFlashMessage(msg, 'error');
-            } else {
-                alert(msg);
-            }
-            fileInput.value = '';
         }
     }
-}
 
-function closeConversionModal() {
-    document.getElementById('conversion-confirm-modal').style.display = 'none';
-    document.getElementById('bill-file').value = '';
-}
+    function closeConversionModal() {
+        document.getElementById('conversion-confirm-modal').style.display = 'none';
+        document.getElementById('bill-file').value = '';
+    }
 
-function confirmConversion() {
-    document.getElementById('conversion-confirm-modal').style.display = 'none';
-    document.getElementById('convert-file-input').value = 'true';
-    startDigitizeLoading(true);
-}
+    function confirmConversion() {
+        document.getElementById('conversion-confirm-modal').style.display = 'none';
+        document.getElementById('convert-file-input').value = 'true';
+        startDigitizeLoading(true);
+    }
 
-function startDigitizeLoading(isConverting) {
-    const overlay = document.getElementById('loading-overlay');
-    overlay.style.display = 'flex';
-    
-    const subtitleEl = document.getElementById('loader-subtitle');
-    
-    const messages = [
-        "Waking up the AI... it needs its morning tea first.",
-        "Locating the vendor (they can hide, but they can't run).",
-        "Deciphering handwriting... looks like ancient hieroglyphics.",
-        "Filtering out coffee stains and grease marks...",
-        "Adding tax... unfortunately, we cannot delete the government.",
-        "Double checking the math... 1 + 1 is still 2, right?",
-        "Convincing the AI that this is a real bill, not a doodle.",
-        "Whispering sweet nothings to the OCR model...",
-        "Calculating total... brace yourself for the expense!",
-        "Nearly there... organizing your products and stocks.",
-        "Polishing the ledger... making it clean and Neo-Brutalist.",
-        "Telling the AI to work faster or no electricity tonight."
-    ];
-    
-    if (isConverting) {
-        if (subtitleEl) {
-            subtitleEl.textContent = "We've got you covered! Converting your file...";
-        }
-        let index = 0;
-        setInterval(() => {
-            const conversionMessages = [
-                "We've got you covered! Converting your file...",
-                "Almost converted! Waking up the AI...",
-                "We've got you covered! Converting your file...",
-                "Deciphering converted pages...",
-                "We've got you covered! Converting your file..."
-            ];
-            index = (index + 1) % conversionMessages.length;
-            subtitleEl.textContent = conversionMessages[index];
-        }, 3000);
-    } else {
-        if (subtitleEl) {
-            subtitleEl.textContent = "Extracting vendor details, items, tax, and amounts...";
+    function startDigitizeLoading(isConverting) {
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.display = 'flex';
+        
+        const subtitleEl = document.getElementById('loader-subtitle');
+        
+        const messages = [
+            "Waking up the AI... it needs its morning tea first.",
+            "Locating the vendor (they can hide, but they can't run).",
+            "Deciphering handwriting... looks like ancient hieroglyphics.",
+            "Filtering out coffee stains and grease marks...",
+            "Adding tax... unfortunately, we cannot delete the government.",
+            "Double checking the math... 1 + 1 is still 2, right?",
+            "Convincing the AI that this is a real bill, not a doodle.",
+            "Whispering sweet nothings to the OCR model...",
+            "Calculating total... brace yourself for the expense!",
+            "Nearly there... organizing your products and stocks.",
+            "Polishing the ledger... making it clean and Neo-Brutalist.",
+            "Telling the AI to work faster or no electricity tonight."
+        ];
+        
+        if (isConverting) {
+            if (subtitleEl) {
+                subtitleEl.textContent = "We've got you covered! Converting your file...";
+            }
             let index = 0;
             setInterval(() => {
-                index = (index + 1) % messages.length;
-                subtitleEl.textContent = messages[index];
-            }, 2000);
+                const conversionMessages = [
+                    "We've got you covered! Converting your file...",
+                    "Almost converted! Waking up the AI...",
+                    "We've got you covered! Converting your file...",
+                    "Deciphering converted pages...",
+                    "We've got you covered! Converting your file..."
+                ];
+                index = (index + 1) % conversionMessages.length;
+                subtitleEl.textContent = conversionMessages[index];
+            }, 3000);
+        } else {
+            if (subtitleEl) {
+                subtitleEl.textContent = "Extracting vendor details, items, tax, and amounts...";
+                let index = 0;
+                setInterval(() => {
+                    index = (index + 1) % messages.length;
+                    subtitleEl.textContent = messages[index];
+                }, 2000);
+            }
+        }
+        
+        document.getElementById('digitize-form').submit();
+    }
+
+    function toggleAdvancedFilters() {
+        const container = document.getElementById('advanced-filters');
+        const icon = document.getElementById('adv-filters-icon');
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+            icon.classList.remove('fa-chevron-right');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            container.style.display = 'none';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-right');
         }
     }
-    
-    document.getElementById('digitize-form').submit();
-}
 
-function toggleAdvancedFilters() {
-    const container = document.getElementById('advanced-filters');
-    const icon = document.getElementById('adv-filters-icon');
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
-        icon.classList.remove('fa-chevron-right');
-        icon.classList.add('fa-chevron-down');
-    } else {
-        container.style.display = 'none';
-        icon.classList.remove('fa-chevron-down');
-        icon.classList.add('fa-chevron-right');
-    }
-}
+    // Automatically expand advanced filters if they are pre-filled
+    (function() {
+        const start_date = document.getElementById('start_date');
+        const end_date = document.getElementById('end_date');
+        const min_amount = document.getElementById('min_amount');
+        const max_amount = document.getElementById('max_amount');
+        
+        if ((start_date && start_date.value) || 
+            (end_date && end_date.value) || 
+            (min_amount && min_amount.value) || 
+            (max_amount && max_amount.value)) {
+            toggleAdvancedFilters();
+        }
+    })();
 
-// Automatically expand advanced filters if they are pre-filled
-(function() {
-    const start_date = document.getElementById('start_date');
-    const end_date = document.getElementById('end_date');
-    const min_amount = document.getElementById('min_amount');
-    const max_amount = document.getElementById('max_amount');
-    
-    if ((start_date && start_date.value) || 
-        (end_date && end_date.value) || 
-        (min_amount && min_amount.value) || 
-        (max_amount && max_amount.value)) {
-        toggleAdvancedFilters();
-    }
-})();
+    // Initialize tab based on server parameter
+    (function() {
+        const activeTab = "{{ active_tab }}";
+        if (activeTab === 'bills') {
+            switchTab('bills');
+        } else {
+            switchTab('invoices');
+        }
+    })();
 
-// Initialize tab based on server parameter
-(function() {
-    const activeTab = "{{ active_tab }}";
-    if (activeTab === 'bills') {
-        switchTab('bills');
-    } else {
-        switchTab('invoices');
-    }
-})();
-
-// AJAX Toggle Accommodation Handler
-(function() {
-    document.querySelectorAll('.accommodation-toggle').forEach(checkbox => {
-        checkbox.addEventListener('change', async function() {
-            const billId = this.getAttribute('data-bill-id');
-            const isChecked = this.checked;
-            const statusLabel = document.getElementById(`label-${billId}`);
-            
-            try {
-                const response = await fetch(`/seller/bills/${billId}/toggle_accommodation`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        accommodate_in_metrics: isChecked
-                    })
-                });
+    // AJAX Toggle Accommodation Handler
+    (function() {
+        document.querySelectorAll('.accommodation-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', async function() {
+                const billId = this.getAttribute('data-bill-id');
+                const isChecked = this.checked;
+                const statusLabel = document.getElementById(`label-${billId}`);
                 
-                const result = await response.json();
-                if (result.success) {
-                    if (isChecked) {
-                        statusLabel.textContent = 'Business Metric';
-                        statusLabel.classList.remove('private');
-                        statusLabel.classList.add('accommodated');
+                try {
+                    const response = await fetch(`/seller/bills/${billId}/toggle_accommodation`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            accommodate_in_metrics: isChecked
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        if (isChecked) {
+                            statusLabel.textContent = 'Business Metric';
+                            statusLabel.classList.remove('private');
+                            statusLabel.classList.add('accommodated');
+                        } else {
+                            statusLabel.textContent = 'Saved / Private';
+                            statusLabel.classList.remove('accommodated');
+                            statusLabel.classList.add('private');
+                        }
                     } else {
-                        statusLabel.textContent = 'Saved / Private';
-                        statusLabel.classList.remove('accommodated');
-                        statusLabel.classList.add('private');
+                        alert('Error: ' + result.message);
+                        this.checked = !isChecked; // Revert checkbox
                     }
-                } else {
-                    alert('Error: ' + result.message);
+                } catch (error) {
+                    console.error('Error updating bill accommodation:', error);
+                    alert('An error occurred. Please try again.');
                     this.checked = !isChecked; // Revert checkbox
                 }
-            } catch (error) {
-                console.error('Error updating bill accommodation:', error);
-                alert('An error occurred. Please try again.');
-                this.checked = !isChecked; // Revert checkbox
-            }
+            });
         });
-    });
+    })();
+
+    // Expose functions globally for inline HTML event handlers
+    window.switchTab = switchTab;
+    window.submitDigitizeForm = submitDigitizeForm;
+    window.closeConversionModal = closeConversionModal;
+    window.confirmConversion = confirmConversion;
+    window.toggleAdvancedFilters = toggleAdvancedFilters;
 })();
 </script>
 {% endblock %}

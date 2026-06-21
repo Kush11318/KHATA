@@ -517,6 +517,7 @@ Voice Guidelines
 </div>
 
 <script>
+(function() {
     // Shader implementation for background
     const canvas = document.getElementById('bg-canvas');
     const gl = canvas.getContext('webgl');
@@ -761,5 +762,6 @@ Voice Guidelines
             runAnimations();
         }
     })();
+})();
 </script>
 {% endblock %}
