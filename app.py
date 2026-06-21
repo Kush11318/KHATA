@@ -1768,9 +1768,9 @@ def upload_bill():
 
         client = genai.Client(api_key=gemini_key)
         
-        print("Calling Gemini 2.5 Flash to digitalize bill...")
+        print("Calling Gemini 2.0 Flash to digitalize bill...")
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=[
                 types.Part.from_bytes(
                     data=file_bytes,
