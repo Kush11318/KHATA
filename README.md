@@ -1,132 +1,182 @@
-# 🚀 Invoice Management System with AI Billing Assistant
+# Invoice Management System with AI Billing Assistant
 
-A smart, modern billing, inventory, and customer management system built for small-to-medium businesses. Powered by **Flask**, **SQLAlchemy**, and **Google Gemini**, this application features an interactive dashboard, PDF invoice generation, role-based portals, and a state-of-the-art **AI Billing Assistant** supporting natural language voice and text commands.
-
----
-
-## ✨ Key Features
-
-### 🤖 Smart AI Billing Assistant
-* **Natural Language Processing**: Control the billing dashboard, navigate the portal, or create entities using plain English or Hinglish commands.
-* **Voice-Activated Commands**: Full speech-to-text integration using the Web Speech API (`webkitSpeechRecognition`), enabling hands-free operation.
-* **Auto-Intent Mapping**:
-  * **Interactive Billing**: Speak a command like *"Bill for Alice: 1 Wireless Mouse and 2 Mechanical Keyboards"* to instantly parse products, match stocks, and construct a draft invoice preview.
-  * **Inventory Automation**: Create products instantly (e.g. *"Add product USB Hub price 1200 stock 25"*).
-  * **Customer Registration**: Save customers (e.g. *"Add customer John Doe email john@example.com"*).
-  * **Real-time Business Insights**: Speak queries like *"How is business?"* to fetch instant KPI stats (Revenue, Low Stock, Total Invoices) inside a visual chart-card.
-* **Voice Feedback**: Responsive audio synthesis feedback using the Web Speech Synthesis API.
-* **Premium Glassmorphic Interface**: Sleek translucent panels with slide-up transitions, customized purple scrollbars, micro-animations, and mobile viewport responsive layout.
-
-### 📊 Comprehensive Business Management
-* **Role-Based Access**: Specialized portals and control privileges for **Admins**, **Sellers**, and **Customers**.
-* **Billing Center**: Generate dynamic invoices, track unpaid balances, and compute sales taxes.
-* **PDF Exporter**: Single-click PDF rendering using ReportLab, ready for downloads or direct printing.
-* **Inventory Management**: Fully interactive catalog editor featuring real-time stock-depletion tracking and low-stock indicators.
-* **Customer Analytics**: Detailed order logs and visual statistics tracking total lifetime value and buyer behavior.
+A smart, modern billing, inventory, and customer management system built for small-to-medium businesses. Powered by Flask, SQLAlchemy, Google Gemini, and Cloudinary, this application features an interactive dashboard, role-based portals, and a state-of-the-art AI Billing Assistant supporting natural language voice/text commands, scanned bill OCR digitization, canvas markup annotations, and persistent notes.
 
 ---
 
-## 🛠️ Tech Stack
+## Architecture Overview
 
-* **Backend**: Python 3, Flask, Flask-SQLAlchemy (Relational ORM)
-* **Database**: SQLite (default / development) or MySQL (scalable production)
-* **AI Engine**: Google Gemini API via `google-generativeai` SDK
-* **Frontend**: HTML5, Vanilla CSS3 (Custom Grid Layouts & Animations), JavaScript ES6 (DOM Manipulation, Web Speech API)
-* **PDF Engine**: ReportLab
+```mermaid
+graph TD
+    User([Sellers & Customers]) <-->|HTTP Requests| Flask[Flask Server: app.py]
+    Flask <-->|SQLAlchemy ORM| DB[(SQLite / MySQL Database)]
+    Flask <-->|Google GenAI SDK| Gemini[Gemini 1.5 Flash AI Engine]
+    Flask <-->|Cloudinary API| Cloudinary[Cloudinary Cloud Storage]
+    Flask <-->|Pillow Pipeline| PIL[Pillow Processing Engine]
+```
+
+### System Architecture Flow
+* **Routing & Middleware**: The Flask backend serves role-based routes with login/session middleware protection.
+* **SQLAlchemy Database Layer**: Models include relationships between Sellers, Customers, Products, Invoices, and Activity Logs.
+* **External Integrations**: Gemini 1.5 Flash processes structured invoice schemas and natural language queries, while Cloudinary stores compressed digitized documents.
 
 ---
 
-## 📦 Installation & Setup
+## Technical Deep-Dive & Code Map
 
-### 1. Clone the Repository
+### 1. Backend Application Controller (app.py)
+* **Location**: `app.py`
+* **Core Responsibilities**:
+  * **Routing & Access Control**: Implements `@login_required` and `@role_required` decorators to segregate seller, customer, and administrator views.
+  * **Database Lifecycle**: Manages database migrations dynamically using SQLAlchemy (`migrate_database()`), checking for missing columns like `is_bill`, `accommodate_in_metrics`, `is_synced`, `s_logo`, `s_theme`, and `bill_buyer_name`.
+  * **File Upload & Compression**: Handles scanned bill uploads under `/seller/invoices/upload_bill`. Coordinates file validation, runs Pillow-based resizing/compression to reduce payload size by 90% (capped at 1600px width/height, compressed to quality=75 JPEG), and manages Cloudinary API transactions with a secure local filesystem fallback path (`static/uploads/bills/`).
+  * **Ajax & Data Syncing**: Contains REST endpoints to dynamically update scanned bill notes (`/seller/invoices/update_notes/<id>`) and toggle business metrics inclusion (`/seller/bills/<id>/toggle_accommodation`).
+
+### 2. Google Gemini AI Engine (ai_service.py)
+* **Location**: `ai_service.py`
+* **Core Responsibilities**:
+  * **Structured Bill Digitization (OCR)**: Uses `google.generativeai` structures (`genai.GenerativeModel`) to analyze images/PDFs. Uses a strict JSON schema representation (`BillData`) to extract total amount, vendor name, invoice date, line items (with quantities, units, and unit prices), and the buyer's name.
+  * **Natural Language Processing**: Translates Hinglish commands, matches voice intents (e.g., "Add product...", "Bill for..."), and handles Hindi balance checks (e.g., *"mujhe shyam se kitne paise lene hai"*) using Levenshtein fuzzy string-matching routines.
+  * **Database Seeding & Automation**: Automatically maps extracted OCR data to SQL columns, creates missing items in the Products catalog, and tracks stock depletion.
+
+### 3. Database Schemas (models.py)
+* **Location**: `models.py`
+* **Core Model Relationships**:
+```mermaid
+erDiagram
+    SELLER ||--o{ CUSTOMER : "manages"
+    SELLER ||--o{ PRODUCT : "owns"
+    SELLER ||--o{ INVOICE : "issues"
+    CUSTOMER ||--o{ INVOICE : "receives"
+    INVOICE ||--|{ INVOICE_ITEM : "contains"
+    SELLER ||--o{ ACTIVITY : "triggers"
+```
+* **Key Fields**:
+  * **Invoice**: `is_bill` (boolean to isolate expenses from sales), `original_file` (URL to digital copy), `accommodate_in_metrics` (boolean to filter dashboard KPIs), and `notes` (persisted text annotations).
+  * **Customer / Product**: `is_synced` flags to control whether AI-digitized entities should populate the primary sales ledger or remain isolated.
+
+### 4. Interactive Drawing Canvas & Document Viewer
+* **Location**: `templates/base.html` (Modal & Canvas logic)
+* **Core Interactivity**:
+  * **Drawing Canvas Markup**: A HTML5 `<canvas>` handles user annotations. Click-and-drag actions capture coordinate lines mapped from viewport client scales (`clientX`, `clientY`) directly into drawing coordinates (`offsetX`, `offsetY`).
+  * **Pan, Zoom, and Rotate Tools**: Implements coordinate space transformations. Zoom scales the viewer up to 500% dynamically, and rotation pivots the image canvas in 90-degree increments.
+  * **Export & Download**: Extracts the annotated canvas as a base64 Data URL and bundles it into a JPEG file trigger, letting users download their marked-up documents instantly.
+  * **Namespace Protection**: All viewer JavaScript is encapsulated in an Immediately Invoked Function Expression (IIFE) to completely prevent naming collisions with global components (like the dashboard background shader canvas).
+
+### 5. Client Voice & Dashboard Router (ai_assistant.js)
+* **Location**: `static/js/ai_assistant.js`
+* **Core Responsibilities**:
+  * **Voice Processing**: Uses `webkitSpeechRecognition` to capture live user audio streams, process them into transcripts, and feed them to the `/seller/assistant/message` handler.
+  * **TTS (Text-to-Speech)**: Synthesizes responses using `speechSynthesis` voices.
+  * **Navigation Engine**: Executes action directives sent by the backend (e.g., navigation redirects, showing insights panels, auto-filling invoice fields).
+
+---
+
+## Detailed Data Flows
+
+### Scanned Bills Digitization Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Seller
+    participant UI as Browser (invoices.html)
+    participant Server as Flask Server (app.py)
+    participant PIL as Pillow Engine
+    participant Cloud as Cloudinary / Local
+    participant AI as Gemini 1.5 Flash
+    participant DB as SQLite / MySQL Database
+
+    Seller->>UI: Select Bill file & Click Upload
+    UI->>Server: POST /seller/invoices/upload_bill
+    Server->>PIL: Compress & Resize image to max 1600px
+    PIL-->>Server: Return compressed image bytes (JPEG, Q=75)
+    Server->>Cloud: Upload compressed file
+    Cloud-->>Server: Return Cloud URL / Local path
+    Server->>AI: Send image bytes for OCR analysis (schema: BillData)
+    AI-->>Server: Return structured JSON (Items, Vendor, Total)
+    Server->>DB: Check & Register Vendor and Products
+    Server->>DB: Insert Invoice record (is_bill=True, is_synced=True)
+    DB-->>Server: Confirm SQL Commit
+    Server-->>UI: Redirect to invoices?tab=bills with success flash
+```
+
+---
+
+## Installation & Local Execution
+
+### Prerequisites
+* Python 3.10+
+* SQLite (default) or MySQL
+* Google Gemini API Key
+* Cloudinary Account (optional, falls back to local storage automatically)
+
+### 1. Setup Environment
 ```bash
+# Clone the repository
 git clone https://github.com/Kush11318/Invoice-Management-System-with-AI-Assistant.git
 cd Invoice-Management-System-with-AI-Assistant
-```
 
-### 2. Create a Virtual Environment
-```bash
+# Create virtual environment
 python -m venv venv
+source venv/bin/activate  # MacOS/Linux
+# Or on Windows:
+# venv\Scripts\activate
 
-# On Windows:
-venv\Scripts\activate
-
-# On macOS/Linux:
-source venv/bin/activate
-```
-
-### 3. Install Dependencies
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
-Copy the example environment template and configure your API Keys:
-```bash
-cp .env.example .env
-```
-Open the `.env` file and insert your **Google Gemini API Key**:
+### 2. Configure Environment Variables
+Create a `.env` file in the root directory:
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-*(By default, the application runs on SQLite. If you prefer MySQL, you can uncomment and edit the database connection variables inside `.env`)*
+# Flask Setup
+SECRET_KEY=your_secret_key_here
+FLASK_ENV=development
 
-### 5. Initialize and Seed the Database
-Run the helper script to create the schema and seed sample products, customers, invoices, and activity history:
+# Google Gemini API
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Cloudinary Setup (Optional - omit to use local storage)
+CLOUDINARY_URL=cloudinary://your_api_key:your_api_secret@your_cloud_name
+```
+
+### 3. Initialize Database
+Create tables, run migrations, and seed initial demo data:
 ```bash
 python seed_db.py
 ```
 
-### 6. Run the Application
+### 4. Run Flask Server
 ```bash
 python app.py
 ```
-Open your web browser and navigate to `http://127.0.0.1:5000`.
+Open your browser and navigate to `http://127.0.0.1:5000`.
 
 ---
 
-## 🔑 Demo Credentials
+## Credentials
 
-* **Seller Account** (Has access to AI Assistant & Dashboard):
-  * **Email**: `seller@example.com`
-  * **Password**: `seller`
+* **Seller Account** (Full access to AI Assistant, Dashboard, and Invoices):
+  * **Email**: `demo@invoiceai.com`
+  * **Password**: `demo123`
+* **Admin Account**:
+  * **Email**: `admin@admin.com`
+  * **Password**: `admin`
 * **Customer Account**:
   * **Email**: `customer@example.com`
   * **Password**: `password`
 
 ---
 
-## 🗣️ AI Assistant Voice & Text Commands Guide
+## Feature Comparison Matrix
 
-Launch the AI Assistant modal using the glowing purple robotic orb in the bottom-right corner of the seller screen. Speak or type these phrases:
-
-| Action Category | Example Phrase | Output |
+| Feature | Sales Invoices | Scanned Bills (Expenses) |
 | :--- | :--- | :--- |
-| **Business Insights** | *"Show business insights"* / *"How is business?"* | Displays interactive metrics grid, top sellers chart, and warehouse stock alerts |
-| **Voice Navigation** | *"Go to products"* / *"Show analytics"* | Triggers a fullscreen transition overlay and redirects to the requested route |
-| **Add Products** | *"Add product Gaming Mouse price 1500 stock 30"* | Generates a preview card; confirms and appends Gaming Mouse to your inventory |
-| **Add Customers** | *"Add customer Robert email robert@example.com"* | Formulates a preview; registers Robert into the customer directory |
-| **Create Invoices** | *"Bill for Alice Smith: 2 mechanical keyboards and 1 wireless mouse"* | Auto-fills items, computes tax, and redirects to the invoice creation wizard |
-
----
-
-## 📂 Project Structure
-
-```
-├── static/
-│   ├── css/
-│   │   ├── style.css           # Core dashboard styling
-│   │   └── ai_assistant.css    # Premium glassmorphic AI panel styles
-│   └── js/
-│       ├── main.js             # General app interactivity
-│       └── ai_assistant.js     # Speech recognition and AI action handlers
-├── templates/                  # Jinja2 HTML templates
-├── ai_service.py               # Google Gemini API connector & prompt parsing logic
-├── app.py                      # Main Flask application and server routing
-├── config.py                   # Environment and database configuration loader
-├── database.py                 # SQLite/MySQL engine setups
-├── models.py                   # SQLAlchemy ORM schemas (Sellers, Products, Invoices...)
-├── queries.py                  # Helper queries for statistics & analytics
-├── seed_db.py                  # Database recreator and mock data seeder
-└── requirements.txt            # Python packages manifest
-```
+| **Tab Placement** | Invoices Tab (Sales) | Invoices Tab (Scanned Bills) |
+| **Creation Method** | Manual Wizard / AI Voice | OCR Image Upload & Auto-Digitization |
+| **Business Direction** | Income (Generates Revenue) | Expense (Tracks Purchases) |
+| **Stock Modification** | Depletes Product Inventory | Increments Product Inventory |
+| **Accommodation** | Always included in metrics | Optional (Toggleable switch on each bill) |
+| **File Annotations** | N/A | Supported (Interactive Drawing Canvas) |
+| **Persistent Notes** | N/A | Supported (Sidebar Editor & DB Storage) |
