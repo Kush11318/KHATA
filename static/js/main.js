@@ -7,6 +7,47 @@ document.addEventListener('DOMContentLoaded', function() {
     initSPANavigation();
     // Initialize premium header scroll tracking
     initScrollTracker();
+
+    // Smooth entrance transition for initial page load
+    const currentMain = document.querySelector('main');
+    if (currentMain && typeof gsap !== 'undefined') {
+        gsap.fromTo(currentMain, 
+            { opacity: 0, y: 15 },
+            { 
+                opacity: 1, 
+                y: 0, 
+                duration: 0.5, 
+                ease: 'power2.out',
+                clearProps: 'transform,opacity'
+            }
+        );
+        
+        // Stagger key child elements if NOT dashboard (dashboard has its own staggers)
+        const path = window.location.pathname;
+        const isDashboard = path === '/seller' || path === '/seller/';
+        if (!isDashboard) {
+            const animTargets = currentMain.querySelectorAll(
+                '.comic-card, .form-section-header, .grid > div, form > div, table tbody tr, .card, h1, h2'
+            );
+            if (animTargets.length > 0) {
+                const visibleTargets = Array.from(animTargets)
+                    .filter(el => el.offsetHeight > 0 || el.getBoundingClientRect().height > 0)
+                    .slice(0, 12);
+                
+                gsap.fromTo(visibleTargets,
+                    { opacity: 0, y: 15 },
+                    {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.45,
+                        stagger: 0.04,
+                        ease: 'power2.out',
+                        clearProps: 'transform,opacity'
+                    }
+                );
+            }
+        }
+    }
 });
 
 function initScrollTracker() {
@@ -151,10 +192,61 @@ window.navigateToPage = async function(url, pushState = true) {
         const currentMain = document.querySelector('main');
         const newMain = doc.querySelector('main');
         if (currentMain && newMain) {
+            if (typeof gsap !== 'undefined') {
+                // Fade out current main content before swapping
+                await new Promise(resolve => {
+                    gsap.to(currentMain, {
+                        opacity: 0,
+                        y: 10,
+                        duration: 0.15,
+                        ease: 'power2.in',
+                        onComplete: resolve
+                    });
+                });
+            }
+
             currentMain.innerHTML = newMain.innerHTML;
             
             // Execute any scripts within the dynamic content block (e.g., canvas shaders)
             executeScripts(currentMain);
+
+            if (typeof gsap !== 'undefined') {
+                // Set starting state for new content
+                gsap.set(currentMain, { opacity: 0, y: 15 });
+                
+                // Fade in container smoothly
+                gsap.to(currentMain, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.35,
+                    ease: 'power2.out',
+                    clearProps: 'transform,opacity'
+                });
+
+                // Stagger key child elements if NOT dashboard (dashboard handles its own beautiful staggers)
+                if (!isDashboard) {
+                    const animTargets = currentMain.querySelectorAll(
+                        '.comic-card, .form-section-header, .grid > div, form > div, table tbody tr, .card, h1, h2'
+                    );
+                    if (animTargets.length > 0) {
+                        const visibleTargets = Array.from(animTargets)
+                            .filter(el => el.offsetHeight > 0 || el.getBoundingClientRect().height > 0)
+                            .slice(0, 12);
+                        
+                        gsap.fromTo(visibleTargets,
+                            { opacity: 0, y: 15 },
+                            {
+                                opacity: 1,
+                                y: 0,
+                                duration: 0.45,
+                                stagger: 0.04,
+                                ease: 'power2.out',
+                                clearProps: 'transform,opacity'
+                            }
+                        );
+                    }
+                }
+            }
         }
         
         // Update URL path in history
