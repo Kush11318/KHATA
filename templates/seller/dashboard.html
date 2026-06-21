@@ -686,6 +686,7 @@ Voice Guidelines
             document.querySelectorAll('.animate-fade-in-up').forEach(el => {
                 el.style.animation = 'none';
                 el.style.animationDelay = '0s';
+                el.style.opacity = '1'; // Ensure elements not managed by GSAP (like layout containers) remain visible
             });
 
             const tl = gsap.timeline();
