@@ -431,6 +431,91 @@ def get_gemini_api_keys():
             keys.append(k.strip())
     return keys
 
+def convert_file_with_cloudconvert(file_bytes, filename, target_format="pdf"):
+    import requests
+    import time
+    
+    api_key = os.environ.get("CLOUDCONVERT_API_KEY")
+    if not api_key:
+        raise Exception("CLOUDCONVERT_API_KEY is not configured in the environment.")
+        
+    # Step 1: Create a Job
+    url = "https://api.cloudconvert.com/v2/jobs"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "tasks": {
+            "import-1": {
+                "operation": "import/upload"
+            },
+            "convert-1": {
+                "operation": "convert",
+                "input": "import-1",
+                "output_format": target_format
+            },
+            "export-1": {
+                "operation": "export/url",
+                "input": "convert-1"
+            }
+        }
+    }
+    
+    print(f"Creating CloudConvert job to convert {filename} to {target_format}...")
+    response = requests.post(url, json=payload, headers=headers, timeout=20)
+    response.raise_for_status()
+    job_data = response.json()["data"]
+    
+    # Find import-1 task
+    import_task = next(t for t in job_data["tasks"] if t["name"] == "import-1")
+    upload_url = import_task["result"]["form"]["url"]
+    upload_fields = import_task["result"]["form"]["fields"]
+    
+    # Step 2: Upload the file
+    files = {
+        'file': (filename, file_bytes)
+    }
+    print(f"Uploading file {filename} to CloudConvert storage...")
+    upload_response = requests.post(upload_url, data=upload_fields, files=files, timeout=30)
+    upload_response.raise_for_status()
+    
+    # Step 3: Wait for job completion (poll up to 30 seconds)
+    job_id = job_data["id"]
+    status_url = f"https://api.cloudconvert.com/v2/jobs/{job_id}"
+    
+    print("Waiting for CloudConvert job completion...")
+    for _ in range(30):
+        time.sleep(1)
+        status_response = requests.get(status_url, headers=headers, timeout=10)
+        status_response.raise_for_status()
+        job_status = status_response.json()["data"]
+        
+        # Check overall status
+        status = job_status["status"]
+        if status == "finished":
+            # Find export-1 task
+            export_task = next(t for t in job_status["tasks"] if t["name"] == "export-1")
+            file_info = export_task["result"]["files"][0]
+            download_url = file_info["url"]
+            new_filename = file_info["filename"]
+            
+            # Step 4: Download converted file
+            print(f"Downloading converted file {new_filename} from CloudConvert...")
+            download_response = requests.get(download_url, timeout=30)
+            download_response.raise_for_status()
+            return download_response.content, new_filename
+        elif status == "failed":
+            # Extract failure message if any
+            fail_msg = "CloudConvert job failed."
+            for t in job_status["tasks"]:
+                if t.get("message"):
+                    fail_msg += f" Task {t.get('name')}: {t.get('message')}"
+            raise Exception(fail_msg)
+            
+    raise Exception("CloudConvert conversion timed out.")
+
 def extract_text_from_pdf(file_bytes):
     import io
     import pypdf
@@ -1811,10 +1896,21 @@ def upload_bill():
         return redirect(url_for('seller_bills'))
         
     filename = file.filename.lower()
+    cc_api_key = os.environ.get("CLOUDCONVERT_API_KEY")
     allowed_extensions = {'.png', '.jpg', '.jpeg', '.pdf'}
+    image_convertible = {'.heic', '.webp', '.tiff', '.gif'}
+    doc_convertible = {'.docx', '.doc', '.xlsx', '.xls', '.txt'}
+    
+    if cc_api_key:
+        allowed_extensions.update(image_convertible)
+        allowed_extensions.update(doc_convertible)
+        
     ext = os.path.splitext(filename)[1]
     if ext not in allowed_extensions:
-        flash('Invalid file type. Only PDF and images (PNG, JPG) are allowed.', 'error')
+        if cc_api_key:
+            flash('Invalid file type. Allowed: PDF, PNG, JPG, JPEG, and convertible formats (DOCX, XLSX, TXT, HEIC, WebP, TIFF, GIF).', 'error')
+        else:
+            flash('Invalid file type. Only PDF and images (PNG, JPG) are allowed.', 'error')
         return redirect(url_for('seller_bills'))
         
     file_bytes = file.read()
@@ -1822,6 +1918,24 @@ def upload_bill():
         flash('Uploaded file is empty', 'error')
         return redirect(url_for('seller_bills'))
         
+    # Handle CloudConvert conversion if file is a convertible type
+    if ext in image_convertible or ext in doc_convertible:
+        if not cc_api_key:
+            flash('CloudConvert is not configured. Cannot convert this file format.', 'error')
+            return redirect(url_for('seller_bills'))
+            
+        target_format = "png" if ext in image_convertible else "pdf"
+        try:
+            print(f"File {filename} needs conversion. Target format: {target_format}")
+            converted_bytes, new_filename = convert_file_with_cloudconvert(file_bytes, file.filename, target_format)
+            file_bytes = converted_bytes
+            filename = new_filename.lower()
+            ext = os.path.splitext(filename)[1]
+        except Exception as e:
+            print(f"Error converting file via CloudConvert: {e}")
+            flash(f"Error during file conversion: {str(e)}", "error")
+            return redirect(url_for('seller_bills'))
+            
     mime_type = 'application/pdf' if ext == '.pdf' else f'image/{ext.lstrip(".")}'
     if mime_type == 'image/jpg':
         mime_type = 'image/jpeg'
