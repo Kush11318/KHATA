@@ -723,6 +723,8 @@ Voice Guidelines
                     const tiltY = ((x / rect.width) - 0.5) * -12;
                     
                     gsap.to(card, {
+                        x: -6,
+                        y: -6,
                         scale: 1.025,
                         rotateX: tiltX,
                         rotateY: tiltY,
@@ -735,6 +737,8 @@ Voice Guidelines
                 
                 card.addEventListener('mouseleave', () => {
                     gsap.to(card, {
+                        x: 0,
+                        y: 0,
                         scale: 1,
                         rotateX: 0,
                         rotateY: 0,
