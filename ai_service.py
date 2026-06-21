@@ -40,6 +40,18 @@ def edit_dist(s1, s2):
         previous_row = current_row
     return previous_row[-1]
 
+def get_gemini_api_keys():
+    """Retrieve all configured Gemini API keys from the environment for rotation pool"""
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+    keys_str = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
+    keys = [k.strip() for k in keys_str.split(",") if k.strip()]
+    for i in range(2, 6):
+        k = os.environ.get(f"GEMINI_API_KEY_{i}")
+        if k and k.strip() and k.strip() not in keys:
+            keys.append(k.strip())
+    return keys
+
 def is_name_match(part, word):
     part = "".join(c for c in part if c.isalnum())
     word = "".join(c for c in word if c.isalnum())
@@ -694,8 +706,15 @@ def parse_command_groq(user_text, context, history, api_key, language):
     return json.loads(content)
 
 def parse_command_gemini(user_text, context, history, api_key, language):
-    genai.configure(api_key=api_key)
-    
+    # Setup key pool with primary key first
+    keys = [api_key] if api_key else []
+    for k in get_gemini_api_keys():
+        if k not in keys:
+            keys.append(k)
+            
+    if not keys:
+        raise Exception("No Gemini API key configured.")
+        
     context_str = get_context_str(context)
     
     clean_history = history
@@ -722,19 +741,43 @@ def parse_command_gemini(user_text, context, history, api_key, language):
     system_prompt = get_system_prompt(lang_name)
     prompt = f"{system_prompt}\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
     
-    try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-    except Exception as primary_err:
-        print(f"Gemini gemini-2.0-flash failed: {primary_err}. Falling back to gemini-1.5-flash...")
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
+    response = None
+    last_err = None
+    
+    # Try gemini-2.0-flash on all keys first
+    for key in keys:
+        try:
+            print(f"Calling Gemini 2.0 Flash (Assistant) with key: {key[:8]}...")
+            genai.configure(api_key=key)
+            model = genai.GenerativeModel('gemini-2.0-flash')
+            response = model.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json"}
+            )
+            break
+        except Exception as err:
+            last_err = err
+            print(f"Key {key[:8]} failed for Assistant gemini-2.0-flash: {err}")
+            
+    # Try gemini-1.5-flash fallback on all keys if 2.0-flash failed
+    if not response:
+        print("Assistant gemini-2.0-flash failed on all keys. Attempting gemini-1.5-flash fallback across keys...")
+        for key in keys:
+            try:
+                print(f"Calling Gemini 1.5 Flash (Assistant) with key: {key[:8]}...")
+                genai.configure(api_key=key)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content(
+                    prompt,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                break
+            except Exception as err:
+                last_err = err
+                print(f"Key {key[:8]} failed for Assistant gemini-1.5-flash: {err}")
+                
+    if not response:
+        raise last_err
     
     content = response.text
     if content.startswith("```json"):

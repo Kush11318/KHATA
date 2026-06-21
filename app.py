@@ -419,6 +419,18 @@ def generate_next_customer_id():
         if candidate not in existing_ids:
             return candidate
 
+def get_gemini_api_keys():
+    """Retrieve all configured Gemini API keys from the environment for rotation pool"""
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+    keys_str = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
+    keys = [k.strip() for k in keys_str.split(",") if k.strip()]
+    for i in range(2, 6):
+        k = os.environ.get(f"GEMINI_API_KEY_{i}")
+        if k and k.strip() and k.strip() not in keys:
+            keys.append(k.strip())
+    return keys
+
 def login_required(f):
     from functools import wraps
     @wraps(f)
@@ -1766,43 +1778,71 @@ def upload_bill():
             items: List[BillItem] = Field(default=[], description="List of items on the bill")
             is_paid: bool = Field(default=False, description="True if the bill is marked as Paid, Cash, Receipt or has zero balance due")
 
-        client = genai.Client(api_key=gemini_key)
+        keys = get_gemini_api_keys()
+        if not keys:
+            flash('Gemini API key is not configured. Please configure GEMINI_API_KEY in your environment.', 'error')
+            return redirect(url_for('seller_invoices'))
+            
+        response = None
+        last_err = None
         
-        try:
-            print("Calling Gemini 2.0 Flash to digitalize bill...")
-            response = client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=[
-                    types.Part.from_bytes(
-                        data=file_bytes,
-                        mime_type=mime_type
-                    ),
-                    "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=BillData,
-                    temperature=0.1
+        # Try gemini-2.0-flash across all configured keys
+        for key in keys:
+            try:
+                print(f"Calling Gemini 2.0 Flash to digitalize bill using key: {key[:8]}...")
+                client = genai.Client(api_key=key)
+                response = client.models.generate_content(
+                    model='gemini-2.0-flash',
+                    contents=[
+                        types.Part.from_bytes(
+                            data=file_bytes,
+                            mime_type=mime_type
+                        ),
+                        "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=BillData,
+                        temperature=0.1
+                    )
                 )
-            )
-        except Exception as primary_err:
-            print(f"Primary model gemini-2.0-flash failed: {primary_err}. Retrying with fallback model gemini-1.5-flash...")
-            response = client.models.generate_content(
-                model='gemini-1.5-flash',
-                contents=[
-                    types.Part.from_bytes(
-                        data=file_bytes,
-                        mime_type=mime_type
-                    ),
-                    "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=BillData,
-                    temperature=0.1
-                )
-            )
-        
+                break
+            except Exception as err:
+                last_err = err
+                print(f"Key {key[:8]} failed for gemini-2.0-flash: {err}")
+                if "429" not in str(err) and "RESOURCE_EXHAUSTED" not in str(err):
+                    continue
+                    
+        # If gemini-2.0-flash fails on all keys, try gemini-1.5-flash fallback on all keys
+        if not response:
+            print("gemini-2.0-flash failed across all API keys. Attempting gemini-1.5-flash fallback across keys...")
+            for key in keys:
+                try:
+                    print(f"Calling Gemini 1.5 Flash to digitalize bill using key: {key[:8]}...")
+                    client = genai.Client(api_key=key)
+                    response = client.models.generate_content(
+                        model='gemini-1.5-flash',
+                        contents=[
+                            types.Part.from_bytes(
+                                data=file_bytes,
+                                mime_type=mime_type
+                            ),
+                            "Extract all details from this receipt or bill. If any value is missing or hard to read, estimate it reasonably based on other fields."
+                        ],
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=BillData,
+                            temperature=0.1
+                        )
+                    )
+                    break
+                except Exception as err:
+                    last_err = err
+                    print(f"Key {key[:8]} failed for gemini-1.5-flash: {err}")
+                    
+        if not response:
+            raise last_err
+            
         bill_info = json.loads(response.text)
         print(f"Gemini response: {bill_info}")
         
