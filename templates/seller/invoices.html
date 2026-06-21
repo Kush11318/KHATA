@@ -693,7 +693,7 @@
     })();
 
     // Initialize tab based on server parameter after layout is calculated
-    window.addEventListener('load', () => {
+    function initActiveTab() {
         const activeTab = pageData.activeTab;
         switchTab(activeTab === 'bills' ? 'bills' : 'invoices', true);
         
@@ -704,7 +704,13 @@
                 switchTab(tabInput.value, true);
             }
         });
-    });
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initActiveTab, 50);
+    } else {
+        window.addEventListener('load', initActiveTab);
+    }
 
     // AJAX Toggle Accommodation Handler
     (function() {
