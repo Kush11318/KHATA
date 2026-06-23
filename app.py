@@ -996,7 +996,7 @@ def seller_dashboard():
     
     # Aggregate counts and sums directly from the database in 3 queries
     paid_stats = db.session.query(
-        db.func.count(Invoice.id),
+        db.func.count(Invoice.invoice_no),
         db.func.sum(Invoice.amount)
     ).filter(
         Invoice.s_id == session['user_id'],
@@ -1007,7 +1007,7 @@ def seller_dashboard():
     revenue_collected = float(paid_stats[1] or 0.0)
 
     pending_stats = db.session.query(
-        db.func.count(Invoice.id),
+        db.func.count(Invoice.invoice_no),
         db.func.sum(Invoice.amount)
     ).filter(
         Invoice.s_id == session['user_id'],
@@ -1018,7 +1018,7 @@ def seller_dashboard():
     pending_revenue = float(pending_stats[1] or 0.0)
 
     overdue_stats = db.session.query(
-        db.func.count(Invoice.id),
+        db.func.count(Invoice.invoice_no),
         db.func.sum(Invoice.amount)
     ).filter(
         Invoice.s_id == session['user_id'],
