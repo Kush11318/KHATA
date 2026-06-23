@@ -128,6 +128,36 @@ function initializePage() {
 }
 
 // Progressive SPA/Pjax smooth page transitions
+const prefetchCache = new Map();
+
+function prefetchPage(url) {
+    let targetUrl = url;
+    try {
+        targetUrl = new URL(url, window.location.origin).href;
+    } catch(e) {}
+    
+    // Check if already prefetched/prefetching within 15 seconds
+    if (prefetchCache.has(targetUrl)) {
+        const cached = prefetchCache.get(targetUrl);
+        if (Date.now() - cached.timestamp < 15000) {
+            return;
+        }
+    }
+    
+    const fetchPromise = fetch(url).then(async response => {
+        if (!response.ok) throw new Error("Prefetch failed");
+        return response.text();
+    }).catch(err => {
+        console.warn("Prefetch failed for:", url, err);
+        prefetchCache.delete(targetUrl);
+    });
+    
+    prefetchCache.set(targetUrl, {
+        promise: fetchPromise,
+        timestamp: Date.now()
+    });
+}
+
 function initSPANavigation() {
     // Intercept clicks on body for internal link delegation
     document.body.addEventListener('click', function(e) {
@@ -139,6 +169,33 @@ function initSPANavigation() {
             const href = link.getAttribute('href');
             navigateToPage(href);
         }
+    });
+
+    // Prefetch on hover (desktop optimization)
+    document.body.addEventListener('mouseenter', function(e) {
+        const link = e.target.closest('a');
+        if (!link) return;
+        
+        if (shouldHandleLink(link)) {
+            const href = link.getAttribute('href');
+            prefetchPage(href);
+        }
+    }, { passive: true });
+
+    // Prefetch on touchstart (mobile optimization)
+    document.body.addEventListener('touchstart', function(e) {
+        const link = e.target.closest('a');
+        if (!link) return;
+        
+        if (shouldHandleLink(link)) {
+            const href = link.getAttribute('href');
+            prefetchPage(href);
+        }
+    }, { passive: true });
+
+    // Clear cache on form submit to ensure fresh content after mutations
+    document.addEventListener('submit', () => {
+        prefetchCache.clear();
     });
 
     // Handle browser back/forward buttons
@@ -166,7 +223,7 @@ function shouldHandleLink(link) {
     return true;
 }
 
-// // Globally accessible navigation function
+// Globally accessible navigation function
 window.navigateToPage = async function(url, pushState = true) {
     // Reset navbar intro active flag during SPA transitions to prevent animation delays
     window.navbarIntroActive = false;
@@ -181,44 +238,49 @@ window.navigateToPage = async function(url, pushState = true) {
     }
     const isDashboard = targetPath === '/seller' || targetPath === '/seller/';
     const isAnalytics = targetPath.includes('/seller/customer-analytics');
+    const hasAiOverlay = document.querySelector('.ai-transition-overlay') !== null;
     
-    // Start fetching immediately in the background in parallel with fade-out animation
-    const fetchPromise = fetch(url).then(async response => {
-        if (!response.ok) throw new Error("Fetch failed");
-        return response.text();
-    });
+    const loader = document.getElementById('page-loader');
+    let startTime = null;
     
-    const currentMain = document.querySelector('main');
-    
-    // Run fade-out animation in parallel with the fetch request
-    if (currentMain && typeof gsap !== 'undefined') {
-        if (isDashboard || isAnalytics) {
-            // Fast fade-out
-            await new Promise(resolve => {
-                gsap.to(currentMain, {
-                    opacity: 0,
-                    duration: 0.12,
-                    ease: 'power1.in',
-                    onComplete: resolve
-                });
-            });
-        } else {
-            // Fade out and shift
-            await new Promise(resolve => {
-                gsap.to(currentMain, {
-                    opacity: 0,
-                    y: 8,
-                    duration: 0.12,
-                    ease: 'power2.in',
-                    onComplete: resolve
-                });
-            });
-        }
+    // Restore the loader for Dashboard or KHATA logo clicks
+    if (isDashboard && loader && !hasAiOverlay) {
+        loader.classList.remove('fade-out');
+        startTime = Date.now();
     }
     
     try {
-        // Wait for fetch to complete (if it hasn't already)
-        const html = await fetchPromise;
+        let html;
+        let targetUrl = url;
+        try {
+            targetUrl = new URL(url, window.location.origin).href;
+        } catch(e) {}
+
+        const cached = prefetchCache.get(targetUrl);
+        if (cached && (Date.now() - cached.timestamp < 15000) && cached.promise) {
+            html = await cached.promise;
+            if (!html) {
+                // Fallback normal fetch
+                const response = await fetch(url);
+                if (!response.ok) {
+                    window.location.href = url;
+                    return;
+                }
+                html = await response.text();
+            }
+        } else {
+            // Normal fetch
+            const response = await fetch(url);
+            if (!response.ok) {
+                window.location.href = url;
+                return;
+            }
+            html = await response.text();
+        }
+
+        // Clear prefetch cache immediately on load to ensure future hovers get fresh state
+        prefetchCache.clear();
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         
@@ -226,8 +288,35 @@ window.navigateToPage = async function(url, pushState = true) {
         document.title = doc.title;
         
         // Swap Main Content Area
+        const currentMain = document.querySelector('main');
         const newMain = doc.querySelector('main');
+        
         if (currentMain && newMain) {
+            // Fade out the current content now that the new content is ready (takes only 0.12s)
+            if (typeof gsap !== 'undefined') {
+                if (isDashboard || isAnalytics) {
+                    await new Promise(resolve => {
+                        gsap.to(currentMain, {
+                            opacity: 0,
+                            duration: 0.12,
+                            ease: 'power1.in',
+                            onComplete: resolve
+                        });
+                    });
+                } else {
+                    await new Promise(resolve => {
+                        gsap.to(currentMain, {
+                            opacity: 0,
+                            y: 8,
+                            duration: 0.12,
+                            ease: 'power2.in',
+                            onComplete: resolve
+                        });
+                    });
+                }
+            }
+            
+            // Swap inner HTML
             currentMain.innerHTML = newMain.innerHTML;
             
             // Reset scroll position to top of the page instantly
@@ -310,9 +399,22 @@ window.navigateToPage = async function(url, pushState = true) {
         window.location.href = url;
     } finally {
         hideProgressBar();
-        // Since we don't display the full page loader on SPA transition anymore,
-        // we dispatch the hidden event immediately in case any new components are listening to it.
-        window.dispatchEvent(new CustomEvent('page-loader-hidden'));
+        // Handle loader fade out if it was shown
+        if (loader && startTime !== null) {
+            const elapsed = Date.now() - startTime;
+            const delay = Math.max(0, 750 - elapsed);
+            setTimeout(() => {
+                loader.classList.add('fade-out');
+                
+                // Dispatch event so scripts on the new page know the loader has started to fade out
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('page-loader-hidden'));
+                }, 200);
+            }, delay);
+        } else {
+            // Dispatch event immediately for other pages
+            window.dispatchEvent(new CustomEvent('page-loader-hidden'));
+        }
     }
 };
 
