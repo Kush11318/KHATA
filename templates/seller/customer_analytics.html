@@ -1,169 +1,930 @@
-﻿{% extends "base.html" %} {% block title %}Customer Analytics - Invoice
-Management System{% endblock %} {% block back_button %}
-<a
-  href="{{ url_for('seller_dashboard') }}"
-  class="btn btn-outline btn-sm back-btn"
->
+{% extends "base.html" %}
+
+{% block title %}KHATA | Premium Analytics Center{% endblock %}
+
+{% block back_button %}
+<a href="{{ url_for('seller_dashboard') }}" class="btn btn-outline btn-sm back-btn">
   <i class="fas fa-arrow-left"></i>
   Back to Dashboard
 </a>
-{% endblock %} {% block content %}
-<div class="dashboard">
-  <div class="section-header">
-    <h2 class="section-title">Customer Analytics</h2>
+{% endblock %}
+
+{% block content %}
+<!-- Tailwind CDN & Config (Isolated to content block) -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  window.tailwind = window.tailwind || {};
+  window.tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "secondary": "#4648d4",
+          "surface-bright": "#f7f9fb",
+          "on-surface": "#191c1e",
+          "outline": "#747878",
+          "error": "#ba1a1a",
+          "warning-orange": "#f59e0b",
+          "emerald-green": "#10b981"
+        }
+      }
+    }
+  }
+</script>
+
+<!-- Dependencies loaded dynamically at the bottom to prevent race conditions and duplicates -->
+
+<style>
+  /* Custom Neo-Brutalist utility classes */
+  .neo-card {
+    background-color: #ffffff !important;
+    border: 2.5px solid #000000 !important;
+    border-radius: 16px !important;
+    box-shadow: 4px 4px 0px 0px #000000 !important;
+  }
+  .neo-card.hover-ready {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  .neo-card.hover-ready:hover {
+    transform: translate(-3px, -3px) !important;
+    box-shadow: 7px 7px 0px 0px #000000 !important;
+  }
+  .neo-input {
+    border: 2.5px solid #000000 !important;
+    border-radius: 12px !important;
+    box-shadow: 2px 2px 0px 0px #000000 !important;
+    transition: all 0.2s ease !important;
+  }
+  .neo-input:focus {
+    outline: none !important;
+    border-color: #4648d4 !important;
+    box-shadow: 3.5px 3.5px 0px 0px #4648d4 !important;
+    transform: translate(-1px, -1px) !important;
+  }
+  .neo-btn-primary {
+    background-color: #4648d4 !important;
+    color: #ffffff !important;
+    border: 2.5px solid #000000 !important;
+    box-shadow: 3px 3px 0px 0px #000000 !important;
+    transition: all 0.2s ease !important;
+    border-radius: 9999px !important;
+  }
+  .neo-btn-primary:hover {
+    transform: translate(-2px, -2px) !important;
+    box-shadow: 5px 5px 0px 0px #000000 !important;
+    background-color: #3b3dbf !important;
+  }
+  .neo-btn-primary:active {
+    transform: translate(1px, 1px) !important;
+    box-shadow: 1px 1px 0px 0px #000000 !important;
+  }
+  .neo-btn-outline {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 2.5px solid #000000 !important;
+    box-shadow: 3px 3px 0px 0px #000000 !important;
+    transition: all 0.2s ease !important;
+    border-radius: 9999px !important;
+  }
+  .neo-btn-outline:hover {
+    transform: translate(-2px, -2px) !important;
+    box-shadow: 5px 5px 0px 0px #000000 !important;
+    background-color: #f1f5f9 !important;
+  }
+  .neo-btn-outline:active {
+    transform: translate(1px, 1px) !important;
+    box-shadow: 1px 1px 0px 0px #000000 !important;
+  }
+  .sticker-badge {
+    border: 2px solid #000000 !important;
+    box-shadow: 2px 2px 0px 0px #000000 !important;
+    border-radius: 12px !important;
+    display: inline-block;
+  }
+  .table-container {
+    border: 2.5px solid #000000 !important;
+    border-radius: 16px !important;
+    box-shadow: 4px 4px 0px 0px #000000 !important;
+    overflow: hidden;
+  }
+  .neo-th {
+    background-color: #f8fafc !important;
+    color: #000000 !important;
+    font-weight: 850 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+    letter-spacing: 0.5px !important;
+    border-bottom: 2.5px solid #000000 !important;
+  }
+  .neo-td {
+    border-bottom: 1.5px solid #e2e8f0 !important;
+    font-weight: 600 !important;
+  }
+  .neo-tr:last-child .neo-td {
+    border-bottom: none !important;
+  }
+  .insight-item {
+    border-left: 5px solid #4648d4 !important;
+    background-color: #f8fafc !important;
+    opacity: 0;
+  }
+  
+  /* Initial hidden state for GSAP stagger */
+  .js-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+</style>
+
+<div class="px-margin-page pb-24 max-w-container-max mx-auto">
+  
+  <!-- Header Title -->
+  <div class="mb-8 js-reveal">
+    <div class="flex items-center gap-3 mb-2">
+      <span class="sticker-badge px-3 py-1 text-xs font-bold uppercase tracking-wider bg-purple-300 text-black">Insights Center</span>
+      <span class="text-on-surface-variant font-bold text-xs uppercase">• Real-time Financial Health</span>
+    </div>
+    <h1 class="text-3xl md:text-4xl font-black text-on-surface tracking-tight uppercase" style="font-family: 'Manrope', sans-serif;">
+      Business Analytics & Reports
+    </h1>
+    <p class="text-on-surface-variant font-medium mt-1 text-sm">
+      Analyze customer revenue streams, tracking paid versus outstanding balances and inventory velocities.
+    </p>
   </div>
 
-  <div class="card" style="margin-bottom: 16px">
-    <form
-      method="get"
-      class="form-inline"
-      style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap"
-    >
-      <div class="form-group">
-        <label class="form-label" for="start_date">From Date</label>
-        <input
-          type="date"
-          id="start_date"
-          name="start_date"
-          value="{{ start_date or '' }}"
-          class="form-input"
-          style="max-width: 170px"
-        />
+  <!-- Filter Panel -->
+  <div class="neo-card p-6 mb-8 js-reveal">
+    <form method="get" class="flex flex-col sm:flex-row gap-6 items-end justify-between w-full">
+      <div class="flex flex-wrap gap-4 items-center w-full sm:w-auto">
+        <div class="flex flex-col gap-1 w-full sm:w-auto">
+          <label class="form-label text-xs font-extrabold uppercase tracking-wide" for="start_date">From Date</label>
+          <input type="date" id="start_date" name="start_date" value="{{ start_date or '' }}" class="neo-input px-4 py-2 bg-white text-sm w-full sm:w-48" />
+        </div>
+        <div class="flex flex-col gap-1 w-full sm:w-auto">
+          <label class="form-label text-xs font-extrabold uppercase tracking-wide" for="end_date">To Date</label>
+          <input type="date" id="end_date" name="end_date" value="{{ end_date or '' }}" class="neo-input px-4 py-2 bg-white text-sm w-full sm:w-48" />
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="end_date">To Date</label>
-        <input
-          type="date"
-          id="end_date"
-          name="end_date"
-          value="{{ end_date or '' }}"
-          class="form-input"
-          style="max-width: 170px"
-        />
-      </div>
-      <div class="form-group">
-        <button type="submit" class="btn btn-primary">
-          <i class="fas fa-filter"></i>
-          Apply Filter
+      <div class="flex gap-3 w-full sm:w-auto justify-end">
+        <button type="submit" class="neo-btn-primary px-6 py-2 text-xs font-bold uppercase tracking-wider h-10">
+          <i class="fas fa-filter mr-1.5"></i> Apply Filters
         </button>
-        <a href="{{ url_for('customer_analytics') }}" class="btn btn-outline"
-          >Reset</a
-        >
+        <a href="{{ url_for('customer_analytics') }}" class="neo-btn-outline px-6 py-2 text-xs font-bold uppercase tracking-wider h-10 flex items-center justify-center">
+          Reset
+        </a>
       </div>
     </form>
   </div>
 
-  <div
-    style="
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      margin-bottom: 24px;
-    "
-  >
-    <div class="card">
-      <h3 class="section-title" style="margin-bottom: 16px">
-        <i class="fas fa-trophy"></i> Most Invoices
-      </h3>
-      {% if most_invoices %}
-      <div style="padding: 16px">
-        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px">
-          {{ most_invoices.c_name }}
-        </div>
-        <div style="color: #666; margin-bottom: 4px">
-          {{ most_invoices.c_email }}
-        </div>
-        <div style="margin-top: 12px">
-          <span style="font-weight: 600">Invoice Count:</span>
-          <span style="color: #4e79a7; font-size: 20px; font-weight: 700"
-            >{{ most_invoices.invoice_count }}</span
-          >
-        </div>
+  <!-- KPI Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Invoiced -->
+    <div class="neo-card p-6 border-l-[6px] border-l-[#4648d4] js-reveal">
+      <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block mb-2">Total Invoiced</span>
+      <span class="text-2xl font-black text-on-surface block">₹{{ "%.2f"|format(total_invoiced_value) }}</span>
+      <div class="flex items-center gap-1.5 mt-2 text-slate-500 text-xs font-bold">
+        <i class="fas fa-file-invoice"></i> {{ total_invoices }} bills generated
       </div>
-      {% else %}
-      <div class="empty-state" style="padding: 32px">
-        <p>No paid invoices found for the selected period.</p>
-      </div>
-      {% endif %}
     </div>
 
-    <div class="card">
-      <h3 class="section-title" style="margin-bottom: 16px">
-        <i class="fas fa-chart-line"></i> Least Invoices
-      </h3>
-      {% if least_invoices %}
-      <div style="padding: 16px">
-        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px">
-          {{ least_invoices.c_name }}
-        </div>
-        <div style="color: #666; margin-bottom: 4px">
-          {{ least_invoices.c_email }}
-        </div>
-        <div style="margin-top: 12px">
-          <span style="font-weight: 600">Invoice Count:</span>
-          <span style="color: #e15759; font-size: 20px; font-weight: 700"
-            >{{ least_invoices.invoice_count or 0 }}</span
-          >
-        </div>
+    <!-- Revenue Collected -->
+    <div class="neo-card p-6 border-l-[6px] border-l-[#10b981] js-reveal">
+      <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block mb-2">Collected (Paid)</span>
+      <span class="text-2xl font-black text-[#10b981] block">₹{{ "%.2f"|format(total_revenue_collected) }}</span>
+      <div class="flex items-center gap-1.5 mt-2 text-emerald-600 text-xs font-bold">
+        <i class="fas fa-check-circle"></i> {{ status_counts.paid }} paid invoices
       </div>
-      {% else %}
-      <div class="empty-state" style="padding: 32px">
-        <p>No customers found.</p>
-      </div>
-      {% endif %}
     </div>
 
-    <div class="card">
-      <h3 class="section-title" style="margin-bottom: 16px">
-        <i class="fas fa-money-bill-wave"></i> Most Purchased
-      </h3>
-      {% if most_purchased %}
-      <div style="padding: 16px">
-        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px">
-          {{ most_purchased.c_name }}
-        </div>
-        <div style="color: #666; margin-bottom: 4px">
-          {{ most_purchased.c_email }}
-        </div>
-        <div style="margin-top: 12px">
-          <span style="font-weight: 600">Total:</span>
-          <span style="color: #59a14f; font-size: 20px; font-weight: 700"
-            >₹{{ "%.2f"|format(most_purchased.total_purchased or 0) }}</span
-          >
-        </div>
+    <!-- Receivables Outstanding -->
+    <div class="neo-card p-6 border-l-[6px] border-l-[#ba1a1a] js-reveal">
+      <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block mb-2">Outstanding Due</span>
+      <span class="text-2xl font-black text-[#ba1a1a] block">₹{{ "%.2f"|format(total_revenue_outstanding) }}</span>
+      <div class="flex items-center gap-1.5 mt-2 text-rose-600 text-xs font-bold">
+        <i class="fas fa-exclamation-triangle"></i> {{ status_counts.pending + status_counts.overdue }} unpaid invoices
       </div>
-      {% else %}
-      <div class="empty-state" style="padding: 32px">
-        <p>No paid invoices found for the selected period.</p>
-      </div>
-      {% endif %}
     </div>
 
-    <div class="card">
-      <h3 class="section-title" style="margin-bottom: 16px">
-        <i class="fas fa-shopping-cart"></i> Least Purchased
-      </h3>
-      {% if least_purchased %}
-      <div style="padding: 16px">
-        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px">
-          {{ least_purchased.c_name }}
-        </div>
-        <div style="color: #666; margin-bottom: 4px">
-          {{ least_purchased.c_email }}
-        </div>
-        <div style="margin-top: 12px">
-          <span style="font-weight: 600">Total:</span>
-          <span style="color: #f28e2b; font-size: 20px; font-weight: 700"
-            >₹{{ "%.2f"|format(least_purchased.total_purchased or 0) }}</span
-          >
-        </div>
+    <!-- Collection Rate -->
+    <div class="neo-card p-6 border-l-[6px] border-l-[#f59e0b] js-reveal">
+      <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block mb-2">Collection Rate</span>
+      <span class="text-2xl font-black text-[#f59e0b] block">{{ "%.1f"|format(payment_collection_rate) }}%</span>
+      <div class="flex items-center gap-1.5 mt-2 text-slate-500 text-xs font-bold">
+        <i class="fas fa-chart-pie"></i> AIV: ₹{{ "%.2f"|format(average_invoice_value) }}
       </div>
-      {% else %}
-      <div class="empty-state" style="padding: 32px">
-        <p>No customers found.</p>
-      </div>
-      {% endif %}
     </div>
   </div>
+
+  <!-- Charts Block 1: Trend and Status -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+    <!-- Line chart: Monthly Trend -->
+    <div id="monthlyTrendChartCard" class="neo-card p-6 lg:col-span-8 flex flex-col justify-between js-reveal">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-black"><i class="fas fa-chart-line mr-1.5 text-secondary"></i> Revenue & Collection Trend</h3>
+        <span class="text-xs font-bold text-slate-400">Monthly breakdown</span>
+      </div>
+      <div class="w-full relative" style="height: 320px;">
+        <canvas id="monthlyTrendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Doughnut chart: Status breakdown -->
+    <div id="statusBreakdownChartCard" class="neo-card p-6 lg:col-span-4 flex flex-col justify-between js-reveal">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-black"><i class="fas fa-pie-chart mr-1.5 text-secondary"></i> Invoice Breakdown</h3>
+        <span class="text-xs font-bold text-slate-400">Status counts</span>
+      </div>
+      <div class="w-full relative flex justify-center" style="height: 250px;">
+        <canvas id="statusBreakdownChart"></canvas>
+      </div>
+      <div class="flex justify-around items-center text-xs font-extrabold uppercase mt-4">
+        <div class="flex items-center gap-1.5 text-[#10b981]"><span class="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span> Paid ({{ status_counts.paid }})</div>
+        <div class="flex items-center gap-1.5 text-[#3b82f6]"><span class="w-2.5 h-2.5 rounded-full bg-[#3b82f6]"></span> Pending ({{ status_counts.pending }})</div>
+        <div class="flex items-center gap-1.5 text-[#ba1a1a]"><span class="w-2.5 h-2.5 rounded-full bg-[#ba1a1a]"></span> Overdue ({{ status_counts.overdue }})</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Block 2: Top Customers & Top Products -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Horiz Bar chart: Top Customers -->
+    <div id="topCustomersChartCard" class="neo-card p-6 js-reveal">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-black"><i class="fas fa-users mr-1.5 text-secondary"></i> Top Customers by Revenue</h3>
+        <span class="text-xs font-bold text-slate-400">Top contributors</span>
+      </div>
+      <div class="w-full relative" style="height: 280px;">
+        <canvas id="topCustomersChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Bar chart: Top Products -->
+    <div id="topProductsChartCard" class="neo-card p-6 js-reveal">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-black"><i class="fas fa-cubes mr-1.5 text-secondary"></i> Best Selling Products</h3>
+        <span class="text-xs font-bold text-slate-400">Product revenue</span>
+      </div>
+      <div class="w-full relative" style="height: 280px;">
+        <canvas id="topProductsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Insights & Customer Receivables Table -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8 items-start">
+    <!-- Left Column: Customer Table -->
+    <div id="receivablesTableContainer" class="lg:col-span-8 js-reveal">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-extrabold uppercase text-black">Receivables & Balances</h2>
+        <span class="sticker-badge px-3 py-1 bg-yellow-100 text-[10px] font-black text-black">Customer Accounts</span>
+      </div>
+      
+      <div class="table-container bg-white">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-left text-sm text-black">
+            <thead>
+              <tr>
+                <th class="neo-th px-6 py-4">Customer</th>
+                <th class="neo-th px-6 py-4 text-center">Invoices</th>
+                <th class="neo-th px-6 py-4 text-right">Total Invoiced</th>
+                <th class="neo-th px-6 py-4 text-right">Amount Paid</th>
+                <th class="neo-th px-6 py-4 text-right text-rose-600">Balance Due</th>
+                <th class="neo-th px-6 py-4 text-center">Paid Rate</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% if customers_table %}
+                {% for c in customers_table %}
+                <tr class="neo-tr hover:bg-slate-50 transition-colors">
+                  <td class="neo-td px-6 py-4">
+                    <div class="font-bold text-black text-sm">{{ c.name }}</div>
+                    <div class="text-[11px] text-slate-400 font-medium mt-0.5">{{ c.email }}</div>
+                  </td>
+                  <td class="neo-td px-6 py-4 text-center text-slate-600">{{ c.invoices_count }}</td>
+                  <td class="neo-td px-6 py-4 text-right font-bold">₹{{ "%.2f"|format(c.total_spent) }}</td>
+                  <td class="neo-td px-6 py-4 text-right text-emerald-600 font-bold">₹{{ "%.2f"|format(c.total_paid) }}</td>
+                  <td class="neo-td px-6 py-4 text-right text-rose-600 font-bold">₹{{ "%.2f"|format(c.total_outstanding) }}</td>
+                  <td class="neo-td px-6 py-4 text-center">
+                    {% if c.total_spent > 0 %}
+                      {% if c.collection_rate == 100 %}
+                        <span class="inline-block px-2.5 py-0.5 text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 border-2 border-emerald-500 rounded-full">100% PAID</span>
+                      {% elif c.collection_rate >= 50 %}
+                        <span class="inline-block px-2.5 py-0.5 text-[10px] font-black uppercase bg-yellow-100 text-yellow-700 border-2 border-yellow-500 rounded-full">{{ "%.0f"|format(c.collection_rate) }}% PAID</span>
+                      {% else %}
+                        <span class="inline-block px-2.5 py-0.5 text-[10px] font-black uppercase bg-rose-100 text-rose-700 border-2 border-rose-500 rounded-full">{{ "%.0f"|format(c.collection_rate) }}% PAID</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="inline-block px-2.5 py-0.5 text-[10px] font-black uppercase bg-slate-100 text-slate-400 border border-slate-300 rounded-full">NO BILLS</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="6" class="px-6 py-12 text-center text-slate-400 font-bold">
+                    No customers found or synced.
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: AI Insights -->
+    <div id="aiInsightsCard" class="lg:col-span-4 js-reveal">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-extrabold uppercase text-black">AI Assistant Insights</h2>
+        <span class="sticker-badge px-2 py-0.5 bg-purple-100 text-[10px] font-bold text-purple-700 flex items-center gap-1">
+          <i class="fas fa-magic"></i> AI
+        </span>
+      </div>
+
+      <div class="neo-card p-6 bg-white flex flex-col gap-4">
+        <div class="flex items-center gap-2 mb-2 pb-3 border-b-2 border-dashed border-black">
+          <div class="w-8 h-8 rounded-full bg-purple-100 border border-black flex items-center justify-center text-purple-700">
+            <i class="fas fa-robot"></i>
+          </div>
+          <div>
+            <h4 class="font-extrabold text-sm uppercase text-black">Automated Audit</h4>
+            <p class="text-[10px] text-slate-400 font-bold uppercase">Recommendations & flags</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          {% for insight in ai_insights %}
+            <div class="insight-item p-4 rounded-xl shadow-[2px_2px_0px_#000000] border border-black text-xs font-semibold leading-relaxed text-slate-700">
+              {{ insight | safe }}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legacy Metric Cards (Compatibility with Original Layout) -->
+  <div id="historicalStatsContainer" class="mt-12 js-reveal">
+    <h3 class="text-lg font-extrabold uppercase text-black mb-6">Historical Customer Highs & Lows</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Most Invoices -->
+      <div class="neo-card p-5">
+        <div class="text-slate-400 font-bold text-xs uppercase mb-2"><i class="fas fa-trophy mr-1 text-yellow-500"></i> Most Invoices</div>
+        {% if most_invoices %}
+          <div class="font-bold text-black text-sm">{{ most_invoices.c_name }}</div>
+          <div class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">{{ most_invoices.c_email }}</div>
+          <div class="mt-3 text-xs font-extrabold text-slate-600 flex justify-between">
+            <span>Bill Count:</span>
+            <span class="text-purple-600">{{ most_invoices.invoice_count }}</span>
+          </div>
+        {% else %}
+          <div class="text-slate-400 text-xs py-2 font-medium">None</div>
+        {% endif %}
+      </div>
+
+      <!-- Least Invoices -->
+      <div class="neo-card p-5">
+        <div class="text-slate-400 font-bold text-xs uppercase mb-2"><i class="fas fa-compress mr-1 text-slate-500"></i> Least Invoices</div>
+        {% if least_invoices %}
+          <div class="font-bold text-black text-sm">{{ least_invoices.c_name }}</div>
+          <div class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">{{ least_invoices.c_email }}</div>
+          <div class="mt-3 text-xs font-extrabold text-slate-600 flex justify-between">
+            <span>Bill Count:</span>
+            <span class="text-slate-600">{{ least_invoices.invoice_count or 0 }}</span>
+          </div>
+        {% else %}
+          <div class="text-slate-400 text-xs py-2 font-medium">None</div>
+        {% endif %}
+      </div>
+
+      <!-- Most Purchased -->
+      <div class="neo-card p-5">
+        <div class="text-slate-400 font-bold text-xs uppercase mb-2"><i class="fas fa-shopping-cart mr-1 text-emerald-500"></i> Highest Spent</div>
+        {% if most_purchased %}
+          <div class="font-bold text-black text-sm">{{ most_purchased.c_name }}</div>
+          <div class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">{{ most_purchased.c_email }}</div>
+          <div class="mt-3 text-xs font-extrabold text-slate-600 flex justify-between">
+            <span>Spent Total:</span>
+            <span class="text-emerald-600">₹{{ "%.2f"|format(most_purchased.total_purchased) }}</span>
+          </div>
+        {% else %}
+          <div class="text-slate-400 text-xs py-2 font-medium">None</div>
+        {% endif %}
+      </div>
+
+      <!-- Least Purchased -->
+      <div class="neo-card p-5">
+        <div class="text-slate-400 font-bold text-xs uppercase mb-2"><i class="fas fa-wallet mr-1 text-rose-500"></i> Lowest Spent</div>
+        {% if least_purchased %}
+          <div class="font-bold text-black text-sm">{{ least_purchased.c_name }}</div>
+          <div class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">{{ least_purchased.c_email }}</div>
+          <div class="mt-3 text-xs font-extrabold text-slate-600 flex justify-between">
+            <span>Spent Total:</span>
+            <span class="text-rose-600">₹{{ "%.2f"|format(least_purchased.total_purchased or 0) }}</span>
+          </div>
+        {% else %}
+          <div class="text-slate-400 text-xs py-2 font-medium">None</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<!-- Interactive Chart Initialization & Animation scripting -->
+<div id="analytics-data" 
+     style="display: none;"
+     data-months='{{ chart_months|tojson }}'
+     data-invoiced='{{ chart_invoiced|tojson }}'
+     data-collected='{{ chart_collected|tojson }}'
+     data-status='{{ status_counts|tojson }}'
+     data-customers='{{ top_5_customers|tojson }}'
+     data-products='{{ top_5_products|tojson }}'>
+</div>
+
+<script>
+(function() {
+    // Dynamic script loader to prevent duplicate/out-of-order execution in dynamic SPA routing
+    function loadScript(src, id, globalVarCheck) {
+        return new Promise((resolve, reject) => {
+            if (window[globalVarCheck] !== undefined) {
+                resolve();
+                return;
+            }
+            const existingScript = document.getElementById(id);
+            if (existingScript) {
+                existingScript.addEventListener('load', () => resolve());
+                existingScript.addEventListener('error', (err) => reject(err));
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = src;
+            script.id = id;
+            script.onload = () => resolve();
+            script.onerror = (err) => reject(err);
+            document.head.appendChild(script);
+        });
+    }
+
+    async function ensureDependencies() {
+        if (typeof Chart === 'undefined') {
+            await loadScript('https://cdn.jsdelivr.net/npm/chart.js', 'cdn-chartjs', 'Chart');
+        }
+    }
+
+    async function initChartsAndAnimations() {
+        try {
+            await ensureDependencies();
+        } catch (err) {
+            console.error("Failed to load analytics dependencies:", err);
+            revealAllAndDraw();
+            return;
+        }
+
+        if (typeof gsap === 'undefined' || typeof Chart === 'undefined') {
+            revealAllAndDraw();
+            return;
+        }
+
+        // Target elements definition
+        const targetsToObserve = [
+            document.getElementById('monthlyTrendChartCard'),
+            document.getElementById('statusBreakdownChartCard'),
+            document.getElementById('topCustomersChartCard'),
+            document.getElementById('topProductsChartCard'),
+            document.getElementById('receivablesTableContainer'),
+            document.getElementById('aiInsightsCard'),
+            document.getElementById('historicalStatsContainer')
+        ];
+
+        // Inject backend calculations into JS arrays via HTML5 data attributes
+        const dataEl = document.getElementById('analytics-data');
+        if (!dataEl) {
+            revealAllAndDraw();
+            return;
+        }
+        
+        const chartMonths = JSON.parse(dataEl.getAttribute('data-months') || '[]');
+        const chartInvoiced = JSON.parse(dataEl.getAttribute('data-invoiced') || '[]').map(Number);
+        const chartCollected = JSON.parse(dataEl.getAttribute('data-collected') || '[]').map(Number);
+        const statusCounts = JSON.parse(dataEl.getAttribute('data-status') || '{}');
+        const topCustomers = JSON.parse(dataEl.getAttribute('data-customers') || '[]');
+        const topProducts = JSON.parse(dataEl.getAttribute('data-products') || '[]');
+
+        // Initialize header, date selectors and KPI grid immediately
+        const immediateTargets = document.querySelectorAll('.js-reveal:not(#monthlyTrendChartCard):not(#statusBreakdownChartCard):not(#topCustomersChartCard):not(#topProductsChartCard):not(#receivablesTableContainer):not(#aiInsightsCard):not(#historicalStatsContainer)');
+        gsap.to(immediateTargets, {
+            opacity: 1,
+            y: 0,
+            duration: 0.55,
+            stagger: 0.08,
+            ease: 'power2.out',
+            onComplete: function() {
+                this.targets().forEach(el => {
+                    el.classList.remove('js-reveal');
+                    if (el.classList.contains('neo-card')) {
+                        el.classList.add('hover-ready');
+                    }
+                });
+            }
+        });
+
+        let monthlyTrendDrawn = false;
+        let statusBreakdownDrawn = false;
+        let topCustomersDrawn = false;
+        let topProductsDrawn = false;
+
+        function safeDrawChart(canvasId, drawFn) {
+            if (typeof Chart === 'undefined') {
+                console.warn("Chart library is not loaded yet. Skipping draw for " + canvasId);
+                return;
+            }
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            if (canvas.chartInstance) {
+                try {
+                    canvas.chartInstance.destroy();
+                } catch (e) {
+                    console.error("Error destroying chart instance:", e);
+                }
+            }
+            try {
+                canvas.chartInstance = drawFn(canvas);
+            } catch (e) {
+                console.error("Error drawing chart " + canvasId + ":", e);
+            }
+        }
+
+        // Fallback: in case IntersectionObserver doesn't fire within 5.0 seconds, force-reveal and draw everything
+        const fallbackTimeout = setTimeout(() => {
+            console.log("GSAP fallback triggered: force-revealing charts and tables.");
+            revealAllAndDraw();
+        }, 5000);
+
+        function checkAllDrawn() {
+            if (monthlyTrendDrawn && statusBreakdownDrawn && topCustomersDrawn && topProductsDrawn) {
+                clearTimeout(fallbackTimeout);
+            }
+        }
+
+        function revealAllAndDraw() {
+            clearTimeout(fallbackTimeout);
+            
+            // Draw all charts that haven't been drawn yet
+            drawMonthlyTrendChart();
+            drawStatusBreakdownChart();
+            drawTopCustomersChart();
+            drawTopProductsChart();
+            
+            // Unobserve all targets
+            targetsToObserve.forEach(t => {
+                if (t && window.khataObserver) {
+                    window.khataObserver.unobserve(t);
+                }
+            });
+            
+            // Instantly reveal all elements
+            const animElements = document.querySelectorAll('.js-reveal');
+            gsap.killTweensOf(animElements);
+            
+            gsap.to(animElements, {
+                opacity: 1,
+                y: 0,
+                duration: 0.25,
+                onComplete: () => {
+                    animElements.forEach(el => {
+                        el.classList.remove('js-reveal');
+                        if (el.classList.contains('neo-card')) {
+                            el.classList.add('hover-ready');
+                        }
+                    });
+                }
+            });
+            
+            // Also reveal insights list items specifically
+            gsap.to('.insight-item', {
+                opacity: 1,
+                duration: 0.2
+            });
+        }
+
+        // 1. Revenue & Collection Monthly Trend (Line Chart)
+        function drawMonthlyTrendChart() {
+            if (monthlyTrendDrawn) return;
+            monthlyTrendDrawn = true;
+            
+            safeDrawChart('monthlyTrendChart', (canvas) => {
+                return new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: chartMonths.length > 0 ? chartMonths : ['No Data'],
+                        datasets: [
+                            {
+                                label: 'Total Invoiced Amount (₹)',
+                                data: chartInvoiced.length > 0 ? chartInvoiced : [0],
+                                borderColor: '#4648d4',
+                                backgroundColor: 'rgba(70, 72, 212, 0.05)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.35,
+                                pointBackgroundColor: '#4648d4',
+                                pointBorderColor: '#000000',
+                                pointBorderWidth: 1.5,
+                                pointRadius: 5
+                            },
+                            {
+                                label: 'Revenue Collected (Paid) (₹)',
+                                data: chartCollected.length > 0 ? chartCollected : [0],
+                                borderColor: '#10b981',
+                                backgroundColor: 'transparent',
+                                borderWidth: 3,
+                                fill: false,
+                                tension: 0.35,
+                                pointBackgroundColor: '#10b981',
+                                pointBorderColor: '#000000',
+                                pointBorderWidth: 1.5,
+                                pointRadius: 5
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        resizeDelay: 150,
+                        animation: {
+                            duration: 800,
+                            easing: 'easeOutQuart',
+                            delay: (ctx) => {
+                                if (ctx.type !== 'data' || ctx.mode !== 'default') return 0;
+                                const idx = ctx.dataIndex !== undefined ? ctx.dataIndex : ctx.index;
+                                return idx * 120 + ctx.datasetIndex * 150;
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: { family: 'Manrope', weight: '700', size: 11 },
+                                    color: '#000000'
+                                }
+                            },
+                            tooltip: {
+                                titleFont: { family: 'Manrope', weight: '800' },
+                                bodyFont: { family: 'Inter' }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#e2e8f0', borderWidth: 1.5 },
+                                ticks: { font: { family: 'Inter', weight: '600' }, color: '#000000' }
+                            },
+                            y: {
+                                grid: { color: '#e2e8f0', borderWidth: 1.5 },
+                                ticks: { font: { family: 'Inter', weight: '600' }, color: '#000000' }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // 2. Invoice Status Breakdown (Doughnut Chart)
+        function drawStatusBreakdownChart() {
+            if (statusBreakdownDrawn) return;
+            statusBreakdownDrawn = true;
+            
+            safeDrawChart('statusBreakdownChart', (canvas) => {
+                return new Chart(canvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Paid', 'Pending', 'Overdue'],
+                        datasets: [{
+                            data: [statusCounts.paid, statusCounts.pending, statusCounts.overdue],
+                            backgroundColor: ['#10b981', '#3b82f6', '#ba1a1a'],
+                            borderColor: '#000000',
+                            borderWidth: 2.5,
+                            hoverOffset: 12
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        resizeDelay: 150,
+                        animation: {
+                            animateRotate: true,
+                            animateScale: true,
+                            duration: 800,
+                            easing: 'easeOutQuart',
+                            delay: (ctx) => {
+                                if (ctx.type !== 'data' || ctx.mode !== 'default') return 0;
+                                const idx = ctx.dataIndex !== undefined ? ctx.dataIndex : ctx.index;
+                                return idx * 250;
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                titleFont: { family: 'Manrope', weight: '800' },
+                                bodyFont: { family: 'Inter' }
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            });
+        }
+
+        // 3. Top 5 Customers (Horizontal Bar Chart)
+        function drawTopCustomersChart() {
+            if (topCustomersDrawn) return;
+            topCustomersDrawn = true;
+            
+            const customerNames = topCustomers.map(x => x.name);
+            const customerSpents = topCustomers.map(x => x.spent);
+            
+            safeDrawChart('topCustomersChart', (canvas) => {
+                return new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: customerNames.length > 0 ? customerNames : ['No Data'],
+                        datasets: [{
+                            label: 'Total Purchased (₹)',
+                            data: customerSpents.length > 0 ? customerSpents : [0],
+                            backgroundColor: '#f59e0b',
+                            borderColor: '#000000',
+                            borderWidth: 2.5,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        resizeDelay: 150,
+                        animation: {
+                            duration: 800,
+                            easing: 'easeOutQuart',
+                            delay: (ctx) => {
+                                if (ctx.type !== 'data' || ctx.mode !== 'default') return 0;
+                                const idx = ctx.dataIndex !== undefined ? ctx.dataIndex : ctx.index;
+                                return idx * 150;
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                titleFont: { family: 'Manrope', weight: '800' },
+                                bodyFont: { family: 'Inter' }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#e2e8f0', borderWidth: 1 },
+                                ticks: { font: { family: 'Inter', weight: '600' } }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: { font: { family: 'Manrope', weight: '700' } }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // 4. Best Selling Products (Vertical Bar Chart)
+        function drawTopProductsChart() {
+            if (topProductsDrawn) return;
+            topProductsDrawn = true;
+            
+            const productNames = topProducts.map(x => x.name);
+            const productRevenues = topProducts.map(x => x.revenue);
+            
+            safeDrawChart('topProductsChart', (canvas) => {
+                return new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: productNames.length > 0 ? productNames : ['No Data'],
+                        datasets: [{
+                            label: 'Revenue (₹)',
+                            data: productRevenues.length > 0 ? productRevenues : [0],
+                            backgroundColor: '#a855f7',
+                            borderColor: '#000000',
+                            borderWidth: 2.5,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        resizeDelay: 150,
+                        animation: {
+                            duration: 800,
+                            easing: 'easeOutQuart',
+                            delay: (ctx) => {
+                                if (ctx.type !== 'data' || ctx.mode !== 'default') return 0;
+                                const idx = ctx.dataIndex !== undefined ? ctx.dataIndex : ctx.index;
+                                return idx * 150;
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                titleFont: { family: 'Manrope', weight: '800' },
+                                bodyFont: { family: 'Inter' }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { family: 'Manrope', weight: '700' } }
+                            },
+                            y: {
+                                grid: { color: '#e2e8f0', borderWidth: 1 },
+                                ticks: { font: { family: 'Inter', weight: '600' } }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // --- IntersectionObserver Scroll Animations & Chart Draw Coordination ---
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px 0px -8% 0px',
+            threshold: 0.05
+        };
+
+        // Delay the observation slightly to let the page fade-in finish,
+        // so the user actually sees the charts animate and form in the viewport.
+        setTimeout(() => {
+            const observer = new IntersectionObserver((entries, obs) => {
+                let frameIndex = 0;
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const target = entry.target;
+                        const delay = frameIndex * 0.12;
+                        frameIndex++;
+                        
+                        gsap.to(target, {
+                            opacity: 1,
+                            y: 0,
+                            delay: delay,
+                            duration: 0.6,
+                            ease: "power2.out",
+                            onComplete: () => {
+                                target.classList.remove('js-reveal');
+                                
+                                // Coordinated drawing delay (only after layout is completely settled)
+                                setTimeout(() => {
+                                    if (target.id === 'monthlyTrendChartCard') {
+                                        drawMonthlyTrendChart();
+                                    } else if (target.id === 'statusBreakdownChartCard') {
+                                        drawStatusBreakdownChart();
+                                    } else if (target.id === 'topCustomersChartCard') {
+                                        drawTopCustomersChart();
+                                    } else if (target.id === 'topProductsChartCard') {
+                                        drawTopProductsChart();
+                                    } else if (target.id === 'aiInsightsCard') {
+                                        gsap.fromTo(target.querySelectorAll(".insight-item"), 
+                                            { opacity: 0, x: 15 },
+                                            { opacity: 1, x: 0, stagger: 0.08, duration: 0.4, ease: "power2.out" }
+                                        );
+                                    }
+                                    checkAllDrawn();
+                                }, 50);
+
+                                // Delay adding the hover transitions until the chart animations conclude (1.35 seconds)
+                                // to avoid style/resize recalculations from aborting Chart.js animations.
+                                setTimeout(() => {
+                                    if (target.classList.contains('neo-card')) {
+                                        target.classList.add('hover-ready');
+                                    }
+                                }, 1350);
+                            }
+                        });
+                        obs.unobserve(target);
+                    }
+                });
+            }, observerOptions);
+
+            window.khataObserver = observer;
+
+            targetsToObserve.forEach(t => {
+                if (t) observer.observe(t);
+            });
+        }, 150);
+    }
+
+    // Trigger initialization with a 250ms delay to allow Tailwind CDN style compilation and dynamic rendering to settle
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initChartsAndAnimations, 250);
+        });
+    } else {
+        setTimeout(initChartsAndAnimations, 250);
+    }
+})();
+</script>
 {% endblock %}

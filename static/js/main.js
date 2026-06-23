@@ -13,10 +13,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (currentMain && typeof gsap !== 'undefined') {
         const path = window.location.pathname;
         const isDashboard = path === '/seller' || path === '/seller/';
+        const isAnalytics = path.includes('/seller/customer-analytics');
         
-        if (isDashboard) {
-            // Let the dashboard's own timeline handle the card entrance animations.
-            // We only do a quick fade-in of the outer container to avoid double-offset conflict.
+        if (isDashboard || isAnalytics) {
+            // Let the dashboard's or analytics' own script handle the card entrance animations.
+            // We only do a quick fade-in of the outer container to avoid double-offset conflicts.
             gsap.fromTo(currentMain, 
                 { opacity: 0 },
                 { 
@@ -38,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             );
             
-            // Stagger key child elements if NOT dashboard (dashboard has its own staggers)
+            // Stagger key child elements if NOT dashboard/analytics (which handle their own staggers)
             const animTargets = currentMain.querySelectorAll(
                 '.comic-card, .form-section-header, .grid > div, form > div, table tbody tr, .card, h1, h2'
             );
@@ -179,6 +180,7 @@ window.navigateToPage = async function(url, pushState = true) {
         targetPath = url;
     }
     const isDashboard = targetPath === '/seller' || targetPath === '/seller/';
+    const isAnalytics = targetPath.includes('/seller/customer-analytics');
     const hasAiOverlay = document.querySelector('.ai-transition-overlay') !== null;
     
     const loader = document.getElementById('page-loader');
@@ -208,8 +210,8 @@ window.navigateToPage = async function(url, pushState = true) {
         const newMain = doc.querySelector('main');
         if (currentMain && newMain) {
             if (typeof gsap !== 'undefined') {
-                if (isDashboard) {
-                    // For dashboard, do not translate the main container, just do a fast fade-out
+                if (isDashboard || isAnalytics) {
+                    // For dashboard/analytics, do not translate the main container, just do a fast fade-out
                     await new Promise(resolve => {
                         gsap.to(currentMain, {
                             opacity: 0,
@@ -231,7 +233,7 @@ window.navigateToPage = async function(url, pushState = true) {
                     });
                 }
             }
-
+ 
             currentMain.innerHTML = newMain.innerHTML;
             
             // Reset scroll position to top of the page instantly
@@ -239,9 +241,9 @@ window.navigateToPage = async function(url, pushState = true) {
             
             // Execute any scripts within the dynamic content block (e.g., canvas shaders)
             executeScripts(currentMain);
-
+ 
             if (typeof gsap !== 'undefined') {
-                if (isDashboard) {
+                if (isDashboard || isAnalytics) {
                     // Set starting state for new content (only opacity)
                     gsap.set(currentMain, { opacity: 0 });
                     
@@ -264,7 +266,7 @@ window.navigateToPage = async function(url, pushState = true) {
                         ease: 'power2.out',
                         clearProps: 'transform,opacity'
                     });
-
+ 
                     // Stagger key child elements if NOT dashboard (dashboard handles its own beautiful staggers)
                     const animTargets = currentMain.querySelectorAll(
                         '.comic-card, .form-section-header, .grid > div, form > div, table tbody tr, .card, h1, h2'

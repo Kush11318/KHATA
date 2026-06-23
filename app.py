@@ -1559,106 +1559,217 @@ def admin_delete_seller(seller_id):
 @login_required
 @role_required('seller')
 def customer_analytics():
-    """Customer analytics: most/least invoices and purchases between dates"""
-    from sqlalchemy import func, desc, asc, case, and_, or_
+    """Customer analytics: rich metrics, charts data, and AI insights"""
     
     start_date_str = request.args.get('start_date', '').strip()
     end_date_str = request.args.get('end_date', '').strip()
     
-    # Build base filter for paid invoices
-    paid_filters = [
+    # Parse dates
+    start_dt = None
+    end_dt_inclusive = None
+    if start_date_str:
+        try:
+            start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+        except ValueError:
+            pass
+    if end_date_str:
+        try:
+            end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
+            end_dt_inclusive = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+        except ValueError:
+            pass
+
+    # Query all invoices for this seller in date range
+    invoice_query = Invoice.query.filter(
         Invoice.s_id == session['user_id'],
-        Invoice.status == 'paid',
         Invoice.is_bill == False
-    ]
-    
-    if start_date_str:
-        try:
-            start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
-            paid_filters.append(Invoice.invoice_datetime >= start_dt)
-        except ValueError:
-            pass
-    
-    if end_date_str:
-        try:
-            end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
-            end_dt_inclusive = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-            paid_filters.append(Invoice.invoice_datetime <= end_dt_inclusive)
-        except ValueError:
-            pass
-    
-    # Query for customers with paid invoices (for most categories)
-    paid_invoices_query = db.session.query(
-        Customer.c_id,
-        Customer.c_name,
-        Customer.c_email,
-        func.count(Invoice.invoice_no).label('invoice_count'),
-        func.sum(Invoice.amount).label('total_purchased')
-    ).join(
-        Invoice, Customer.c_id == Invoice.c_id
-    ).filter(
-        Customer.is_synced == True,
-        and_(*paid_filters)
-    ).group_by(
-        Customer.c_id, Customer.c_name, Customer.c_email
     )
+    if start_dt:
+        invoice_query = invoice_query.filter(Invoice.invoice_datetime >= start_dt)
+    if end_dt_inclusive:
+        invoice_query = invoice_query.filter(Invoice.invoice_datetime <= end_dt_inclusive)
     
-    # Get customer with most paid invoices
-    most_invoices = paid_invoices_query.order_by(desc('invoice_count')).first()
+    invoices = invoice_query.all()
     
-    # Get customer who purchased most (from paid invoices)
-    most_purchased = paid_invoices_query.order_by(desc('total_purchased')).first()
+    # KPIs calculation
+    total_invoices_count = len(invoices)
+    total_invoiced_value = float(sum(inv.amount for inv in invoices))
+    total_revenue_collected = float(sum(inv.amount for inv in invoices if inv.status == 'paid'))
+    total_revenue_outstanding = float(sum(inv.amount for inv in invoices if inv.status in ['pending', 'overdue']))
     
-    # For least categories, include all customers (even with 0 invoices)
-    # Use LEFT JOIN to include customers with no invoices
-    all_customers_query = db.session.query(
-        Customer.c_id,
-        Customer.c_name,
-        Customer.c_email,
-        func.count(Invoice.invoice_no).label('invoice_count'),
-        func.sum(case((Invoice.status == 'paid', Invoice.amount), else_=0)).label('total_purchased')
-    ).outerjoin(
-        Invoice, 
-        and_(
-            Customer.c_id == Invoice.c_id,
-            Invoice.s_id == session['user_id'],
-            Invoice.is_bill == False
-        )
-    ).filter(
-        Customer.s_id == session['user_id'],
-        Customer.is_synced == True
-    )
+    payment_collection_rate = (total_revenue_collected / total_invoiced_value * 100) if total_invoiced_value > 0 else 0.0
+    average_invoice_value = (total_invoiced_value / total_invoices_count) if total_invoices_count > 0 else 0.0
     
-    # Apply date filters to the LEFT JOIN query
-    if start_date_str:
-        try:
-            start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
-            all_customers_query = all_customers_query.filter(
-                or_(Invoice.invoice_datetime >= start_dt, Invoice.invoice_no.is_(None))
-            )
-        except ValueError:
-            pass
+    status_counts = {
+        'paid': sum(1 for inv in invoices if inv.status == 'paid'),
+        'pending': sum(1 for inv in invoices if inv.status == 'pending'),
+        'overdue': sum(1 for inv in invoices if inv.status == 'overdue')
+    }
     
-    if end_date_str:
-        try:
-            end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
-            end_dt_inclusive = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-            all_customers_query = all_customers_query.filter(
-                or_(Invoice.invoice_datetime <= end_dt_inclusive, Invoice.invoice_no.is_(None))
-            )
-        except ValueError:
-            pass
+    # Monthly sales & revenue trend
+    # Group invoices by YYYY-MM
+    monthly_data = {}
+    for inv in invoices:
+        if inv.invoice_datetime:
+            month_str = inv.invoice_datetime.strftime('%Y-%m')
+            if month_str not in monthly_data:
+                monthly_data[month_str] = {'invoiced': 0.0, 'collected': 0.0}
+            amount = float(inv.amount)
+            monthly_data[month_str]['invoiced'] += amount
+            if inv.status == 'paid':
+                monthly_data[month_str]['collected'] += amount
+                
+    # Sort months chronologically
+    sorted_months = sorted(monthly_data.keys())
+    chart_months = sorted_months
+    chart_invoiced = [monthly_data[m]['invoiced'] for m in sorted_months]
+    chart_collected = [monthly_data[m]['collected'] for m in sorted_months]
     
-    all_customers_query = all_customers_query.group_by(
-        Customer.c_id, Customer.c_name, Customer.c_email
-    )
+    # Top 5 Customers
+    customer_spent = {}
+    customer_invoice_count = {}
+    for inv in invoices:
+        c_id = inv.c_id
+        if c_id:
+            customer_spent[c_id] = customer_spent.get(c_id, 0.0) + float(inv.amount)
+            customer_invoice_count[c_id] = customer_invoice_count.get(c_id, 0) + 1
+            
+    # Load all customers of this seller
+    all_customers = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).all()
+    customer_dict = {c.c_id: c for c in all_customers}
     
-    # Get customer with least invoices (includes 0 invoices)
-    least_invoices = all_customers_query.order_by(asc('invoice_count')).first()
+    top_customers_list = []
+    for c_id, spent in customer_spent.items():
+        c = customer_dict.get(c_id)
+        if c:
+            top_customers_list.append({
+                'id': c.c_id,
+                'name': c.c_name,
+                'email': c.c_email,
+                'spent': spent,
+                'invoices_count': customer_invoice_count[c_id]
+            })
+    # Sort by spent descending
+    top_customers_list.sort(key=lambda x: x['spent'], reverse=True)
+    top_5_customers = top_customers_list[:5]
     
-    # Get customer who purchased least (includes 0 rupees for no paid invoices)
-    least_purchased = all_customers_query.order_by(asc('total_purchased')).first()
+    # Top 5 Selling Products
+    # Query invoice items for these invoices
+    invoice_nos = [inv.invoice_no for inv in invoices]
+    invoice_items = InvoiceItem.query.filter(InvoiceItem.invoice_no.in_(invoice_nos)).all() if invoice_nos else []
     
+    product_revenue = {}
+    product_qty = {}
+    for item in invoice_items:
+        p_id = item.p_id
+        if p_id:
+            product_revenue[p_id] = product_revenue.get(p_id, 0.0) + float(item.total)
+            product_qty[p_id] = product_qty.get(p_id, 0) + item.item_quantity
+            
+    # Load products
+    all_products = Product.query.filter_by(s_id=session['user_id'], is_synced=True).all()
+    product_dict = {p.p_id: p for p in all_products}
+    
+    product_sales_list = []
+    for p_id, revenue in product_revenue.items():
+        p = product_dict.get(p_id)
+        if p:
+            product_sales_list.append({
+                'id': p.p_id,
+                'name': p.p_name,
+                'revenue': revenue,
+                'quantity': product_qty[p_id]
+            })
+    product_sales_list.sort(key=lambda x: x['revenue'], reverse=True)
+    top_5_products = product_sales_list[:5]
+    
+    # Detailed Customers Receivables Table (includes 0 spent)
+    customers_table = []
+    for c in all_customers:
+        c_invoices = [inv for inv in invoices if inv.c_id == c.c_id]
+        c_spent = sum(float(inv.amount) for inv in c_invoices)
+        c_paid = sum(float(inv.amount) for inv in c_invoices if inv.status == 'paid')
+        c_outstanding = sum(float(inv.amount) for inv in c_invoices if inv.status in ['pending', 'overdue'])
+        c_count = len(c_invoices)
+        c_rate = (c_paid / c_spent * 100) if c_spent > 0 else 100.0
+        
+        customers_table.append({
+            'id': c.c_id,
+            'name': c.c_name,
+            'email': c.c_email,
+            'phone': c.c_phone_no,
+            'invoices_count': c_count,
+            'total_spent': c_spent,
+            'total_paid': c_paid,
+            'total_outstanding': c_outstanding,
+            'collection_rate': c_rate
+        })
+    # Sort by total spent descending
+    customers_table.sort(key=lambda x: x['total_spent'], reverse=True)
+    
+    # Most / Least categories for legacy template variables (compatibility)
+    most_invoices = None
+    least_invoices = None
+    most_purchased = None
+    least_purchased = None
+    
+    if top_customers_list:
+        # Most invoices
+        top_by_count = sorted(top_customers_list, key=lambda x: x['invoices_count'], reverse=True)
+        most_invoices_data = top_by_count[0]
+        most_invoices = customer_dict.get(most_invoices_data['id'])
+        if most_invoices:
+            # Attach invoice_count attribute dynamically
+            most_invoices.invoice_count = most_invoices_data['invoices_count']
+            
+        # Most purchased
+        most_purchased_data = top_customers_list[0]
+        most_purchased = customer_dict.get(most_purchased_data['id'])
+        if most_purchased:
+            # Attach total_purchased attribute dynamically
+            most_purchased.total_purchased = most_purchased_data['spent']
+            
+    if customers_table:
+        # Least invoices
+        least_by_count = sorted(customers_table, key=lambda x: x['invoices_count'])
+        least_invoices_data = least_by_count[0]
+        least_invoices = customer_dict.get(least_invoices_data['id'])
+        if least_invoices:
+            least_invoices.invoice_count = least_invoices_data['invoices_count']
+            
+        # Least purchased
+        least_by_spent = sorted(customers_table, key=lambda x: x['total_spent'])
+        least_purchased_data = least_by_spent[0]
+        least_purchased = customer_dict.get(least_purchased_data['id'])
+        if least_purchased:
+            least_purchased.total_purchased = least_purchased_data['total_spent']
+            
+    # AI insights generator
+    ai_insights = []
+    if total_invoiced_value > 0:
+        if top_5_customers:
+            top_c = top_5_customers[0]
+            top_c_pct = (top_c['spent'] / total_invoiced_value) * 100
+            ai_insights.append(f"🎯 **Customer Concentration**: {top_c['name']} is your top client, contributing **₹{top_c['spent']:.2f}** ({top_c_pct:.1f}%) of your total invoiced value.")
+        
+        outstanding_pct = (total_revenue_outstanding / total_invoiced_value) * 100
+        if outstanding_pct > 30:
+            ai_insights.append(f"⚠️ **Cash Flow Warning**: **{outstanding_pct:.1f}%** of your invoiced value (₹{total_revenue_outstanding:.2f}) is outstanding. Consider sending friendly payment reminders.")
+        elif outstanding_pct > 0:
+            ai_insights.append(f"💡 **Collection Status**: Your collection rate is healthy at **{payment_collection_rate:.1f}%**. Remaining outstanding is **₹{total_revenue_outstanding:.2f}**.")
+        else:
+            ai_insights.append("🎉 **Perfect Collection!** You have collected 100% of your invoiced revenue for this period.")
+            
+        if top_5_products:
+            top_p = top_5_products[0]
+            ai_insights.append(f"📦 **Best Seller**: Your top product by revenue is **{top_p['name']}**, generating **₹{top_p['revenue']:.2f}** over **{top_p['quantity']}** units sold.")
+    else:
+        ai_insights.append("📊 **No Data**: There is no sales data for the selected period. Create invoices to generate business insights!")
+
+    # Parse double asterisks to strong tags to avoid raw markdown symbols displaying in HTML
+    import re
+    rendered_insights = [re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', ins) for ins in ai_insights]
+
     return render_template(
         'seller/customer_analytics.html',
         most_invoices=most_invoices,
@@ -1666,7 +1777,22 @@ def customer_analytics():
         most_purchased=most_purchased,
         least_purchased=least_purchased,
         start_date=start_date_str,
-        end_date=end_date_str
+        end_date=end_date_str,
+        # Upgraded fields
+        total_invoices=total_invoices_count,
+        total_invoiced_value=total_invoiced_value,
+        total_revenue_collected=total_revenue_collected,
+        total_revenue_outstanding=total_revenue_outstanding,
+        payment_collection_rate=payment_collection_rate,
+        average_invoice_value=average_invoice_value,
+        status_counts=status_counts,
+        chart_months=chart_months,
+        chart_invoiced=chart_invoiced,
+        chart_collected=chart_collected,
+        top_5_customers=top_5_customers,
+        top_5_products=top_5_products,
+        customers_table=customers_table,
+        ai_insights=rendered_insights
     )
 
 @app.route('/seller/invoices')
