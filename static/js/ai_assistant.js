@@ -21,6 +21,7 @@ class AIAssistant {
 
         this.initSpeechRecognition();
         this.createUI();
+        this.loadChatHistory();
         this.checkAndPopulateInvoice(); // Check if we need to fill the form
         
         // Auto-apply saved theme on load
@@ -30,6 +31,45 @@ class AIAssistant {
         }
     }
 
+
+    async loadChatHistory() {
+        try {
+            const response = await fetch('/api/ai/history');
+            const data = await response.json();
+            if (data.success && data.history && data.history.length > 0) {
+                this.chatHistory = [];
+                data.history.forEach(msg => {
+                    const role = msg.role === 'user' ? 'user' : 'ai';
+                    this.addHistoricMessage(msg.content, role);
+                    this.chatHistory.push({ role: msg.role, content: msg.content });
+                });
+            }
+        } catch (e) {
+            console.error("Failed to load chat history:", e);
+        }
+    }
+
+    addHistoricMessage(text, sender) {
+        const container = document.getElementById('ai-chat-messages');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = `ai-message ${sender}`;
+
+        if (sender === 'ai') {
+            div.innerHTML = `
+                <div class="ai-avatar"><i class="fas fa-robot"></i></div>
+                <div class="ai-text">${text}</div>
+            `;
+        } else {
+            div.innerHTML = `
+                <div class="ai-text">${text}</div>
+                <div class="ai-avatar user"><i class="fas fa-user"></i></div>
+            `;
+        }
+
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
 
     initSpeechRecognition() {
         if ('webkitSpeechRecognition' in window) {

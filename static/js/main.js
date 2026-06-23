@@ -376,40 +376,11 @@ function updateNavLinks(url) {
 }
 
 function showProgressBar() {
-    let bar = document.getElementById('spa-progress-bar');
-    if (!bar) {
-        bar = document.createElement('div');
-        bar.id = 'spa-progress-bar';
-        bar.style.position = 'fixed';
-        bar.style.top = '0';
-        bar.style.left = '0';
-        bar.style.height = '3.5px';
-        bar.style.backgroundColor = '#4648d4';
-        bar.style.boxShadow = '0 0 10px #4648d4, 0 0 5px rgba(70, 72, 212, 0.5)';
-        bar.style.zIndex = '99999';
-        bar.style.width = '0%';
-        bar.style.transition = 'width 0.4s cubic-bezier(0.08, 0.82, 0.17, 1), opacity 0.3s ease';
-        document.body.appendChild(bar);
-    }
-    bar.style.opacity = '1';
-    bar.style.width = '15%';
-    
-    // Simulate incremental loads
-    setTimeout(() => { if (bar.style.width === '15%') bar.style.width = '45%'; }, 200);
-    setTimeout(() => { if (bar.style.width === '45%') bar.style.width = '75%'; }, 600);
+    // No-op: dynamic page loaders disabled on nav bar/top layout
 }
 
 function hideProgressBar() {
-    const bar = document.getElementById('spa-progress-bar');
-    if (bar) {
-        bar.style.width = '100%';
-        setTimeout(() => {
-            bar.style.opacity = '0';
-            setTimeout(() => {
-                bar.style.width = '0%';
-            }, 300);
-        }, 150);
-    }
+    // No-op: dynamic page loaders disabled on nav bar/top layout
 }
 
 // Utility functions

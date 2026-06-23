@@ -309,3 +309,27 @@ class InvoiceItem(db.Model):
             'discount': float(self.discount),
             'total': float((price * self.item_quantity) - self.discount)
         }
+
+class ChatMessage(db.Model):
+    """CHAT_MESSAGE entity to persist AI assistant messages"""
+    __tablename__ = 'chat_message'
+    id = db.Column(db.Integer, primary_key=True)
+    s_id = db.Column(db.String(50), db.ForeignKey('sellers.s_id'))
+    role = db.Column(db.String(20)) # 'user' or 'model'
+    content = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __init__(self, s_id=None, role=None, content=None, timestamp=None, **kwargs):
+        super().__init__(**kwargs)
+        self.s_id = s_id
+        self.role = role
+        self.content = content
+        if timestamp is not None:
+            self.timestamp = timestamp
+
+    def to_dict(self):
+        return {
+            'role': self.role,
+            'content': self.content,
+            'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S') if self.timestamp else None
+        }

@@ -1,15 +1,16 @@
-﻿{% extends "base.html" %} {% block title %}Login - Business Command Center{% endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}Login - Business Command Center{% endblock %} {% block content %}
 <div class="auth-container">
   <div class="auth-card">
     <h1 class="auth-title">Welcome Back</h1>
     <p class="auth-subtitle">Sign in to your seller account</p>
 
-    <form method="POST" class="auth-form">
+    <form method="POST" class="auth-form" id="login-form">
       <div class="form-group">
         <label class="form-label">Email Address</label>
         <input
           type="email"
           name="email"
+          id="email"
           class="form-input"
           placeholder="Enter your email"
           required
@@ -21,13 +22,14 @@
         <input
           type="password"
           name="password"
+          id="password"
           class="form-input"
           placeholder="Enter your password"
           required
         />
       </div>
 
-      <button type="submit" class="btn btn-primary w-full justify-center">Sign In</button>
+      <button type="submit" class="btn btn-primary w-full justify-center" id="btn-sign-in">Sign In</button>
     </form>
 
     <div class="auth-switch">
@@ -35,9 +37,9 @@
     </div>
 
     <div style="margin-top: 32px; padding-top: 24px; border-top: 1px dashed #e2e8f0; font-size: 13px;">
-      <p style="font-weight: 700; margin-bottom: 12px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; text-align: left;">Try Demo Accounts:</p>
+      <p style="font-weight: 700; margin-bottom: 12px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; text-align: left;">Try Demo Accounts (Click to Quick Login):</p>
       
-      <div style="margin-bottom: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-align: left;">
+      <div class="demo-card" onclick="simulateTypingAndLogin('demo@invoiceai.com', 'demo123')" style="margin-bottom: 12px; padding: 10px 14px; background: #f8fafc; border: 2.5px solid #000000; border-radius: 8px; text-align: left; cursor: pointer; box-shadow: 2px 2px 0px #000000;">
         <span style="display: block; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">Seller Access</span>
         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
           <span style="color: #475569;">Email:</span>
@@ -49,7 +51,7 @@
         </div>
       </div>
 
-      <div style="padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-align: left;">
+      <div class="demo-card" onclick="simulateTypingAndLogin('customer@example.com', 'pass123')" style="padding: 10px 14px; background: #f8fafc; border: 2.5px solid #000000; border-radius: 8px; text-align: left; cursor: pointer; box-shadow: 2px 2px 0px #000000;">
         <span style="display: block; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">Customer Access</span>
         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
           <span style="color: #475569;">Email:</span>
@@ -63,4 +65,100 @@
     </div>
   </div>
 </div>
+
+<style>
+.demo-card {
+  transition: all 0.2s ease !important;
+}
+.demo-card:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+  background: #f1f5f9 !important;
+}
+.demo-card:active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 1px 1px 0px #000000 !important;
+}
+</style>
+
+<script>
+function simulateTypingAndLogin(email, password) {
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('btn-sign-in');
+    
+    if (!emailInput || !passwordInput || !submitBtn) return;
+    
+    // Clear existing values
+    emailInput.value = '';
+    passwordInput.value = '';
+    
+    // Disable inputs and buttons to prevent double interaction during typing
+    emailInput.disabled = true;
+    passwordInput.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.style.pointerEvents = 'none';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Auto-filling...';
+    
+    let emailIndex = 0;
+    let passwordIndex = 0;
+    
+    function typeEmail() {
+        if (emailIndex < email.length) {
+            emailInput.value += email[emailIndex];
+            emailIndex++;
+            setTimeout(typeEmail, 30); // 30ms per character
+        } else {
+            setTimeout(typePassword, 150); // wait 150ms before password
+        }
+    }
+    
+    function typePassword() {
+        if (passwordIndex < password.length) {
+            passwordInput.value += password[passwordIndex];
+            passwordIndex++;
+            setTimeout(typePassword, 40); // 40ms per character
+        } else {
+            setTimeout(submitForm, 250); // wait 250ms then submit
+        }
+    }
+    
+    async function submitForm() {
+        emailInput.disabled = false;
+        passwordInput.disabled = false;
+        submitBtn.disabled = false;
+        submitBtn.style.pointerEvents = 'auto';
+        submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Signing in...';
+        
+        try {
+            const formData = new URLSearchParams();
+            formData.append('email', email);
+            formData.append('password', password);
+            
+            // Submitting via fetch bypasses standard browser form submission triggers 
+            // for password managers, preventing "compromised password" warnings.
+            const response = await fetch('/login', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            });
+            
+            if (response.url.includes('/login')) {
+                // If it redirected back to /login, show the errors
+                window.location.reload();
+            } else {
+                // Go to successful dashboard
+                window.location.href = response.url;
+            }
+        } catch (err) {
+            console.error('AJAX Login failed, fallback to standard form submit', err);
+            document.getElementById('login-form').submit();
+        }
+    }
+    
+    typeEmail();
+}
+</script>
 {% endblock %}

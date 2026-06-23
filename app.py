@@ -25,7 +25,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from datetime import datetime, date, timedelta
 from config import Config
 from extensions import db
-from models import Seller, Customer, Product, Invoice, InvoiceItem, Activity
+from models import Seller, Customer, Product, Invoice, InvoiceItem, Activity, ChatMessage
 from decimal import Decimal
 import decimal
 import ai_service
@@ -781,6 +781,15 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'user_id' in session:
+        user_role = session.get('user_role')
+        if user_role == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif user_role == 'customer':
+            return redirect(url_for('customer_dashboard'))
+        elif user_role == 'seller':
+            return redirect(url_for('seller_dashboard'))
+
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
@@ -818,6 +827,15 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if 'user_id' in session:
+        user_role = session.get('user_role')
+        if user_role == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif user_role == 'customer':
+            return redirect(url_for('customer_dashboard'))
+        elif user_role == 'seller':
+            return redirect(url_for('seller_dashboard'))
+
     if request.method == 'POST':
         name = request.form['name']
         email = request.form['email']
@@ -2044,6 +2062,8 @@ def upload_bill():
             quantity: int = Field(description="Quantity of the item")
             price: float = Field(description="Unit price of the item")
             discount: float = Field(default=0.0, description="Discount amount for this item")
+            category: str = Field(description="Category of the product/item, e.g. Electronics, Groceries, Apparel, Services, Stationery, Utilities, etc.")
+            tax_rate: float = Field(default=18.0, description="Recommended GST/sales tax percentage slab (e.g. 0.0, 5.0, 12.0, 18.0, 28.0) based on the product category in India.")
 
         class BillData(BaseModel):
             vendor_name: str = Field(description="Name of the vendor or merchant or shop")
@@ -2056,6 +2076,7 @@ def upload_bill():
             total_amount: float = Field(description="Total amount including tax")
             items: List[BillItem] = Field(default=[], description="List of items on the bill")
             is_paid: bool = Field(default=False, description="True if the bill is marked as Paid, Cash, Receipt or has zero balance due")
+            detected_anomalies: Optional[str] = Field(None, description="Any detected anomalies or suspicious overrides on the receipt/bill (e.g. altered dates, hand-written overrides on totals, mismatched calculations). Describe the issue if found, otherwise keep empty/null.")
 
         keys = get_gemini_api_keys()
         if not keys:
@@ -2288,6 +2309,42 @@ def upload_bill():
         if not original_path:
             original_path = save_file_locally(original_upload_bytes, original_filename)
 
+        # Double-billing duplicate check
+        duplicate_bill = None
+        if extracted_invoice_no:
+            duplicate_bill = Invoice.query.filter_by(s_id=s_id, is_bill=True, invoice_no=extracted_invoice_no.strip()).first()
+        if not duplicate_bill:
+            duplicate_bill = Invoice.query.join(Customer).filter(
+                Invoice.s_id == s_id,
+                Invoice.is_bill == True,
+                Invoice.amount == total_amount,
+                Customer.c_name == vendor_name
+            ).first()
+
+        notes_parts = []
+        if duplicate_bill:
+            duplicate_msg = f"⚠️ Double-Billing Warning: A similar bill from '{vendor_name}' for INR {total_amount:.2f} already exists (Invoice: {duplicate_bill.invoice_no})."
+            notes_parts.append(duplicate_msg)
+            flash(duplicate_msg, 'warning')
+
+        # Add anomalies check
+        anomalies = bill_info.get('detected_anomalies')
+        if anomalies:
+            notes_parts.append(f"⚠️ Anomaly Alert: {anomalies}")
+
+        # Add tax classification summary
+        tax_summary = {}
+        items_list = bill_info.get('items', [])
+        for item in items_list:
+            cat = item.get('category', 'General')
+            tr = item.get('tax_rate', 18.0)
+            tax_summary[cat] = tr
+        if tax_summary:
+            tax_str = " | ".join([f"{cat} (Tax: {tr}%)" for cat, tr in tax_summary.items()])
+            notes_parts.append(f"Product Slabs: {tax_str}")
+
+        bill_notes = "\n".join(notes_parts) if notes_parts else None
+
         new_invoice = Invoice(
             invoice_no=invoice_no,
             invoice_datetime=invoice_datetime,
@@ -2300,14 +2357,14 @@ def upload_bill():
             is_bill=True,
             original_file=original_path,
             processed_file=None,
-            bill_buyer_name=buyer_name
+            bill_buyer_name=buyer_name,
+            notes=bill_notes
         )
         db.session.add(new_invoice)
         db.session.flush()
 
         
         added_products = []
-        items_list = bill_info.get('items', [])
         for item in items_list:
             item_name = item.get('product_name', 'Unnamed Item').strip()
             item_qty = int(item.get('quantity', 1))
@@ -2324,11 +2381,13 @@ def upload_bill():
                 
             if not product:
                 p_id = generate_next_product_id()
+                item_cat = item.get('category', 'General')
+                item_tax = item.get('tax_rate', 18.0)
                 product = Product(
                     p_id=p_id,
                     p_name=item_name,
                     p_price=item_price,
-                    p_description="Digitized product from bill",
+                    p_description=f"Category: {item_cat} | Recommended Tax: {item_tax}% | Digitized product from bill",
                     p_stock=item_qty + 10 if sync_db else 0,
                     s_id=s_id,
                     is_synced=sync_db
@@ -2588,6 +2647,829 @@ def view_invoice(invoice_id):
     
     return render_template('invoice/view.html', invoice=invoice)
 
+def generate_invoice_pdf(invoice):
+    from io import BytesIO
+    import os
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    
+    # 1. Logo Handling
+    logo_flowable = None
+    logo_path = None
+    if not invoice.is_bill and invoice.seller and invoice.seller.s_logo:
+        logo_path = os.path.join(app.static_folder, invoice.seller.s_logo)
+        
+    if logo_path and os.path.exists(logo_path):
+        try:
+            from PIL import Image as PILImage
+            img = PILImage.open(logo_path)
+            w, h = img.size
+            max_w = 150.0
+            scale = max_w / float(w)
+            scaled_h = h * scale
+            if scaled_h > 45:
+                scaled_h = 45.0
+                scale = scaled_h / float(h)
+                scaled_w = w * scale
+            else:
+                scaled_w = max_w
+            logo_flowable = Image(logo_path, width=scaled_w, height=scaled_h)
+        except Exception as e:
+            print(f"Error loading logo in PDF: {e}")
+            logo_flowable = None
+            
+    # 2. Typography Styles
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=24,
+        leading=28,
+        textColor=colors.HexColor('#000000'),
+        alignment=2 # Right aligned
+    )
+    meta_style = ParagraphStyle(
+        'DocMeta',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9.5,
+        leading=14,
+        textColor=colors.HexColor('#475569'),
+        alignment=2 # Right aligned
+    )
+    seller_title_style = ParagraphStyle(
+        'SellerTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=13,
+        leading=17,
+        textColor=colors.HexColor('#000000')
+    )
+    seller_body_style = ParagraphStyle(
+        'SellerBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor('#475569')
+    )
+    
+    # 3. Header Card Construction
+    left_flowables = []
+    if logo_flowable:
+        left_flowables.append(logo_flowable)
+        left_flowables.append(Spacer(1, 8))
+    
+    if invoice.is_bill:
+        vendor_name = invoice.customer_name if invoice.customer_name else 'Vendor / Merchant'
+        left_flowables.append(Paragraph(vendor_name, seller_title_style))
+        if invoice.customer:
+            if invoice.customer.c_address:
+                left_flowables.append(Paragraph(invoice.customer.c_address, seller_body_style))
+            if invoice.customer.c_phone_no:
+                left_flowables.append(Paragraph(f"Tel: {invoice.customer.c_phone_no}", seller_body_style))
+            left_flowables.append(Paragraph(f"Email: {invoice.customer_email}", seller_body_style))
+    else:
+        seller_name = invoice.seller.s_name if invoice.seller else 'Seller Organization'
+        left_flowables.append(Paragraph(seller_name, seller_title_style))
+        if invoice.seller:
+            if invoice.seller.s_address:
+                left_flowables.append(Paragraph(invoice.seller.s_address, seller_body_style))
+            if invoice.seller.s_phone:
+                left_flowables.append(Paragraph(f"Tel: {invoice.seller.s_phone}", seller_body_style))
+            left_flowables.append(Paragraph(f"Email: {invoice.seller.s_email}", seller_body_style))
+            
+    right_flowables = []
+    doc_type = "BILL" if invoice.is_bill else "INVOICE"
+    right_flowables.append(Paragraph(doc_type, title_style))
+    right_flowables.append(Spacer(1, 6))
+    
+    right_flowables.append(Paragraph(f"<b>No:</b> {invoice.id}", meta_style))
+    right_flowables.append(Paragraph(f"<b>Date:</b> {invoice.date}", meta_style))
+    if invoice.due_date_str:
+        right_flowables.append(Paragraph(f"<b>Due Date:</b> {invoice.due_date_str}", meta_style))
+        
+    status_label = invoice.status.upper()
+    status_color = "#10b981" if invoice.status == 'paid' else ("#ba1a1a" if invoice.status == 'overdue' else "#475569")
+    right_flowables.append(Spacer(1, 4))
+    right_flowables.append(Paragraph(f"<b>Status:</b> <font color='{status_color}'><b>{status_label}</b></font>", meta_style))
+    
+    header_table = Table([[left_flowables, right_flowables]], colWidths=[3.6 * inch, 3.4 * inch])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    
+    header_wrapper = Table([[header_table]], colWidths=[7.5 * inch])
+    header_wrapper.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#ffffff')),
+        ('BOX', (0, 0), (-1, -1), 2.0, colors.HexColor('#000000')), # Thick Neo-brutalist border
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('LEFTPADDING', (0, 0), (-1, -1), 18),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 18),
+    ]))
+    
+    # 4. Bill To & Payment Card Construction
+    billto_title_style = ParagraphStyle(
+        'BillToTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9.5,
+        leading=13,
+        textColor=colors.HexColor('#64748b')
+    )
+    billto_name_style = ParagraphStyle(
+        'BillToName',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=11.5,
+        leading=15,
+        textColor=colors.HexColor('#0f172a')
+    )
+    billto_body_style = ParagraphStyle(
+        'BillToBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor('#475569')
+    )
+    
+    billto_flowables = []
+    if not invoice.is_bill or invoice.bill_buyer_name:
+        billto_flowables.append(Paragraph("BILL TO:", billto_title_style))
+        billto_flowables.append(Spacer(1, 4))
+        if invoice.is_bill:
+            billto_flowables.append(Paragraph(invoice.bill_buyer_name, billto_name_style))
+        else:
+            billto_flowables.append(Paragraph(invoice.customer_name, billto_name_style))
+            if invoice.customer:
+                if invoice.customer.c_address:
+                    billto_flowables.append(Paragraph(invoice.customer.c_address, billto_body_style))
+                if invoice.customer.c_phone_no:
+                    billto_flowables.append(Paragraph(f"Tel: {invoice.customer.c_phone_no}", billto_body_style))
+                billto_flowables.append(Paragraph(f"Email: {invoice.customer_email}", billto_body_style))
+    else:
+        billto_flowables.append(Paragraph("BILL TO:", billto_title_style))
+        billto_flowables.append(Spacer(1, 4))
+        billto_flowables.append(Paragraph("General Walk-in Customer", billto_name_style))
+                
+    payment_flowables = []
+    payment_flowables.append(Paragraph("PAYMENT INFO:", billto_title_style))
+    payment_flowables.append(Spacer(1, 4))
+    payment_flowables.append(Paragraph("<b>Bank Name:</b> HDFC Bank Ltd", billto_body_style))
+    payment_flowables.append(Paragraph("<b>Account Name:</b> Khata Billing Corp", billto_body_style))
+    payment_flowables.append(Paragraph("<b>Account No:</b> 50200088991122", billto_body_style))
+    payment_flowables.append(Paragraph("<b>IFSC Code:</b> HDFC0001212", billto_body_style))
+    payment_flowables.append(Paragraph("<b>UPI ID:</b> payment@khata", billto_body_style))
+    
+    info_table = Table([[billto_flowables, payment_flowables]], colWidths=[3.75 * inch, 3.75 * inch])
+    info_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+        ('BOX', (0, 0), (-1, -1), 2.0, colors.HexColor('#000000')),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LINEBEFORE', (1, 0), (1, 0), 1.5, colors.HexColor('#000000')), # Thick vertical card divider
+    ]))
+    
+    # 5. Items Table Construction
+    table_header_style = ParagraphStyle(
+        'TableHeader',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#ffffff')
+    )
+    table_cell_style = ParagraphStyle(
+        'TableCell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.HexColor('#0f172a')
+    )
+    table_cell_bold_style = ParagraphStyle(
+        'TableCellBold',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.HexColor('#0f172a')
+    )
+    
+    table_data = [
+        [
+            Paragraph("Product", table_header_style),
+            Paragraph("Quantity", table_header_style),
+            Paragraph("Price", table_header_style),
+            Paragraph("Total", table_header_style)
+        ]
+    ]
+    
+    for item in invoice.items:
+        table_data.append([
+            Paragraph(item.product_name, table_cell_bold_style),
+            Paragraph(str(item.item_quantity), table_cell_style),
+            Paragraph(f"INR {item.price:.2f}", table_cell_style),
+            Paragraph(f"INR {item.total:.2f}", table_cell_bold_style)
+        ])
+        
+    items_table = Table(table_data, colWidths=[3.5 * inch, 1.0 * inch, 1.5 * inch, 1.5 * inch])
+    items_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4648d4')),
+        ('BOX', (0, 0), (-1, -1), 2.0, colors.HexColor('#000000')), # Thick outer border
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('LINEBELOW', (0, 0), (-1, 0), 2.0, colors.HexColor('#000000')), # Header underline
+        ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('LINEBEFORE', (1, 0), (-1, -1), 1.0, colors.HexColor('#000000')), # Column divider grids
+    ]))
+    
+    # 6. Notes & Summary Construction
+    notes_flowables = []
+    if invoice.notes:
+        notes_title_style = ParagraphStyle(
+            'NotesTitle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=9.5,
+            leading=13,
+            textColor=colors.HexColor('#000000')
+        )
+        notes_body_style = ParagraphStyle(
+            'NotesBody',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=8,
+            leading=11.5,
+            textColor=colors.HexColor('#475569')
+        )
+        notes_flowables.append(Paragraph("Notes & Remarks:", notes_title_style))
+        notes_flowables.append(Spacer(1, 4))
+        clean_notes = invoice.notes.replace('\n', '<br/>')
+        notes_flowables.append(Paragraph(clean_notes, notes_body_style))
+    else:
+        notes_title_style = ParagraphStyle(
+            'NotesTitle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=9.5,
+            leading=13,
+            textColor=colors.HexColor('#94a3b8')
+        )
+        notes_flowables.append(Paragraph("No additional notes or remarks.", notes_title_style))
+        
+    summary_label_style = ParagraphStyle(
+        'SummaryLabel',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=13,
+        textColor=colors.HexColor('#475569'),
+        alignment=2
+    )
+    summary_val_style = ParagraphStyle(
+        'SummaryVal',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=13,
+        textColor=colors.HexColor('#0f172a'),
+        alignment=2
+    )
+    total_label_style = ParagraphStyle(
+        'TotalLabel',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=15,
+        textColor=colors.HexColor('#000000'),
+        alignment=2
+    )
+    total_val_style = ParagraphStyle(
+        'TotalVal',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=11.5,
+        leading=15,
+        textColor=colors.HexColor('#4648d4'),
+        alignment=2
+    )
+    
+    subtotal = invoice.amount - invoice.tax
+    summary_data = [
+        [
+            Paragraph("Subtotal:", summary_label_style),
+            Paragraph(f"INR {subtotal:.2f}", summary_val_style)
+        ],
+        [
+            Paragraph("Tax:", summary_label_style),
+            Paragraph(f"INR {invoice.tax:.2f}", summary_val_style)
+        ],
+        [
+            Paragraph("Total Amount:", total_label_style),
+            Paragraph(f"INR {invoice.amount:.2f}", total_val_style)
+        ]
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[1.65 * inch, 1.65 * inch])
+    summary_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.HexColor('#cbd5e1')),
+        ('LINEBELOW', (0, 1), (-1, 1), 1.5, colors.HexColor('#000000')),
+        ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#fef08a')), # Neo-brutalist total highlight
+        ('BOX', (0, 2), (-1, 2), 1.5, colors.HexColor('#000000')),
+        ('LEFTPADDING', (0, 2), (-1, 2), 6),
+        ('RIGHTPADDING', (0, 2), (-1, 2), 6),
+        ('TOPPADDING', (0, 2), (-1, 2), 5),
+        ('BOTTOMPADDING', (0, 2), (-1, 2), 5),
+    ]))
+    
+    bottom_table = Table([[notes_flowables, summary_table]], colWidths=[3.75 * inch, 3.75 * inch])
+    bottom_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#ffffff')),
+        ('BOX', (0, 0), (-1, -1), 2.0, colors.HexColor('#000000')),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LINEBEFORE', (1, 0), (1, 0), 1.5, colors.HexColor('#000000')),
+    ]))
+    
+    # 7. Document Assembly
+    story = []
+    story.append(header_wrapper)
+    story.append(Spacer(1, 18))
+    story.append(info_table)
+    story.append(Spacer(1, 18))
+    story.append(items_table)
+    story.append(Spacer(1, 18))
+    story.append(bottom_table)
+    
+    # 7.5 Terms & Conditions
+    terms_title_style = ParagraphStyle(
+        'TermsTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7.5,
+        leading=10,
+        textColor=colors.HexColor('#475569')
+    )
+    terms_body_style = ParagraphStyle(
+        'TermsBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=6.5,
+        leading=9,
+        textColor=colors.HexColor('#64748b')
+    )
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("TERMS & CONDITIONS", terms_title_style))
+    story.append(Spacer(1, 2))
+    story.append(Paragraph("1. All sales are final. Interest at the rate of 18% p.a. will be charged if payment is not made within the due date.<br/>2. Goods once sold will not be taken back or exchanged. Any disputes shall be subject to local municipal jurisdiction.", terms_body_style))
+    
+    # 8. Canvas Background & Footer Setup
+    def draw_page(canvas, doc):
+        canvas.saveState()
+        # Thick outer black border
+        canvas.setStrokeColor(colors.HexColor('#000000'))
+        canvas.setLineWidth(2.5)
+        canvas.rect(20, 20, 612 - 40, 792 - 40)
+        
+        # Thin inner accent border
+        canvas.setLineWidth(0.75)
+        canvas.rect(24, 24, 612 - 48, 792 - 48)
+        
+        # Divider line
+        canvas.setStrokeColor(colors.HexColor('#e2e8f0'))
+        canvas.setLineWidth(0.5)
+        canvas.line(36, 50, 612 - 36, 50)
+        
+        # Footer text
+        canvas.setFont('Helvetica-Bold', 8)
+        canvas.setFillColor(colors.HexColor('#475569'))
+        canvas.drawCentredString(612 / 2.0, 35, "Generated by KHATA Invoice Management System. Thank you for your business!")
+        canvas.restoreState()
+        
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=60 # Extended margins to prevent footer overlapping
+    )
+    
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    buffer.seek(0)
+    return buffer
+
+@app.route('/invoice/<invoice_id>/pdf')
+@login_required
+def download_invoice_pdf(invoice_id):
+    invoice = db.session.get(Invoice, invoice_id)
+    if not invoice:
+        flash('Invoice not found', 'error')
+        if session.get('user_role') == 'customer':
+            return redirect(url_for('customer_dashboard'))
+        elif session.get('user_role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('seller_dashboard'))
+        
+    role = session.get('user_role')
+    if role == 'seller' and invoice.s_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('seller_dashboard'))
+    elif role == 'customer' and invoice.c_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard'))
+    elif role not in ['seller', 'customer', 'admin']:
+        flash('Access denied', 'error')
+        return redirect(url_for('login'))
+        
+    try:
+        from flask import send_file
+        buffer = generate_invoice_pdf(invoice)
+        filename = f"Invoice_{invoice.id}.pdf" if not invoice.is_bill else f"Bill_{invoice.id}.pdf"
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Failed to generate PDF: {str(e)}', 'error')
+        return redirect(url_for('view_invoice', invoice_id=invoice_id))
+
+@app.route('/invoice/<invoice_id>/csv')
+@login_required
+def download_invoice_csv(invoice_id):
+    invoice = db.session.get(Invoice, invoice_id)
+    if not invoice:
+        flash('Invoice not found', 'error')
+        if session.get('user_role') == 'customer':
+            return redirect(url_for('customer_dashboard'))
+        elif session.get('user_role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('seller_dashboard'))
+        
+    role = session.get('user_role')
+    if role == 'seller' and invoice.s_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('seller_dashboard'))
+    elif role == 'customer' and invoice.c_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard'))
+    elif role not in ['seller', 'customer', 'admin']:
+        flash('Access denied', 'error')
+        return redirect(url_for('login'))
+        
+    try:
+        import csv
+        from io import StringIO
+        from flask import Response
+        
+        si = StringIO()
+        cw = csv.writer(si)
+        
+        cw.writerow(["DOCUMENT TYPE", "BILL" if invoice.is_bill else "INVOICE"])
+        cw.writerow(["Document Number", invoice.id])
+        cw.writerow(["Date", invoice.date])
+        cw.writerow(["Due Date", invoice.due_date_str or "N/A"])
+        cw.writerow(["Status", invoice.status.upper()])
+        cw.writerow([])
+        
+        cw.writerow(["SELLER DETAILS"])
+        if invoice.seller:
+            cw.writerow(["Name", invoice.seller.s_name])
+            cw.writerow(["Address", invoice.seller.s_address or ""])
+            cw.writerow(["Phone", invoice.seller.s_phone or ""])
+            cw.writerow(["Email", invoice.seller.s_email])
+        cw.writerow([])
+        
+        cw.writerow(["BILL TO"])
+        if invoice.is_bill:
+            cw.writerow(["Name", invoice.bill_buyer_name or ""])
+        else:
+            cw.writerow(["Name", invoice.customer_name])
+            if invoice.customer:
+                cw.writerow(["Address", invoice.customer.c_address or ""])
+                cw.writerow(["Phone", invoice.customer.c_phone_no or ""])
+                cw.writerow(["Email", invoice.customer_email])
+        cw.writerow([])
+        
+        cw.writerow(["LINE ITEMS"])
+        cw.writerow(["Product Name", "Quantity", "Price", "Discount", "Total"])
+        for item in invoice.items:
+            cw.writerow([
+                item.product_name,
+                item.item_quantity,
+                f"{item.price:.2f}",
+                f"{item.discount:.2f}",
+                f"{item.total:.2f}"
+            ])
+        cw.writerow([])
+        
+        subtotal = invoice.amount - invoice.tax
+        cw.writerow(["SUMMARY"])
+        cw.writerow(["Subtotal", f"{subtotal:.2f}"])
+        cw.writerow(["Tax", f"{invoice.tax:.2f}"])
+        cw.writerow(["Total Amount", f"{invoice.amount:.2f}"])
+        cw.writerow([])
+        
+        if invoice.notes:
+            cw.writerow(["NOTES & REMARKS"])
+            cw.writerow([invoice.notes])
+            
+        output = si.getvalue()
+        filename = f"Invoice_{invoice.id}.csv" if not invoice.is_bill else f"Bill_{invoice.id}.csv"
+        
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        flash(f'Failed to generate CSV: {str(e)}', 'error')
+        return redirect(url_for('view_invoice', invoice_id=invoice_id))
+
+@app.route('/invoice/<invoice_id>/xlsx')
+@login_required
+def download_invoice_xlsx(invoice_id):
+    invoice = db.session.get(Invoice, invoice_id)
+    if not invoice:
+        flash('Invoice not found', 'error')
+        if session.get('user_role') == 'customer':
+            return redirect(url_for('customer_dashboard'))
+        elif session.get('user_role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('seller_dashboard'))
+        
+    role = session.get('user_role')
+    if role == 'seller' and invoice.s_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('seller_dashboard'))
+    elif role == 'customer' and invoice.c_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard'))
+    elif role not in ['seller', 'customer', 'admin']:
+        flash('Access denied', 'error')
+        return redirect(url_for('login'))
+        
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        from io import BytesIO
+        from flask import send_file
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Document Detail"
+        ws.views.sheetView[0].showGridLines = True
+        
+        indigo_fill = PatternFill(start_color="4648D4", end_color="4648D4", fill_type="solid")
+        grey_fill = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+        yellow_fill = PatternFill(start_color="FEF08A", end_color="FEF08A", fill_type="solid")
+        
+        font_title = Font(name="Arial", size=16, bold=True, color="FFFFFF")
+        font_header = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+        font_bold = Font(name="Arial", size=10, bold=True, color="000000")
+        font_regular = Font(name="Arial", size=10, color="333333")
+        font_section = Font(name="Arial", size=11, bold=True, color="000000")
+        
+        thin_border = Border(
+            left=Side(style='thin', color='CCCCCC'),
+            right=Side(style='thin', color='CCCCCC'),
+            top=Side(style='thin', color='CCCCCC'),
+            bottom=Side(style='thin', color='CCCCCC')
+        )
+        box_border = Border(
+            left=Side(style='medium', color='000000'),
+            right=Side(style='medium', color='000000'),
+            top=Side(style='medium', color='000000'),
+            bottom=Side(style='medium', color='000000')
+        )
+        
+        ws.merge_cells("A1:E2")
+        title_cell = ws["A1"]
+        title_cell.value = f"  {'BILL' if invoice.is_bill else 'INVOICE'} - {invoice.id}"
+        title_cell.font = font_title
+        title_cell.fill = indigo_fill
+        title_cell.alignment = Alignment(vertical="center")
+        
+        ws["A4"] = "Date:"
+        ws["A4"].font = font_bold
+        ws["B4"] = invoice.date
+        ws["B4"].font = font_regular
+        
+        ws["D4"] = "Status:"
+        ws["D4"].font = font_bold
+        ws["E4"] = invoice.status.upper()
+        ws["E4"].font = font_bold
+        
+        if invoice.due_date_str:
+            ws["A5"] = "Due Date:"
+            ws["A5"].font = font_bold
+            ws["B5"] = invoice.due_date_str
+            ws["B5"].font = font_regular
+            
+        ws["A7"] = "FROM (SELLER):"
+        ws["A7"].font = font_section
+        ws["D7"] = "TO (BILL TO):"
+        ws["D7"].font = font_section
+        
+        if invoice.seller:
+            ws["A8"] = invoice.seller.s_name
+            ws["A8"].font = font_bold
+            ws["A9"] = invoice.seller.s_address or ""
+            ws["A9"].font = font_regular
+            ws["A10"] = f"Phone: {invoice.seller.s_phone or ''}"
+            ws["A10"].font = font_regular
+            ws["A11"] = f"Email: {invoice.seller.s_email}"
+            ws["A11"].font = font_regular
+            
+        if invoice.is_bill:
+            ws["D8"] = invoice.bill_buyer_name or ""
+            ws["D8"].font = font_bold
+        else:
+            ws["D8"] = invoice.customer_name
+            ws["D8"].font = font_bold
+            if invoice.customer:
+                ws["D9"] = invoice.customer.c_address or ""
+                ws["D9"].font = font_regular
+                ws["D10"] = f"Phone: {invoice.customer.c_phone_no or ''}"
+                ws["D10"].font = font_regular
+                ws["D11"] = f"Email: {invoice.customer_email}"
+                ws["D11"].font = font_regular
+                
+        start_row = 13
+        ws.cell(row=start_row, column=1, value="Product Name").font = font_header
+        ws.cell(row=start_row, column=1).fill = indigo_fill
+        ws.cell(row=start_row, column=2, value="Quantity").font = font_header
+        ws.cell(row=start_row, column=2).fill = indigo_fill
+        ws.cell(row=start_row, column=2).alignment = Alignment(horizontal="right")
+        ws.cell(row=start_row, column=3, value="Price").font = font_header
+        ws.cell(row=start_row, column=3).fill = indigo_fill
+        ws.cell(row=start_row, column=3).alignment = Alignment(horizontal="right")
+        ws.cell(row=start_row, column=4, value="Discount").font = font_header
+        ws.cell(row=start_row, column=4).fill = indigo_fill
+        ws.cell(row=start_row, column=4).alignment = Alignment(horizontal="right")
+        ws.cell(row=start_row, column=5, value="Total").font = font_header
+        ws.cell(row=start_row, column=5).fill = indigo_fill
+        ws.cell(row=start_row, column=5).alignment = Alignment(horizontal="right")
+        
+        current_row = start_row
+        for item in invoice.items:
+            current_row += 1
+            ws.cell(row=current_row, column=1, value=item.product_name).font = font_bold
+            ws.cell(row=current_row, column=1).border = thin_border
+            ws.cell(row=current_row, column=2, value=item.item_quantity).font = font_regular
+            ws.cell(row=current_row, column=2).border = thin_border
+            ws.cell(row=current_row, column=2).alignment = Alignment(horizontal="right")
+            ws.cell(row=current_row, column=3, value=float(item.price)).font = font_regular
+            ws.cell(row=current_row, column=3).border = thin_border
+            ws.cell(row=current_row, column=3).number_format = '₹#,##0.00'
+            ws.cell(row=current_row, column=3).alignment = Alignment(horizontal="right")
+            ws.cell(row=current_row, column=4, value=float(item.discount)).font = font_regular
+            ws.cell(row=current_row, column=4).border = thin_border
+            ws.cell(row=current_row, column=4).number_format = '₹#,##0.00'
+            ws.cell(row=current_row, column=4).alignment = Alignment(horizontal="right")
+            ws.cell(row=current_row, column=5, value=float(item.total)).font = font_bold
+            ws.cell(row=current_row, column=5).border = thin_border
+            ws.cell(row=current_row, column=5).number_format = '₹#,##0.00'
+            ws.cell(row=current_row, column=5).alignment = Alignment(horizontal="right")
+            
+        current_row += 2
+        subtotal = float(invoice.amount - invoice.tax)
+        
+        ws.cell(row=current_row, column=4, value="Subtotal:").font = font_regular
+        ws.cell(row=current_row, column=4).alignment = Alignment(horizontal="right")
+        ws.cell(row=current_row, column=5, value=subtotal).font = font_regular
+        ws.cell(row=current_row, column=5).number_format = '₹#,##0.00'
+        ws.cell(row=current_row, column=5).alignment = Alignment(horizontal="right")
+        
+        current_row += 1
+        ws.cell(row=current_row, column=4, value="Tax:").font = font_regular
+        ws.cell(row=current_row, column=4).alignment = Alignment(horizontal="right")
+        ws.cell(row=current_row, column=5, value=float(invoice.tax)).font = font_regular
+        ws.cell(row=current_row, column=5).number_format = '₹#,##0.00'
+        ws.cell(row=current_row, column=5).alignment = Alignment(horizontal="right")
+        
+        current_row += 1
+        ws.cell(row=current_row, column=4, value="Total Amount:").font = font_bold
+        ws.cell(row=current_row, column=4).fill = yellow_fill
+        ws.cell(row=current_row, column=4).alignment = Alignment(horizontal="right")
+        ws.cell(row=current_row, column=4).border = box_border
+        
+        ws.cell(row=current_row, column=5, value=float(invoice.amount)).font = Font(name="Arial", size=10, bold=True, color="4648D4")
+        ws.cell(row=current_row, column=5).fill = yellow_fill
+        ws.cell(row=current_row, column=5).number_format = '₹#,##0.00'
+        ws.cell(row=current_row, column=5).alignment = Alignment(horizontal="right")
+        ws.cell(row=current_row, column=5).border = box_border
+        
+        if invoice.notes:
+            current_row += 2
+            ws.cell(row=current_row, column=1, value="Notes & Remarks:").font = font_bold
+            current_row += 1
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row+2, end_column=5)
+            notes_cell = ws.cell(row=current_row, column=1)
+            notes_cell.value = invoice.notes
+            notes_cell.font = font_regular
+            notes_cell.alignment = Alignment(vertical="top", wrap_text=True)
+            notes_cell.fill = grey_fill
+            
+            for r in range(current_row, current_row + 3):
+                for c in range(1, 6):
+                    ws.cell(row=r, column=c).border = thin_border
+            
+        from openpyxl.utils import get_column_letter
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                val_str = str(cell.value or '')
+                if len(val_str) > max_len:
+                    max_len = len(val_str)
+            ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+            
+        ws.column_dimensions['A'].width = 30
+        
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        
+        filename = f"Invoice_{invoice.id}.xlsx" if not invoice.is_bill else f"Bill_{invoice.id}.xlsx"
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Failed to generate Excel: {str(e)}', 'error')
+        return redirect(url_for('view_invoice', invoice_id=invoice_id))
+
+@app.route('/invoice/<invoice_id>/json')
+@login_required
+def download_invoice_json(invoice_id):
+    invoice = db.session.get(Invoice, invoice_id)
+    if not invoice:
+        flash('Invoice not found', 'error')
+        if session.get('user_role') == 'customer':
+            return redirect(url_for('customer_dashboard'))
+        elif session.get('user_role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('seller_dashboard'))
+        
+    role = session.get('user_role')
+    if role == 'seller' and invoice.s_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('seller_dashboard'))
+    elif role == 'customer' and invoice.c_id != session['user_id']:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard'))
+    elif role not in ['seller', 'customer', 'admin']:
+        flash('Access denied', 'error')
+        return redirect(url_for('login'))
+        
+    try:
+        from flask import jsonify
+        data = invoice.to_dict()
+        filename = f"Invoice_{invoice.id}.json" if not invoice.is_bill else f"Bill_{invoice.id}.json"
+        
+        response = jsonify(data)
+        response.headers.set('Content-Disposition', 'attachment', filename=filename)
+        return response
+    except Exception as e:
+        flash(f'Failed to generate JSON: {str(e)}', 'error')
+        return redirect(url_for('view_invoice', invoice_id=invoice_id))
+
 @app.route('/seller/invoices/delete/<invoice_id>')
 @login_required
 @role_required('seller')
@@ -2729,6 +3611,21 @@ def find_invoice_by_no(inv_no, s_id, user_text=None):
     return None
 
 
+@app.route('/api/ai/history', methods=['GET'])
+@login_required
+def get_chat_history():
+    try:
+        if 'user_id' not in session or session.get('user_role') != 'seller':
+            return jsonify({'error': 'Unauthorized', 'success': False}), 403
+            
+        messages = ChatMessage.query.filter_by(s_id=session['user_id']).order_by(ChatMessage.timestamp.asc()).all()
+        return jsonify({
+            'success': True,
+            'history': [msg.to_dict() for msg in messages]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e), 'success': False}), 500
+
 @app.route('/api/ai/process', methods=['POST'])
 @login_required
 def process_ai_command():
@@ -2745,11 +3642,22 @@ def process_ai_command():
             return jsonify({'error': 'Invalid request data', 'success': False}), 400
         
         user_text = data.get('text', '').strip()
-        history = data.get('history', [])
         language = data.get('language', 'en-IN')
         
         if not user_text:
             return jsonify({'error': 'No text provided', 'success': False}), 400
+
+        # Save user message to persistent DB
+        db.session.add(ChatMessage(s_id=session['user_id'], role='user', content=user_text))
+        db.session.commit()
+
+        # Fetch last 15 messages from DB for context
+        past_messages = ChatMessage.query.filter_by(s_id=session['user_id'])\
+                                           .filter(ChatMessage.content != user_text)\
+                                           .order_by(ChatMessage.timestamp.desc())\
+                                           .limit(15).all()
+        past_messages.reverse()
+        history = [{'role': msg.role, 'content': msg.content} for msg in past_messages]
         
         # Get context (products and customers) - only for current seller and are synced
         products = Product.query.filter_by(s_id=session['user_id'], is_synced=True).all()
@@ -2758,6 +3666,8 @@ def process_ai_command():
         # Aggregate Business Stats
         stats = {
             'revenue': 0.0,
+            'revenue_collected': 0.0,
+            'revenue_due': 0.0,
             'invoices_count': 0,
             'customers_count': 0,
             'products_count': len(products),
@@ -2768,6 +3678,21 @@ def process_ai_command():
         try:
             revenue_val = db.session.query(db.func.sum(Invoice.amount)).filter(Invoice.s_id == session['user_id'], Invoice.is_bill == False).scalar() or 0.0
             stats['revenue'] = float(revenue_val)
+            
+            revenue_collected_val = db.session.query(db.func.sum(Invoice.amount)).filter(
+                Invoice.s_id == session['user_id'], 
+                Invoice.is_bill == False,
+                Invoice.status == 'paid'
+            ).scalar() or 0.0
+            stats['revenue_collected'] = float(revenue_collected_val)
+            
+            revenue_due_val = db.session.query(db.func.sum(Invoice.amount)).filter(
+                Invoice.s_id == session['user_id'], 
+                Invoice.is_bill == False,
+                Invoice.status.in_(['pending', 'overdue'])
+            ).scalar() or 0.0
+            stats['revenue_due'] = float(revenue_due_val)
+            
             stats['invoices_count'] = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False).count()
             stats['customers_count'] = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).count()
             
@@ -3190,6 +4115,10 @@ def process_ai_command():
                 print(f"Error executing db_operation: {op_err}")
                 result['response_text'] = f"❌ Failed to execute action: {str(op_err)}"
                 result['success'] = False
+        
+        # Save assistant message to persistent DB
+        db.session.add(ChatMessage(s_id=session['user_id'], role='model', content=result.get('response_text', '')))
+        db.session.commit()
         
         return jsonify(result)
     except Exception as e:

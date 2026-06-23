@@ -1,6 +1,7 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -172,6 +173,8 @@ Rules:
 - If a product is definitely new (not in context), mark is_new_product=true.
 - If customer is not in context, mark is_new_customer=true.
 - Be helpful and concise in 'response_text' (written in {lang_name}).
+- DO NOT assume all invoices are paid or that all customers have paid outstanding balances. Analyze the individual statuses ('paid', 'pending', 'overdue') in the 'Invoices History' context carefully before asserting that a customer has paid everything.
+- If the user asks an ambiguous pronoun query (e.g. "has he paid everything?" or "how much does she owe?") and the pronoun (he/she) is not clearly defined by the conversation history, ALWAYS set intent to 'unknown' and ask for clarification (e.g., "Which customer are you referring to?") instead of guessing or answering about all customers.
 - If the user's intent is unclear and cannot be inferred from history, set intent to 'unknown' and ask for clarification in 'response_text' (written in {lang_name}).
 - ALWAYS return valid JSON.
 """
@@ -214,7 +217,9 @@ def get_context_str(context):
         top_selling_str = ', '.join([f"{p['name']} (sold: {p['quantity']})" for p in s.get('top_selling', [])]) or "None"
         stats_str = (
             f"\n\nBusiness Stats:\n"
-            f"- Total Revenue: INR {s.get('revenue', 0.0):.2f}\n"
+            f"- Total Revenue (Invoiced): INR {s.get('revenue', 0.0):.2f}\n"
+            f"- Revenue Collected (Paid): INR {s.get('revenue_collected', 0.0):.2f}\n"
+            f"- Revenue Due (Unpaid): INR {s.get('revenue_due', 0.0):.2f}\n"
             f"- Total Invoices: {s.get('invoices_count', 0)}\n"
             f"- Total Customers: {s.get('customers_count', 0)}\n"
             f"- Total Products: {s.get('products_count', 0)}\n"
@@ -756,7 +761,6 @@ def parse_command_gemini(user_text, context, history, api_key, language):
     lang_name = lang_names.get(language, 'English')
     system_prompt = get_system_prompt(lang_name)
     prompt = f"{system_prompt}\n\nContext:\n{context_str}\n\n{history_str}\nUser Input:\n{user_text}\n\nResponse (JSON):"
-    
     response = None
     last_err = None
     
@@ -764,11 +768,13 @@ def parse_command_gemini(user_text, context, history, api_key, language):
     for key in keys:
         try:
             print(f"Calling Gemini 2.0 Flash (Assistant) with key: {key[:8]}...")
-            genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
+            client = genai.Client(api_key=key)
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
             )
             break
         except Exception as err:
@@ -781,11 +787,13 @@ def parse_command_gemini(user_text, context, history, api_key, language):
         for key in keys:
             try:
                 print(f"Calling Gemini 2.5 Flash (Assistant) with key: {key[:8]}...")
-                genai.configure(api_key=key)
-                model = genai.GenerativeModel('gemini-2.5-flash')
-                response = model.generate_content(
-                    prompt,
-                    generation_config={"response_mime_type": "application/json"}
+                client = genai.Client(api_key=key)
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
                 )
                 break
             except Exception as err:
@@ -798,11 +806,13 @@ def parse_command_gemini(user_text, context, history, api_key, language):
         for key in keys:
             try:
                 print(f"Calling Gemini 3.5 Flash (Assistant) with key: {key[:8]}...")
-                genai.configure(api_key=key)
-                model = genai.GenerativeModel('gemini-3.5-flash')
-                response = model.generate_content(
-                    prompt,
-                    generation_config={"response_mime_type": "application/json"}
+                client = genai.Client(api_key=key)
+                response = client.models.generate_content(
+                    model='gemini-3.5-flash',
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
                 )
                 break
             except Exception as err:
@@ -815,11 +825,13 @@ def parse_command_gemini(user_text, context, history, api_key, language):
         for key in keys:
             try:
                 print(f"Calling Gemini 1.5 Flash (Assistant) with key: {key[:8]}...")
-                genai.configure(api_key=key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                response = model.generate_content(
-                    prompt,
-                    generation_config={"response_mime_type": "application/json"}
+                client = genai.Client(api_key=key)
+                response = client.models.generate_content(
+                    model='gemini-1.5-flash',
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
                 )
                 break
             except Exception as err:
