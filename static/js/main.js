@@ -166,7 +166,7 @@ function shouldHandleLink(link) {
     return true;
 }
 
-// Globally accessible navigation function
+// // Globally accessible navigation function
 window.navigateToPage = async function(url, pushState = true) {
     // Reset navbar intro active flag during SPA transitions to prevent animation delays
     window.navbarIntroActive = false;
@@ -181,24 +181,44 @@ window.navigateToPage = async function(url, pushState = true) {
     }
     const isDashboard = targetPath === '/seller' || targetPath === '/seller/';
     const isAnalytics = targetPath.includes('/seller/customer-analytics');
-    const hasAiOverlay = document.querySelector('.ai-transition-overlay') !== null;
     
-    const loader = document.getElementById('page-loader');
-    let startTime = null;
+    // Start fetching immediately in the background in parallel with fade-out animation
+    const fetchPromise = fetch(url).then(async response => {
+        if (!response.ok) throw new Error("Fetch failed");
+        return response.text();
+    });
     
-    if (isDashboard && loader && !hasAiOverlay) {
-        loader.classList.remove('fade-out');
-        startTime = Date.now();
+    const currentMain = document.querySelector('main');
+    
+    // Run fade-out animation in parallel with the fetch request
+    if (currentMain && typeof gsap !== 'undefined') {
+        if (isDashboard || isAnalytics) {
+            // Fast fade-out
+            await new Promise(resolve => {
+                gsap.to(currentMain, {
+                    opacity: 0,
+                    duration: 0.12,
+                    ease: 'power1.in',
+                    onComplete: resolve
+                });
+            });
+        } else {
+            // Fade out and shift
+            await new Promise(resolve => {
+                gsap.to(currentMain, {
+                    opacity: 0,
+                    y: 8,
+                    duration: 0.12,
+                    ease: 'power2.in',
+                    onComplete: resolve
+                });
+            });
+        }
     }
     
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            window.location.href = url;
-            return;
-        }
-        
-        const html = await response.text();
+        // Wait for fetch to complete (if it hasn't already)
+        const html = await fetchPromise;
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         
@@ -206,34 +226,8 @@ window.navigateToPage = async function(url, pushState = true) {
         document.title = doc.title;
         
         // Swap Main Content Area
-        const currentMain = document.querySelector('main');
         const newMain = doc.querySelector('main');
         if (currentMain && newMain) {
-            if (typeof gsap !== 'undefined') {
-                if (isDashboard || isAnalytics) {
-                    // For dashboard/analytics, do not translate the main container, just do a fast fade-out
-                    await new Promise(resolve => {
-                        gsap.to(currentMain, {
-                            opacity: 0,
-                            duration: 0.15,
-                            ease: 'power1.in',
-                            onComplete: resolve
-                        });
-                    });
-                } else {
-                    // Fade out current main content before swapping
-                    await new Promise(resolve => {
-                        gsap.to(currentMain, {
-                            opacity: 0,
-                            y: 10,
-                            duration: 0.15,
-                            ease: 'power2.in',
-                            onComplete: resolve
-                        });
-                    });
-                }
-            }
- 
             currentMain.innerHTML = newMain.innerHTML;
             
             // Reset scroll position to top of the page instantly
@@ -241,7 +235,7 @@ window.navigateToPage = async function(url, pushState = true) {
             
             // Execute any scripts within the dynamic content block (e.g., canvas shaders)
             executeScripts(currentMain);
- 
+
             if (typeof gsap !== 'undefined') {
                 if (isDashboard || isAnalytics) {
                     // Set starting state for new content (only opacity)
@@ -250,23 +244,23 @@ window.navigateToPage = async function(url, pushState = true) {
                     // Fade in container smoothly
                     gsap.to(currentMain, {
                         opacity: 1,
-                        duration: 0.25,
+                        duration: 0.2,
                         ease: 'power1.out',
                         clearProps: 'opacity'
                     });
                 } else {
                     // Set starting state for new content
-                    gsap.set(currentMain, { opacity: 0, y: 15 });
+                    gsap.set(currentMain, { opacity: 0, y: 12 });
                     
                     // Fade in container smoothly
                     gsap.to(currentMain, {
                         opacity: 1,
                         y: 0,
-                        duration: 0.35,
+                        duration: 0.25,
                         ease: 'power2.out',
                         clearProps: 'transform,opacity'
                     });
- 
+
                     // Stagger key child elements if NOT dashboard (dashboard handles its own beautiful staggers)
                     const animTargets = currentMain.querySelectorAll(
                         '.comic-card, .form-section-header, .grid > div, form > div, table tbody tr, .card, h1, h2'
@@ -277,12 +271,12 @@ window.navigateToPage = async function(url, pushState = true) {
                             .slice(0, 12);
                         
                         gsap.fromTo(visibleTargets,
-                            { opacity: 0, y: 15 },
+                            { opacity: 0, y: 10 },
                             {
                                 opacity: 1,
                                 y: 0,
-                                duration: 0.45,
-                                stagger: 0.04,
+                                duration: 0.35,
+                                stagger: 0.03,
                                 ease: 'power2.out',
                                 clearProps: 'transform,opacity'
                             }
@@ -316,18 +310,9 @@ window.navigateToPage = async function(url, pushState = true) {
         window.location.href = url;
     } finally {
         hideProgressBar();
-        if (loader && startTime !== null) {
-            const elapsed = Date.now() - startTime;
-            const delay = Math.max(0, 750 - elapsed);
-            setTimeout(() => {
-                loader.classList.add('fade-out');
-                
-                // Dispatch event so scripts on the new page know the loader has started to fade out
-                setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('page-loader-hidden'));
-                }, 200);
-            }, delay);
-        }
+        // Since we don't display the full page loader on SPA transition anymore,
+        // we dispatch the hidden event immediately in case any new components are listening to it.
+        window.dispatchEvent(new CustomEvent('page-loader-hidden'));
     }
 };
 

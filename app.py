@@ -915,8 +915,14 @@ def customer_dashboard():
 def refresh_demo_data_dates():
     """Dynamically shift the mock data invoice dates so they are always fresh,
     allowing the demo dashboard to show logical growth and overdue days."""
+    from datetime import date
+    # Check if already refreshed in this session today to prevent redundant writes
+    today_str = date.today().isoformat()
+    if session.get('demo_dates_refreshed') == today_str:
+        return
+        
     try:
-        from datetime import datetime, date, timedelta
+        from datetime import datetime, timedelta
         from extensions import db
         from models import Invoice
         
@@ -969,6 +975,7 @@ def refresh_demo_data_dates():
                     inv.due_date = today - timedelta(days=inv_date_diff if (inv_date_diff := days_ago - 15) > 0 else 5)
                     
         db.session.commit()
+        session['demo_dates_refreshed'] = today_str
     except Exception as e:
         db.session.rollback()
         print(f"Error refreshing demo dates: {e}")
