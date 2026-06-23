@@ -993,14 +993,42 @@ def seller_dashboard():
     # Count customers created by this seller
     total_customers = Customer.query.filter_by(s_id=session['user_id'], is_synced=True).count()
     total_invoices = Invoice.query.filter_by(s_id=session['user_id'], is_bill=False).count()
-    paid_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='paid', is_bill=False)
-    pending_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='pending', is_bill=False)
-    overdue_invoices_qs = Invoice.query.filter_by(s_id=session['user_id'], status='overdue', is_bill=False)
-    paid_invoices_count = paid_invoices_qs.count()
-    unpaid_invoices_count = pending_invoices_qs.count()
-    overdue_invoices_count = overdue_invoices_qs.count()
-    revenue_collected = sum(float(inv.amount) for inv in paid_invoices_qs.all())
-    revenue_due = sum(float(inv.amount) for inv in pending_invoices_qs.all()) + sum(float(inv.amount) for inv in overdue_invoices_qs.all())
+    
+    # Aggregate counts and sums directly from the database in 3 queries
+    paid_stats = db.session.query(
+        db.func.count(Invoice.id),
+        db.func.sum(Invoice.amount)
+    ).filter(
+        Invoice.s_id == session['user_id'],
+        Invoice.status == 'paid',
+        Invoice.is_bill == False
+    ).first()
+    paid_invoices_count = paid_stats[0] or 0
+    revenue_collected = float(paid_stats[1] or 0.0)
+
+    pending_stats = db.session.query(
+        db.func.count(Invoice.id),
+        db.func.sum(Invoice.amount)
+    ).filter(
+        Invoice.s_id == session['user_id'],
+        Invoice.status == 'pending',
+        Invoice.is_bill == False
+    ).first()
+    unpaid_invoices_count = pending_stats[0] or 0
+    pending_revenue = float(pending_stats[1] or 0.0)
+
+    overdue_stats = db.session.query(
+        db.func.count(Invoice.id),
+        db.func.sum(Invoice.amount)
+    ).filter(
+        Invoice.s_id == session['user_id'],
+        Invoice.status == 'overdue',
+        Invoice.is_bill == False
+    ).first()
+    overdue_invoices_count = overdue_stats[0] or 0
+    overdue_revenue = float(overdue_stats[1] or 0.0)
+
+    revenue_due = pending_revenue + overdue_revenue
     
     # Calculate real dynamic revenue growth (last 30 days vs 30 to 60 days ago)
     now = datetime.now()
@@ -1032,14 +1060,15 @@ def seller_dashboard():
         
     # Calculate real average due days for pending/overdue invoices
     today = date.today()
-    due_invoices = pending_invoices_qs.all() + overdue_invoices_qs.all()
+    due_dates = db.session.query(Invoice.due_date).filter(
+        Invoice.s_id == session['user_id'],
+        Invoice.status.in_(['pending', 'overdue']),
+        Invoice.is_bill == False,
+        Invoice.due_date.isnot(None)
+    ).all()
     
-    if due_invoices:
-        days_diffs = []
-        for inv in due_invoices:
-            if inv.due_date:
-                diff = (inv.due_date - today).days
-                days_diffs.append(diff)
+    if due_dates:
+        days_diffs = [(d[0] - today).days for d in due_dates if d[0]]
         if days_diffs:
             avg_days = sum(days_diffs) / len(days_diffs)
             if avg_days >= 0:
